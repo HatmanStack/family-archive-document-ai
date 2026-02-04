@@ -944,7 +944,7 @@ Resources:
           Value: !Sub '${ragstack.Outputs.GraphQLApiUrl}'
         - Name: PUBLIC_RAGSTACK_API_KEY
           Value: !Sub '${ragstack.Outputs.GraphQLApiKey}'
-        - Name: PUBLIC_RAGSTACK_CHAT_WIDGET_URL
+        - Name: PUBLIC_RAGSTACK_CHAT_URL
           Value: !Sub '${ragstack.Outputs.WebComponentCDNUrl}'
 
   # =============================================================================
