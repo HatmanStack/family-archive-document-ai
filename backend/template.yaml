@@ -848,17 +848,15 @@ Resources:
                 - echo "=== Environment Info ==="
                 - node --version
                 - npm --version
-                - npm install -g pnpm
-                - pnpm --version
                 - echo "=== Files present ==="
                 - ls -la
                 - echo "=== Installing dependencies ==="
-                - pnpm install --frozen-lockfile
+                - npm ci
                 - echo "=== Checking for workbox-window ==="
                 - find node_modules -name "workbox-window" -type d 2>/dev/null || echo "workbox-window not found"
                 - ls node_modules/workbox-window 2>/dev/null || echo "workbox-window directory does not exist"
                 - echo "=== Building ==="
-                - pnpm run build
+                - npm run build
                 - echo "Build complete"
           artifacts:
             files:
