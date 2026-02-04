@@ -822,15 +822,10 @@ Resources:
                 - npm ci
                 - npm run build
                 - echo "Build complete"
-            post_build:
-              commands:
-                - echo "Packaging built frontend..."
-                - cd /tmp/source
-                - zip -r /tmp/built-frontend.zip frontend/build
           artifacts:
             files:
-              - '**/*'
-            base-directory: /tmp/source/frontend/build
+              - 'frontend/build/**/*'
+            base-directory: /tmp/source
       TimeoutInMinutes: 15
 
   FrontendBuildRole:
