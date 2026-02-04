@@ -3,6 +3,11 @@ Transform: AWS::Serverless-2016-10-31
 Description: |
   Family Archive - Document AI: AI-powered platform for preserving family memories, letters, and photos.
 
+  ⚠️ STACK NAME REQUIREMENTS:
+  - Use LOWERCASE only (e.g., doc-ai, fam-archive, memory-app)
+  - Keep it SHORT - 12 characters or less recommended
+  - Use hyphens, not underscores or spaces
+
   TIP: Parameters can use placeholder values initially. Update them later via CloudFormation > Update Stack with the same stack name.
 
 Metadata:
@@ -56,6 +61,12 @@ Metadata:
           - UISourceKey
 
   DeploymentNotes: |
+    ⚠️ CRITICAL: Stack Name Requirements
+    - Must be LOWERCASE only (a-z, 0-9, hyphens)
+    - Maximum 12 characters recommended
+    - Examples: doc-ai, fam-archive, memory-app
+    - Uppercase or long names will cause S3 bucket creation failures
+
     IMPORTANT: Parameters can be updated after initial deployment.
 
     Parameters are defined in your template and allow you to input custom values when you create or update a stack.
@@ -436,7 +447,7 @@ Resources:
         Variables:
           TABLE_NAME: !If [HasTableName, !Ref TableName, !Sub '${AWS::StackName}-Table']
           ARCHIVE_BUCKET: !Ref ArchiveBucketResource
-          RAGSTACK_BUCKET: !GetAtt RagStackNestedStack.Outputs.DataBucketName
+          RAGSTACK_BUCKET: !GetAtt ragstack.Outputs.DataBucketName
           RAGSTACK_REGION: us-east-1
           LETTER_PROCESSOR_FUNCTION_NAME: !Ref LetterProcessorFunction
           SES_FROM_EMAIL: !Ref SesFromEmail
@@ -456,7 +467,7 @@ Resources:
         - S3CrudPolicy:
             BucketName: !Ref ArchiveBucketResource
         - S3ReadPolicy:
-            BucketName: !GetAtt RagStackNestedStack.Outputs.DataBucketName
+            BucketName: !GetAtt ragstack.Outputs.DataBucketName
       Events:
         # Comments
         GetComments:
@@ -743,7 +754,7 @@ Resources:
   # The TemplateURL must point to a pre-packaged template (sam package output)
   # since nested SAM templates require packaging before deployment.
   # RAGStack is always deployed as a nested stack for marketplace deployments
-  RagStackNestedStack:
+  ragstack:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Ref RagStackTemplateUrl
@@ -796,11 +807,11 @@ Resources:
         - Name: PUBLIC_COGNITO_HOSTED_UI_URL
           Value: !Sub 'https://${AWS::StackName}-${AWS::AccountId}.auth.${AWS::Region}.amazoncognito.com'
         - Name: PUBLIC_RAGSTACK_GRAPHQL_URL
-          Value: !GetAtt RagStackNestedStack.Outputs.GraphQLApiUrl
+          Value: !GetAtt ragstack.Outputs.GraphQLApiUrl
         - Name: PUBLIC_RAGSTACK_API_KEY
-          Value: !GetAtt RagStackNestedStack.Outputs.GraphQLApiKey
+          Value: !GetAtt ragstack.Outputs.GraphQLApiKey
         - Name: PUBLIC_RAGSTACK_CHAT_URL
-          Value: !GetAtt RagStackNestedStack.Outputs.WebComponentCDNUrl
+          Value: !GetAtt ragstack.Outputs.WebComponentCDNUrl
 
       # SPA rewrite rule
       CustomRules:
@@ -915,25 +926,25 @@ Outputs:
 
   RagStackGraphQLUrl:
     Description: RAGStack GraphQL API URL
-    Value: !GetAtt RagStackNestedStack.Outputs.GraphQLApiUrl
+    Value: !GetAtt ragstack.Outputs.GraphQLApiUrl
     Export:
       Name: !Sub '${AWS::StackName}-RagStackGraphQLUrl'
 
   RagStackApiKey:
     Description: RAGStack GraphQL API Key
-    Value: !GetAtt RagStackNestedStack.Outputs.GraphQLApiKey
+    Value: !GetAtt ragstack.Outputs.GraphQLApiKey
     Export:
       Name: !Sub '${AWS::StackName}-RagStackApiKey'
 
   RagStackChatWidgetUrl:
     Description: RAGStack Chat Widget CDN URL (Web UI Component)
-    Value: !GetAtt RagStackNestedStack.Outputs.WebComponentCDNUrl
+    Value: !GetAtt ragstack.Outputs.WebComponentCDNUrl
     Export:
       Name: !Sub '${AWS::StackName}-RagStackWebUICDN'
 
   RagStackDataBucket:
     Description: RAGStack data bucket name
-    Value: !GetAtt RagStackNestedStack.Outputs.DataBucketName
+    Value: !GetAtt ragstack.Outputs.DataBucketName
     Export:
       Name: !Sub '${AWS::StackName}-RagStackDataBucket'
 
