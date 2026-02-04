@@ -176,7 +176,8 @@ function sortByDate(items: MediaItem[]): MediaItem[] {
  * Check if two arrays of media items have different IDs (new items added)
  */
 function hasNewItems(oldItems: MediaItem[], newItems: MediaItem[]): boolean {
-  if (newItems.length !== oldItems.length) return true
+  if (newItems.length !== oldItems.length)
+    return true
   const oldIds = new Set(oldItems.map(i => i.id))
   return newItems.some(i => !oldIds.has(i.id))
 }
@@ -319,7 +320,7 @@ export async function getMediaItems(
       : buildDocumentsPage(cache.documents)
 
     // Background refresh
-    fetchDocuments().then(freshDocs => {
+    fetchDocuments().then((freshDocs) => {
       const freshPage = category === 'videos'
         ? buildVideosPage(freshDocs)
         : buildDocumentsPage(freshDocs)

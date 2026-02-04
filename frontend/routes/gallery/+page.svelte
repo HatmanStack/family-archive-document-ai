@@ -6,7 +6,7 @@
   import { authLoading, currentUser, isAuthenticated } from '$lib/auth/auth-store'
   import CommentSection from '$lib/components/comments/CommentSection.svelte'
   import Head from '$lib/components/head.svelte'
-  import { createMediaItemFromSearch, getImageById, getMediaItems, getPresignedUrlForKey, invalidateMediaCache, type MediaItem, resetPagination, resolveSignedUrl } from '$lib/services/media-service'
+  import { createMediaItemFromSearch, getImageById, getMediaItems, getPresignedUrlForKey, invalidateMediaCache, type MediaItem, resolveSignedUrl } from '$lib/services/media-service'
   import { uploadToRagstack } from '$lib/services/ragstack-upload-service'
   import { filterResultsByCategory, searchKnowledgeBase, type SearchResult } from '$lib/services/search-service'
   import { onDestroy, onMount } from 'svelte'
