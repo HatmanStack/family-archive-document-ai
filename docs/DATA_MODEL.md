@@ -76,11 +76,12 @@
   SK: 'PROFILE'
   GSI1PK: 'USERS'      // For listing all users
   GSI1SK: string       // USER#{userId}
+  entityType: 'USER_PROFILE'
   userId: string
   email: string
   displayName: string
   bio?: string
-  photoUrl?: string
+  profilePhotoUrl?: string
   familyRelationship?: string
   generation?: string
   familyBranch?: string
@@ -91,6 +92,9 @@
   theme?: string
   familyRelationships?: object
   mediaUploadCount: number
+  joinedDate: string   // ISO8601
+  lastActive: string   // ISO8601
+  commentCount: number
   status: 'active' | 'inactive' | 'deleted'  // listUsers filters non-active
   groups: string[]
   createdAt: string    // ISO8601
@@ -103,35 +107,37 @@
 {
   PK: string           // COMMENT#{itemId}
   SK: string           // {timestamp}#{commentId}
-  GSI1PK: string       // USER#{userId}
-  GSI1SK: string       // COMMENT#{timestamp}
+  GSI1PK: string       // USER#{userId}#COMMENT#{itemId}
+  GSI1SK: string       // {timestamp}#{commentId}
+  entityType: 'COMMENT'
   itemId: string
   commentId: string
-  userId: string
-  userName: string
-  userPhotoUrl?: string
-  commentText: string
-  itemType?: string
-  itemTitle?: string
+  authorId: string     // User ID of comment author
+  authorEmail?: string
+  content: string      // Comment text content
   reactionCount: number
-  createdAt: string
-  updatedAt?: string
+  isEdited?: boolean
+  isDeleted?: boolean  // Soft delete flag
+  deletedAt?: string   // ISO8601, when deleted
+  previousContent?: string  // For edit history
+  createdAt: string    // ISO8601
+  updatedAt?: string   // ISO8601
 }
 ```
 
 ### Reaction
 ```typescript
 {
-  PK: string           // COMMENT#{itemId}
-  SK: string           // REACTION#{commentId}#{userId}
+  PK: string           // REACTION#{commentId}
+  SK: string           // {userId}
   GSI1PK: string       // USER#{userId}
   GSI1SK: string       // REACTION#{timestamp}
+  entityType: 'REACTION'
   itemId: string
   commentId: string
   userId: string
-  userName: string
-  reactionType: string
-  createdAt: string
+  reactionType: string // 'like' or other types
+  createdAt: string    // ISO8601
 }
 ```
 
@@ -169,17 +175,21 @@
 {
   PK: string           // CONV#{convId}
   SK: string           // MSG#{timestamp}#{msgId}
+  entityType: 'MESSAGE'
   messageId: string
   conversationId: string
+  conversationType: string  // 'direct' | 'group'
   senderId: string
   senderName: string
+  senderPhotoUrl?: string
   messageText: string
+  participants: string[]    // Array of user IDs
   attachments?: {
     s3Key: string
     fileName: string
     contentType: string
   }[]
-  createdAt: string
+  createdAt: string    // ISO8601
 }
 ```
 
@@ -187,18 +197,22 @@
 ```typescript
 {
   PK: string           // LETTER#{date}
-  SK: 'CURRENT'
+  SK: 'METADATA'
   GSI1PK: 'LETTERS'
   GSI1SK: string       // date (YYYY-MM-DD)
-  date: string
+  entityType: 'LETTER'
+  date: string         // YYYY-MM-DD
   title: string
   author?: string
   content: string      // markdown
   description?: string
+  pdfKey?: string      // S3 key for PDF (legacy)
+  ragstackDocumentId?: string  // RAGStack document ID
+  tags?: string[]      // Array of tags
   versionCount: number
-  createdAt: string
-  updatedAt: string
-  updatedBy: string
+  createdAt: string    // ISO8601
+  updatedAt: string    // ISO8601
+  lastEditedBy: string // User ID of last editor
 }
 ```
 
@@ -222,19 +236,24 @@
 {
   PK: string           // DRAFT#{draftId}
   SK: 'METADATA'
+  GSI1PK: 'DRAFTS'     // For listing all drafts
+  GSI1SK: string       // {timestamp}
+  entityType: 'DRAFT'
   draftId: string
-  status: 'pending' | 'processing' | 'ready' | 'published' | 'failed'
-  uploaderId: string
-  fileKeys: string[]
-  extractedData?: {
-    date?: string
-    title?: string
-    author?: string
-    content?: string
+  status: 'PENDING' | 'PROCESSING' | 'REVIEW' | 'ERROR' | 'PUBLISHED'
+  requesterId: string  // User ID who created the draft
+  s3Key?: string       // S3 key for uploaded files
+  parsedData?: {
+    date?: string      // Extracted date
+    author?: string    // Extracted author
+    recipient?: string // Extracted recipient
+    location?: string  // Extracted location
+    transcription?: string  // Full text transcription
+    summary?: string   // AI-generated summary
   }
-  errorMessage?: string
-  createdAt: string
-  updatedAt: string
+  error?: string       // Error message if status is ERROR
+  createdAt: string    // ISO8601
+  updatedAt: string    // ISO8601
 }
 ```
 

@@ -232,13 +232,16 @@ InternalError      → 500
 - S3: Standard storage class
 - API Gateway: Per-request pricing
 
-**Estimated costs (small family use):**
-- Lambda: ~$1/month
-- DynamoDB: ~$1/month
-- S3: ~$1/month
-- API Gateway: ~$1/month
-- Cognito: Free tier (50k MAU)
+**Estimated costs (small family use - 10 users, 100 requests/day):**
+- Lambda: ~$1/month (1M free tier)
+- DynamoDB: ~$1/month (25GB free tier)
+- S3: ~$1/month (5GB storage)
+- API Gateway: ~$1/month (1M free tier)
+- Cognito: Free (under 50K MAU)
+- SES: ~$0.10/month (first 62K emails free)
 - Total: ~$5/month
+
+Pricing as of 2026. Check current rates: https://aws.amazon.com/pricing/
 
 ## Stack
 

@@ -45,22 +45,80 @@ PUBLIC_COGNITO_REGION=us-east-1
 
 To enable "Sign in with Google":
 
-1. Create OAuth credentials in Google Cloud Console
-2. Add Google as identity provider in Cognito:
-   ```bash
-   aws cognito-idp create-identity-provider \
-     --user-pool-id YOUR_POOL_ID \
-     --provider-name Google \
-     --provider-type Google \
-     --provider-details \
-       client_id=YOUR_GOOGLE_CLIENT_ID \
-       client_secret=YOUR_GOOGLE_CLIENT_SECRET \
-       authorize_scopes="email profile openid"
-   ```
-3. Configure attribute mapping:
-   - `email` → `email`
-   - `name` → `name`
-   - `picture` → `picture`
+#### Step 1: Create Google Cloud Project
+1. Navigate to https://console.cloud.google.com
+2. Click "Select a project" → "New Project"
+3. Name: `hold-that-thought-oauth`
+4. Click "Create"
+
+#### Step 2: Configure OAuth Consent Screen
+1. Navigate to "APIs & Services" → "OAuth consent screen"
+2. Select "External" (unless using Google Workspace)
+3. Click "Create"
+4. Fill required fields:
+   - App name: `Hold That Thought`
+   - User support email: your email
+   - Developer contact: your email
+5. Click "Save and Continue"
+6. Scopes: Click "Add or Remove Scopes"
+   - Select: `email`, `profile`, `openid`
+   - Click "Update" → "Save and Continue"
+7. Test users (if External):
+   - Add email addresses of family members
+   - Click "Save and Continue"
+8. Click "Back to Dashboard"
+
+#### Step 3: Create OAuth Client ID
+1. Navigate to "APIs & Services" → "Credentials"
+2. Click "Create Credentials" → "OAuth client ID"
+3. Application type: "Web application"
+4. Name: `Hold That Thought Web Client`
+5. Authorized JavaScript origins:
+   - `https://your-app-domain.com`
+   - `http://localhost:5173` (for dev)
+6. Authorized redirect URIs:
+   - `https://your-cognito-domain.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`
+   - Replace `your-cognito-domain` with your actual domain
+   - Get domain from: `aws cognito-idp describe-user-pool --user-pool-id YOUR_POOL_ID --query 'UserPool.Domain'`
+7. Click "Create"
+8. **Save Client ID and Client Secret** (shown once)
+
+#### Step 4: Deploy with Google OAuth
+Run `npm run deploy` and provide Google credentials when prompted:
+```
+Enable Google OAuth? (y/n): y
+Google Client ID: {paste your Client ID}
+Google Client Secret: {paste your Client Secret}
+```
+
+Cognito automatically configures the identity provider and attribute mapping (email→email, name→name, picture→picture).
+
+#### Step 5: Test OAuth Flow
+1. Open: `https://your-app-domain.com/auth/login`
+2. Click "Sign in with Google"
+3. Should redirect to Google consent screen
+4. After consent, redirects to app
+
+#### Troubleshooting
+
+**"redirect_uri_mismatch" error:**
+- Verify redirect URI in Google Console matches Cognito domain exactly
+- Format: `https://{cognito-domain}.auth.{region}.amazoncognito.com/oauth2/idpresponse`
+- No trailing slash
+- Check region matches deployment
+
+**"unauthorized_client" error:**
+- Verify Client ID and Secret in deploy config match Google Console
+- Re-deploy if credentials changed
+
+**Cognito doesn't show Google provider:**
+- Verify GoogleClientId was provided during deployment
+- Check backend/.env.deploy for GoogleClientId
+- Re-run `npm run deploy` with correct credentials
+
+**User attributes not mapping:**
+- Default mapping configured automatically in template (backend/template.yaml:346-359)
+- Verify user pool client includes Google provider
 
 ### Guest Access (Optional)
 

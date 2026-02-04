@@ -223,15 +223,15 @@ The API Lambda uses a consolidated handler pattern:
 backend/lambdas/api/src/
 ├── index.ts           # Main handler, route dispatch
 ├── routes/            # Route handlers
-│   ├── index.ts      # Route exports
-│   ├── comments.ts
-│   ├── messages.ts
-│   ├── profile.ts
-│   ├── reactions.ts
-│   ├── media.ts
-│   ├── letters.ts
-│   ├── drafts.ts
-│   └── contact.ts
+│   ├── index.ts      # Route dispatcher (not a handler)
+│   ├── comments.ts   # Comment CRUD with soft delete
+│   ├── contact.ts    # Contact form via SES
+│   ├── drafts.ts     # Letter draft upload/processing
+│   ├── letters.ts    # Letter CRUD, versioning
+│   ├── media.ts      # Media download with presigned URLs
+│   ├── messages.ts   # Conversations, DMs
+│   ├── profile.ts    # User profiles, photos
+│   └── reactions.ts  # Comment reactions
 ├── lib/               # Shared utilities
 │   ├── errors.ts     # Typed error classes
 │   ├── responses.ts  # HTTP responses

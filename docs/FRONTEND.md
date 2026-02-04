@@ -48,13 +48,19 @@ frontend/
 │   │   ├── profile/       # Profile components
 │   │   └── letters/       # Letter components
 │   ├── services/           # API service modules
-│   │   ├── comment-service.ts
-│   │   ├── message-service.ts
-│   │   ├── profile-service.ts
-│   │   ├── letters-service.ts
-│   │   ├── media-service.ts
-│   │   ├── reaction-service.ts
-│   │   └── gallery-service.ts
+│   │   ├── comment-service.ts        # Comment CRUD
+│   │   ├── content-service.ts        # Content transformation
+│   │   ├── draft-service.ts          # Draft management
+│   │   ├── gallery-service.ts        # RAGStack gallery integration
+│   │   ├── letter-upload-service.ts  # Multi-file upload
+│   │   ├── letters-service.ts        # Letter CRUD, versions
+│   │   ├── markdown.ts               # Markdown rendering
+│   │   ├── media-service.ts          # Media download, presigned URLs
+│   │   ├── message-service.ts        # Conversations, messages
+│   │   ├── profile-service.ts        # Profile CRUD, photos
+│   │   ├── ragstack-upload-service.ts # RAGStack document indexing
+│   │   ├── reaction-service.ts       # Reaction toggle, counts
+│   │   └── search-service.ts         # RAGStack semantic search
 │   ├── stores/             # Svelte stores
 │   └── types/              # TypeScript definitions
 │

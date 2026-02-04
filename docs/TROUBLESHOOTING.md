@@ -253,6 +253,49 @@ Environment:
    - Check file is in watched directory
    - Restart dev server after config changes
 
+## Environment Variable Validation
+
+### Backend Validation
+
+Letter processor Lambda validates env vars at startup (backend/lambdas/letter-processor/src/lib/config.ts:15-40):
+
+**Gemini API Key format:**
+- Must start with "AIza"
+- Error: `Invalid configuration: GEMINI_API_KEY must start with 'AIza'`
+- Get key: https://aistudio.google.com/app/apikey
+
+**Required variables:**
+- `TABLE_NAME` - DynamoDB table name
+- `ARCHIVE_BUCKET` - S3 bucket for letters
+- `GEMINI_API_KEY` - Google AI API key
+
+### Validation Errors
+
+Check CloudWatch logs:
+```bash
+aws logs tail /aws/lambda/{StackName}-LetterProcessorFunction --follow
+```
+
+Look for "Invalid configuration" errors on cold start.
+
+### Fix Invalid Config
+
+1. Update parameter in template.yaml
+2. Redeploy:
+   ```bash
+   npm run deploy
+   ```
+3. Verify environment:
+   ```bash
+   aws lambda get-function-configuration \
+     --function-name {StackName}-LetterProcessorFunction \
+     --query 'Environment.Variables'
+   ```
+
+### Development Override
+
+Set `SKIP_VALIDATION=true` in Lambda environment to bypass checks. **Never use in production.**
+
 ## Deployment Issues
 
 ### SAM Deploy Fails

@@ -18,7 +18,7 @@ List comments on an item.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | itemId | string | Yes | Item identifier (base64url or plain) |
-| limit | number | No | Max 100, default 20 |
+| limit | number | No | Max 100, default 50 |
 | lastEvaluatedKey | string | No | Pagination cursor |
 
 **Response:**
@@ -30,7 +30,7 @@ List comments on an item.
     "userId": "string",
     "userName": "string",
     "userPhotoUrl": "string",
-    "commentText": "string",
+    "content": "string",
     "createdAt": "ISO8601",
     "reactionCount": "number"
   }],
@@ -50,7 +50,7 @@ Create comment.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | itemId | string | Yes | Path param (base64url or plain) |
-| commentText | string | Yes | Body, max 5000 chars |
+| content | string | Yes | Body, 1-10000 chars |
 | itemType | string | No | Content type identifier |
 | itemTitle | string | No | Content title |
 
@@ -62,7 +62,7 @@ Create comment.
   "userId": "string",
   "userName": "string",
   "userPhotoUrl": "string",
-  "commentText": "string",
+  "content": "string",
   "createdAt": "ISO8601",
   "reactionCount": 0
 }
@@ -78,7 +78,7 @@ Edit own comment.
 
 | Parameter | Type | Required |
 |-----------|------|----------|
-| commentText | string | Yes |
+| content | string | Yes |
 
 **Response:** 200 - Updated comment object
 
@@ -131,10 +131,36 @@ Toggle reaction on comment.
 
 ---
 
+### DELETE /reactions/{commentId}
+Remove reaction (same as POST toggle).
+
+**Signature:** `DELETE /reactions/{commentId}`
+**Auth:** Any authenticated user
+
+| Parameter | Type | Required |
+|-----------|------|----------|
+| itemId | string | Yes (body) |
+| reactionType | string | No (default: "like") |
+
+**Response:**
+```json
+{
+  "liked": false,
+  "message": "Reaction removed"
+}
+```
+
+---
+
 ### GET /reactions/{commentId}
 Get reaction details.
 
 **Signature:** `GET /reactions/{commentId}?itemId=`
+**Auth:** Any authenticated user
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| itemId | string | Yes | Query param, item identifier |
 
 **Response:**
 ```json
@@ -144,8 +170,8 @@ Get reaction details.
   "count": "number",
   "reactions": [{
     "userId": "string",
-    "userName": "string",
-    "reactionType": "string"
+    "reactionType": "string",
+    "createdAt": "ISO8601"
   }]
 }
 ```
@@ -212,6 +238,7 @@ Get messages in conversation.
     "messageId": "string",
     "senderId": "string",
     "senderName": "string",
+    "senderPhotoUrl": "string",
     "messageText": "string",
     "attachments": [],
     "createdAt": "ISO8601"
@@ -299,14 +326,18 @@ Get user profile.
 ```json
 {
   "userId": "string",
+  "email": "string",
   "displayName": "string",
   "bio": "string",
-  "photoUrl": "string (presigned)",
+  "profilePhotoUrl": "string (presigned)",
   "familyRelationship": "string",
   "generation": "string",
   "familyBranch": "string",
   "isProfilePrivate": "boolean",
   "mediaUploadCount": "number",
+  "joinedDate": "ISO8601",
+  "lastActive": "ISO8601",
+  "commentCount": "number",
   "createdAt": "ISO8601"
 }
 ```
@@ -387,7 +418,7 @@ List all users.
   "items": [{
     "userId": "string",
     "displayName": "string",
-    "photoUrl": "string"
+    "profilePhotoUrl": "string"
   }]
 }
 ```
@@ -450,7 +481,13 @@ Update letter.
 | author | string | No |
 | description | string | No |
 
-**Response:** 200 - Updated letter
+**Response:** 200
+```json
+{
+  "message": "Letter updated",
+  "versionCount": "number"
+}
+```
 
 ---
 
@@ -520,18 +557,19 @@ Request upload URLs for draft files.
 **Signature:** `POST /letters/upload-request`
 **Auth:** ApprovedUsers or Admins
 
-| Parameter | Type | Required |
-|-----------|------|----------|
-| fileCount | number | Yes |
-| fileTypes | string[] | Yes |
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| fileCount | number | Yes | Number of files (max 20) |
+| fileTypes | string[] | Yes | MIME types |
 
 **Response:**
 ```json
 {
   "uploadId": "string",
   "urls": [{
-    "uploadUrl": "string",
-    "key": "string"
+    "url": "string",
+    "key": "string",
+    "index": "number"
   }]
 }
 ```
@@ -596,6 +634,7 @@ Publish draft as letter.
 | finalData.content | string | Yes |
 | finalData.author | string | No |
 | finalData.description | string | No |
+| finalData.ragstackDocumentId | string | No |
 
 **Response:**
 ```json
@@ -612,7 +651,17 @@ Publish draft as letter.
 ### GET /download/presigned-url
 Get download URL by S3 key.
 
-**Signature:** `GET /download/presigned-url?key=`
+**Signature:** `GET /download/presigned-url?key=&bucket=`
+**Auth:** Any authenticated user
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| key | string | Yes | S3 object key |
+| bucket | string | No | Bucket name: `archive` (default) or `ragstack` |
+
+**Security:** Key must start with allowed prefix:
+- Archive bucket: `media/`, `letters/`, `temp/`
+- RAGStack bucket: `input/`, `content/`
 
 **Response:**
 ```json
