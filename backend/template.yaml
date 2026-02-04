@@ -760,6 +760,7 @@ Resources:
       TemplateURL: !Ref RagStackTemplateUrl
       Parameters:
         AdminEmail: !Ref RagStackAdminEmail
+        StackPrefix: !Sub '${AWS::StackName}-rag'
 
   # =============================================================================
   # Amplify Hosting
