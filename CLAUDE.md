@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Hold That Thought is a private family platform for sharing letters, photos, and memories. It features AI-powered transcription, a media gallery, semantic search via RAG, and a chat interface for conversational access to family content.
+Family Archive - Document AI is a private family platform for sharing letters, photos, and memories. It features AI-powered transcription, a media gallery, semantic search via RAG, and a chat interface for conversational access to family content.
 
 ## Commands
 

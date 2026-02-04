@@ -885,6 +885,12 @@ Resources:
         - Statement:
             - Effect: Allow
               Action:
+                - lambda:AddPermission
+                - lambda:RemovePermission
+              Resource: !Sub 'arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-amplify-deployer'
+        - Statement:
+            - Effect: Allow
+              Action:
                 - logs:CreateLogGroup
                 - logs:CreateLogStream
                 - logs:PutLogEvents
