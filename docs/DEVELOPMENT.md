@@ -108,21 +108,23 @@ SvelteKit provides hot module replacement (HMR). Changes to `.svelte` files upda
 ```
 tests/
 ├── unit/                    # Vitest unit tests
-│   ├── comments-handler.test.js
-│   ├── profile-handler.test.js
-│   ├── messages-handler.test.js
-│   ├── letters-handler.test.js
 │   ├── errors.test.js
 │   ├── retry.test.js
 │   ├── config.test.js
-│   └── ...
+│   ├── letter-processor.test.js
+│   ├── frontend-retry.test.ts
+│   ├── request-deduplication.test.ts
+│   └── migration/
+│       ├── date-parser.test.js
+│       ├── frontmatter-stripper.test.js
+│       ├── s3-operations.test.js
+│       └── slug-generator.test.js
 ├── integration/             # API integration tests
 │   ├── comments.test.js
 │   ├── profile.test.js
 │   ├── messages.test.js
 │   └── reactions.test.js
 ├── e2e/                     # Playwright browser tests
-│   ├── auth-helpers.ts
 │   ├── comments.spec.ts
 │   ├── messages.spec.ts
 │   └── profile.spec.ts
