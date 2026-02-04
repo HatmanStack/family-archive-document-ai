@@ -862,6 +862,15 @@ Resources:
         - Statement:
             - Effect: Allow
               Action:
+                - events:PutRule
+                - events:PutTargets
+                - events:DescribeRule
+                - events:RemoveTargets
+                - events:DeleteRule
+              Resource: !Sub 'arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/*'
+        - Statement:
+            - Effect: Allow
+              Action:
                 - logs:CreateLogGroup
                 - logs:CreateLogStream
                 - logs:PutLogEvents
