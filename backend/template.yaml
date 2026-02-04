@@ -824,8 +824,8 @@ Resources:
                 - echo "Build complete"
           artifacts:
             files:
-              - 'frontend/build/**/*'
-            base-directory: /tmp/source
+              - '**/*'
+            base-directory: /tmp/source/frontend/build
       TimeoutInMinutes: 15
 
   FrontendBuildRole:
