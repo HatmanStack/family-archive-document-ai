@@ -3,18 +3,9 @@ Transform: AWS::Serverless-2016-10-31
 Description: |
   Family Archive - Document AI: AI-powered platform for preserving family memories, letters, and photos.
 
-  🚨 CRITICAL: STACK NAME MUST BE LOWERCASE! 🚨
-  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  ✅ CORRECT: doc-ai, fam-archive, memory-app
-  ❌ WRONG: Doc-AI, Family-Archive, MEMORY-APP
+  IMPORTANT: STACK NAME MUST BE LOWERCASE (e.g., doc-ai, fam-archive, memory-app)
 
-  REQUIREMENTS:
-  • LOWERCASE letters only (a-z, 0-9, hyphens)
-  • Maximum 12 characters recommended
-  • No uppercase, spaces, or underscores
-  • Deployment will FAIL with uppercase letters!
-
-  TIP: Parameters can use placeholder values initially. Update them later via CloudFormation > Update Stack with the same stack name.
+  Parameters can use placeholder values initially. Update them later via CloudFormation > Update Stack with the same stack name.
 
 Metadata:
   AWS::CloudFormation::Interface:
