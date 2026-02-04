@@ -1,4 +1,4 @@
-<img align="center" src="data/images/htt_banner_1.jpg" alt="Family Archive - Document AI">
+<img align="center" src="data/images/banner.webp" alt="Family Archive - Document AI">
 
 <p align="center">
 <a href="https://github.com/HatmanStack/family-archive-document-ai/actions"><img src="https://github.com/HatmanStack/family-archive-document-ai/workflows/CI/badge.svg" alt="CI Status" /></a>
