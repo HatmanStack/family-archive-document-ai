@@ -165,18 +165,14 @@ npm run deploy                # Deploy backend via SAM
 
 ## RAGStack Integration
 
-Optional AI-powered search and chat. Deploy [RAGStack-Lambda](https://github.com/HatmanStack/RAGStack-Lambda) and configure:
+RAGStack is deployed automatically as a nested CloudFormation stack, providing AI-powered search and chat. Environment variables are auto-configured.
 
-```bash
-PUBLIC_RAGSTACK_CHAT_URL=https://<cloudfront>/ragstack-chat.js
-PUBLIC_RAGSTACK_GRAPHQL_URL=https://<appsync-id>.appsync-api.<region>.amazonaws.com/graphql
-PUBLIC_RAGSTACK_API_KEY=<appsync-api-key>
-```
+**Features:**
+- Chat widget for conversational search
+- Semantic search across all indexed content
+- Auto-indexing of letters, photos, videos, and documents
 
-**Features enabled:**
-- Chat widget on homepage (AI assistant for family content)
-- Semantic search across indexed media
-- Auto-indexing of gallery uploads to knowledge base
+**Configuration:** See [RAGStack Integration Guide](docs/RAGSTACK_INTEGRATION.md)
 
 ## Documentation
 
@@ -190,6 +186,7 @@ PUBLIC_RAGSTACK_API_KEY=<appsync-api-key>
 - [Authentication](docs/AUTHENTICATION.md) - Cognito setup, user groups, JWT handling
 - [API Reference](docs/API_REFERENCE.md) - REST API endpoints and examples
 - [Data Model](docs/DATA_MODEL.md) - DynamoDB schema and access patterns
+- [RAGStack Integration](docs/RAGSTACK_INTEGRATION.md) - Nested stack, semantic search, chat widget
 - [Frontend Guide](docs/FRONTEND.md) - SvelteKit structure, services, components
 - [Development](docs/DEVELOPMENT.md) - Local setup, testing, contributing
 

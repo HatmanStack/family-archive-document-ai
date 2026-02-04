@@ -19,7 +19,7 @@ Resources:
         StackPrefix: !Sub '${AWS::StackName}-rag'
         BuildWebComponent: !Ref RagStackBuildWebComponent
         BuildDashboard: !Ref RagStackBuildDashboard
-        AdditionalCorsOrigins: !Sub 'https://main.${AmplifyApp.AppId}.amplifyapp.com'
+        AdditionalCorsOrigins: 'https://*.amplifyapp.com'
 ```
 
 **Benefits:**

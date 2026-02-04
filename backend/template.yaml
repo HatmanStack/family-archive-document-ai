@@ -1146,11 +1146,8 @@ Resources:
               Action:
                 - cognito-idp:AdminCreateUser
                 - cognito-idp:AdminAddUserToGroup
+                - cognito-idp:UpdateUserPool
               Resource: !GetAtt UserPool.Arn
-            - Effect: Allow
-              Action:
-                - ses:SendEmail
-              Resource: '*'
 
   AdminProvisioner:
     Type: Custom::AdminProvisioner
@@ -1164,7 +1161,6 @@ Resources:
       UserPoolId: !Ref UserPool
       AdminEmail: !Ref RagStackAdminEmail
       AmplifyUrl: !Sub 'main.${AmplifyApp.AppId}.amplifyapp.com'
-      SesFromEmail: !Ref SesFromEmail
 
 Outputs:
   ApiUrl:
