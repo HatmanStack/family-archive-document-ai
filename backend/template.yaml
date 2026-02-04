@@ -26,6 +26,10 @@ Metadata:
         default: "Notification From Email"
       RagStackAdminEmail:
         default: "RAGStack Admin Email"
+      RagStackBuildWebComponent:
+        default: "Build Chat Widget"
+      RagStackBuildDashboard:
+        default: "Build Admin Dashboard"
     ParameterGroups:
       - Label:
           default: "Deployment Configuration"
@@ -49,6 +53,8 @@ Metadata:
           default: "RAGStack AI Configuration"
         Parameters:
           - RagStackAdminEmail
+          - RagStackBuildWebComponent
+          - RagStackBuildDashboard
           - RagStackTemplateUrl
       - Label:
           default: "Advanced Options"
