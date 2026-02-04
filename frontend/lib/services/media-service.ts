@@ -160,8 +160,8 @@ function documentToMediaItem(doc: RagDocument, category: 'videos' | 'documents')
 // Cache of documents fetched from RAGStack (no pagination, returns all at once)
 let cachedDocuments: RagDocument[] | null = null
 
-async function fetchDocuments(): Promise<RagDocument[]> {
-  if (cachedDocuments)
+async function fetchDocuments(bypassCache = false): Promise<RagDocument[]> {
+  if (cachedDocuments && !bypassCache)
     return cachedDocuments
 
   const data = await ragstackQuery(`query {
@@ -171,11 +171,15 @@ async function fetchDocuments(): Promise<RagDocument[]> {
   }`) as { listDocuments: { items: RagDocument[] } }
 
   const allItems = data.listDocuments.items || []
-  cachedDocuments = allItems.filter(d =>
+  const filtered = allItems.filter(d =>
     d.status === 'INDEXED'
     && !/^\d{4}-\d{2}-\d{2}(?:[_\-.].+)?\.(?:md|pdf)$/.test(d.filename),
   )
-  return cachedDocuments
+  // Only update cache if not bypassing (polling shouldn't pollute cache)
+  if (!bypassCache) {
+    cachedDocuments = filtered
+  }
+  return filtered
 }
 
 function sortByDate(items: MediaItem[]): MediaItem[] {
@@ -193,10 +197,18 @@ export function resetPagination() {
   allLoadedImages = []
 }
 
+export interface GetMediaOptions {
+  loadMore?: boolean
+  bypassCache?: boolean
+}
+
 export async function getMediaItems(
   category: 'pictures' | 'videos' | 'documents',
   loadMore = false,
+  options: GetMediaOptions = {},
 ): Promise<MediaPage> {
+  const { bypassCache = false } = options
+
   if (category === 'pictures') {
     if (!loadMore) {
       imageNextToken = null
@@ -224,7 +236,7 @@ export async function getMediaItems(
   }
 
   // Videos and documents both come from listDocuments (no server pagination)
-  const docs = await fetchDocuments()
+  const docs = await fetchDocuments(bypassCache)
 
   if (category === 'videos') {
     const videos = docs.filter(d =>

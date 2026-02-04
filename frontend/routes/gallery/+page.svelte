@@ -185,15 +185,24 @@
       allMediaItems.clear()
       invalidateMediaCache()
 
-      // Reload media list - retry a few times since RAGStack processes asynchronously
-      let retries = 3
-      while (retries > 0) {
-        await loadMediaItems(selectedSection)
-        // Brief delay before retry to allow processing
-        if (retries > 1) {
-          await new Promise(resolve => setTimeout(resolve, 1500))
+      // Silently poll for the new item without showing loading state
+      // RAGStack processes asynchronously, so the item may not appear immediately
+      const maxAttempts = 3
+      const pollDelay = 1500
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        if (attempt > 0) {
+          await new Promise(resolve => setTimeout(resolve, pollDelay))
         }
-        retries--
+        try {
+          resetPagination()
+          const page = await getMediaItems(selectedSection, false, { bypassCache: true })
+          // Update items silently (no loading state)
+          mediaItems = page.items
+          hasMore = page.hasMore
+        }
+        catch (err) {
+          console.error('Error refreshing media after upload:', err)
+        }
       }
 
       // Auto-clear success message after 5 seconds
