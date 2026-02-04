@@ -113,12 +113,7 @@ tests/
 │   ├── config.test.js
 │   ├── letter-processor.test.js
 │   ├── frontend-retry.test.ts
-│   ├── request-deduplication.test.ts
-│   └── migration/
-│       ├── date-parser.test.js
-│       ├── frontmatter-stripper.test.js
-│       ├── s3-operations.test.js
-│       └── slug-generator.test.js
+│   └── request-deduplication.test.ts
 ├── integration/             # API integration tests
 │   ├── comments.test.js
 │   ├── profile.test.js

@@ -792,7 +792,6 @@ Resources:
   # RAGStack is always deployed as a nested stack for marketplace deployments
   ragstack:
     Type: AWS::CloudFormation::Stack
-    DependsOn: AmplifyApp
     Properties:
       TemplateURL: !Ref RagStackTemplateUrl
       Parameters:
@@ -800,7 +799,7 @@ Resources:
         StackPrefix: !Sub '${AWS::StackName}-rag'
         BuildWebComponent: !Ref RagStackBuildWebComponent
         BuildDashboard: !Ref RagStackBuildDashboard
-        AdditionalCorsOrigins: !Sub 'https://main.${AmplifyApp.AppId}.amplifyapp.com'
+        AdditionalCorsOrigins: 'https://*.amplifyapp.com'
 
   # =============================================================================
   # Frontend Build (CodeBuild)
