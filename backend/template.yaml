@@ -822,8 +822,19 @@ Resources:
               commands:
                 - echo "Building frontend with environment variables..."
                 - cd frontend
+                - echo "=== Environment Info ==="
+                - node --version
+                - npm --version
                 - npm install -g pnpm
-                - pnpm install
+                - pnpm --version
+                - echo "=== Files present ==="
+                - ls -la
+                - echo "=== Installing dependencies ==="
+                - pnpm install --frozen-lockfile
+                - echo "=== Checking for workbox-window ==="
+                - find node_modules -name "workbox-window" -type d 2>/dev/null || echo "workbox-window not found"
+                - ls node_modules/workbox-window 2>/dev/null || echo "workbox-window directory does not exist"
+                - echo "=== Building ==="
                 - pnpm run build
                 - echo "Build complete"
           artifacts:
