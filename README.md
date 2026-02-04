@@ -32,14 +32,23 @@ A private family platform for sharing letters, photos, and memories. Upload scan
 - **Rate Limiting** - Atomic DynamoDB-based rate limiting with fail-open behavior
 - **RAGStack Integration** - Optional AI-powered semantic search and chat
 
-## Live Demo
+## Quick Deploy
 
-** THIS REPO IS IN ACTIVE DEVELOPMENT AND WILL CHANGE OFTEN **
+**Deploy to your AWS account in ~15 minutes:**
 
-| Environment | URL | Access |
-|-------------|-----|--------|
-| **Showcase** | [showcase-htt.hatstack.fun](https://showcase-htt.hatstack.fun) | Login as guest |
-| **One Click** | [Template](https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/quickcreate?templateURL=https://hold-that-thought-quicklaunch-public-631094035453.s3.us-east-1.amazonaws.com/hold-that-thought-template.yaml) | Sign into AWS |
+🚀 **[One-Click CloudFormation Deployment](https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/quickcreate?templateURL=https://hold-that-thought-quicklaunch-public-631094035453.s3.us-east-1.amazonaws.com/hold-that-thought-template.yaml)**
+
+📖 **[Step-by-Step Tutorial](docs/ONE_CLICK_DEPLOYMENT.md)** - Complete deployment guide
+
+⚠️ **IMPORTANT:** After deployment, add users to the ApprovedUsers group:
+```bash
+aws cognito-idp admin-add-user-to-group \
+  --user-pool-id YOUR_POOL_ID \
+  --username user@example.com \
+  --group-name ApprovedUsers
+```
+
+**Try it first:** [Live Demo](https://showcase-htt.hatstack.fun) (guest login available)
 
 ## Architecture
 
@@ -52,7 +61,7 @@ A private family platform for sharing letters, photos, and memories. Upload scan
 - **Storage**: S3 with presigned URLs for secure media access
 - **Auth**: Cognito User Pool with JWT tokens and user groups
 
-## Quick Start
+## Local Development
 
 ### Prerequisites
 
@@ -64,31 +73,42 @@ A private family platform for sharing letters, photos, and memories. Upload scan
 
 ```bash
 # Clone and install
-git clone https://github.com/HatmanStack/hold-that-thought.git
-cd hold-that-thought
+git clone https://github.com/HatmanStack/family-archive-document-ai.git
+cd family-archive-document-ai
 npm install
 cd frontend && npm install && cd ..
 
-# Configure environment
+# Deploy backend first
+npm run deploy  # Interactive prompts for AWS configuration
+
+# Configure frontend (uses outputs from deploy)
+cd frontend
 cp .env.example .env
-# Edit .env with your Cognito and API settings
+# .env is auto-populated by deploy script
 
 # Start development server
 npm run dev
 ```
 
-### Deploy Backend
+### Post-Deployment: Add Users to ApprovedUsers
+
+**Required for app access:**
 
 ```bash
-npm run deploy
+# Get User Pool ID from deploy outputs
+aws cognito-idp admin-add-user-to-group \
+  --user-pool-id YOUR_POOL_ID \
+  --username your-email@example.com \
+  --group-name ApprovedUsers \
+  --region us-east-1
 ```
 
-The deploy script prompts for configuration and creates all AWS resources.
+See [ONE_CLICK_DEPLOYMENT.md](docs/ONE_CLICK_DEPLOYMENT.md) for detailed setup.
 
 ## Project Structure
 
 ```
-hold-that-thought/
+family-archive-document-ai/
 ├── frontend/                 # SvelteKit application
 │   ├── routes/              # File-based routing
 │   │   ├── auth/           # Login, signup, password reset
@@ -145,29 +165,30 @@ npm run deploy                # Deploy backend via SAM
 
 ## RAGStack Integration
 
-Optional AI-powered search and chat. Deploy [RAGStack-Lambda](https://github.com/HatmanStack/RAGStack-Lambda) and configure:
+RAGStack is deployed automatically as a nested CloudFormation stack, providing AI-powered search and chat. Environment variables are auto-configured.
 
-```bash
-PUBLIC_RAGSTACK_CHAT_URL=https://<cloudfront>/ragstack-chat.js
-PUBLIC_RAGSTACK_GRAPHQL_URL=https://<appsync-id>.appsync-api.<region>.amazonaws.com/graphql
-PUBLIC_RAGSTACK_API_KEY=<appsync-api-key>
-```
+**Features:**
+- Chat widget for conversational search
+- Semantic search across all indexed content
+- Auto-indexing of letters, photos, videos, and documents
 
-**Features enabled:**
-- Chat widget on homepage (AI assistant for family content)
-- Semantic search across indexed media
-- Auto-indexing of gallery uploads to knowledge base
+**Configuration:** See [RAGStack Integration Guide](docs/RAGSTACK_INTEGRATION.md)
 
 ## Documentation
 
+**Getting Started:**
+- [One-Click Deployment](docs/ONE_CLICK_DEPLOYMENT.md) - **Start here** - Deploy via CloudFormation template
+- [Deployment Guide](docs/DEPLOYMENT.md) - Advanced deployment with `npm run deploy`
+- [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
+
+**Technical Reference:**
 - [Architecture](docs/ARCHITECTURE.md) - System design, components, data flows
 - [Authentication](docs/AUTHENTICATION.md) - Cognito setup, user groups, JWT handling
 - [API Reference](docs/API_REFERENCE.md) - REST API endpoints and examples
 - [Data Model](docs/DATA_MODEL.md) - DynamoDB schema and access patterns
+- [RAGStack Integration](docs/RAGSTACK_INTEGRATION.md) - Nested stack, semantic search, chat widget
 - [Frontend Guide](docs/FRONTEND.md) - SvelteKit structure, services, components
-- [Deployment](docs/DEPLOYMENT.md) - AWS deployment and configuration
 - [Development](docs/DEVELOPMENT.md) - Local setup, testing, contributing
-- [Troubleshooting](docs/TROUBLESHOOTING.md) - Common issues and solutions
 
 ## License
 

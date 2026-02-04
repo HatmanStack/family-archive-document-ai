@@ -72,12 +72,12 @@ Edit `.env` with your settings:
 ```bash
 # Required for frontend
 PUBLIC_API_GATEWAY_URL=https://xxx.execute-api.us-east-1.amazonaws.com
+PUBLIC_AWS_REGION=us-east-1
 PUBLIC_COGNITO_USER_POOL_ID=us-east-1_XXXXXXXXX
-PUBLIC_COGNITO_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxxx
-PUBLIC_COGNITO_DOMAIN=your-app.auth.us-east-1.amazoncognito.com
-PUBLIC_COGNITO_REDIRECT_URI=http://localhost:5173/auth/callback
-PUBLIC_COGNITO_LOGOUT_URI=http://localhost:5173/auth/logout
-PUBLIC_COGNITO_REGION=us-east-1
+PUBLIC_COGNITO_USER_POOL_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxxx
+PUBLIC_COGNITO_IDENTITY_POOL_ID=us-east-1:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+PUBLIC_COGNITO_HOSTED_UI_URL=https://your-app.auth.us-east-1.amazoncognito.com
+PUBLIC_COGNITO_HOSTED_UI_DOMAIN=your-app
 
 # Optional for RAGStack integration
 PUBLIC_RAGSTACK_CHAT_URL=
@@ -108,21 +108,18 @@ SvelteKit provides hot module replacement (HMR). Changes to `.svelte` files upda
 ```
 tests/
 ├── unit/                    # Vitest unit tests
-│   ├── comments-handler.test.js
-│   ├── profile-handler.test.js
-│   ├── messages-handler.test.js
-│   ├── letters-handler.test.js
 │   ├── errors.test.js
 │   ├── retry.test.js
 │   ├── config.test.js
-│   └── ...
+│   ├── letter-processor.test.js
+│   ├── frontend-retry.test.ts
+│   └── request-deduplication.test.ts
 ├── integration/             # API integration tests
 │   ├── comments.test.js
 │   ├── profile.test.js
 │   ├── messages.test.js
 │   └── reactions.test.js
 ├── e2e/                     # Playwright browser tests
-│   ├── auth-helpers.ts
 │   ├── comments.spec.ts
 │   ├── messages.spec.ts
 │   └── profile.spec.ts

@@ -246,7 +246,7 @@ Pricing as of 2026. Check current rates: https://aws.amazon.com/pricing/
 ## Stack
 
 - **Infrastructure:** AWS SAM, CloudFormation
-- **Compute:** Lambda (Node.js 20)
+- **Compute:** Lambda (Node.js 24)
 - **Database:** DynamoDB (single-table)
 - **Storage:** S3
 - **Auth:** Cognito

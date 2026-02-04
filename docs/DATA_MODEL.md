@@ -2,7 +2,7 @@
 
 ## DynamoDB Single-Table Design
 
-**Table:** `HoldThatThought` (configurable via `TABLE_NAME`)
+**Table:** `{StackName}-Table` (configurable via `TABLE_NAME` parameter, defaults to stack name + "-Table")
 
 ### Key Patterns
 

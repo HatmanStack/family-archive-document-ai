@@ -23,6 +23,7 @@
   let showModal = false
   let uploading = false
   let uploadError = ''
+  let uploadSuccess = ''
 
   // Caption modal state
   let showCaptionModal = false
@@ -170,20 +171,35 @@
   async function performUpload(file: File, caption?: string, shouldExtractText = false) {
     uploading = true
     uploadError = ''
+    uploadSuccess = ''
 
     try {
       // Upload to RAGStack (handles indexing and storage)
       await uploadToRagstack(file, caption, shouldExtractText)
 
-      // Reload the media list to ensure proper display with signed URLs
-      await loadMediaItems(selectedSection)
+      // Show success message immediately
+      uploadSuccess = `"${file.name}" uploaded successfully`
 
       // Clear media items cache so next search will reload
       mediaItemsLoaded = false
       allMediaItems.clear()
       invalidateMediaCache()
 
-      uploadError = ''
+      // Reload media list - retry a few times since RAGStack processes asynchronously
+      let retries = 3
+      while (retries > 0) {
+        await loadMediaItems(selectedSection)
+        // Brief delay before retry to allow processing
+        if (retries > 1) {
+          await new Promise(resolve => setTimeout(resolve, 1500))
+        }
+        retries--
+      }
+
+      // Auto-clear success message after 5 seconds
+      setTimeout(() => {
+        uploadSuccess = ''
+      }, 5000)
     }
     catch (err) {
       console.error('Upload error:', err)
@@ -631,6 +647,14 @@ return
     {#if uploadError}
       <div class='alert alert-error mt-4'>
         <span>{uploadError}</span>
+      </div>
+    {/if}
+    {#if uploadSuccess}
+      <div class='alert alert-success mt-4'>
+        <svg xmlns='http://www.w3.org/2000/svg' class='stroke-current shrink-0 h-6 w-6' fill='none' viewBox='0 0 24 24'>
+          <path stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' />
+        </svg>
+        <span>{uploadSuccess}</span>
       </div>
     {/if}
   </div>
