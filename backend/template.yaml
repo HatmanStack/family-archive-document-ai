@@ -808,6 +808,9 @@ Resources:
         BuildSpec: |
           version: 0.2
           phases:
+            install:
+              runtime-versions:
+                nodejs: 24
             pre_build:
               commands:
                 - echo "Downloading frontend source from S3..."
@@ -819,8 +822,9 @@ Resources:
               commands:
                 - echo "Building frontend with environment variables..."
                 - cd frontend
-                - npm ci
-                - npm run build
+                - npm install -g pnpm
+                - pnpm install
+                - pnpm run build
                 - echo "Build complete"
           artifacts:
             files:
@@ -922,11 +926,11 @@ Resources:
         - Name: PUBLIC_COGNITO_HOSTED_UI_DOMAIN
           Value: !Sub '${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com'
         - Name: PUBLIC_RAGSTACK_GRAPHQL_API_URL
-          Value: !GetAtt ragstack.Outputs.GraphQLApiUrl
+          Value: !Sub '${ragstack.Outputs.GraphQLApiUrl}'
         - Name: PUBLIC_RAGSTACK_GRAPHQL_API_KEY
-          Value: !GetAtt ragstack.Outputs.GraphQLApiKey
+          Value: !Sub '${ragstack.Outputs.GraphQLApiKey}'
         - Name: PUBLIC_RAGSTACK_CHAT_WIDGET_URL
-          Value: !GetAtt ragstack.Outputs.WebComponentCDNUrl
+          Value: !Sub '${ragstack.Outputs.WebComponentCDNUrl}'
 
   # =============================================================================
   # Amplify Hosting

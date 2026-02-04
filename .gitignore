@@ -76,3 +76,4 @@ amplifytools.xcconfig
 **.sample
 backend/.env.deploy
 pnpm-lock.yaml
+.pnpm-store/
