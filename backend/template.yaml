@@ -851,6 +851,22 @@ Resources:
       EnvironmentVariables:
         - Name: NODE_ENV
           Value: production
+        - Name: PUBLIC_AWS_REGION
+          Value: !Ref AWS::Region
+        - Name: PUBLIC_API_GATEWAY_URL
+          Value: !Sub 'https://${RestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod'
+        - Name: PUBLIC_COGNITO_USER_POOL_ID
+          Value: !Ref CognitoUserPool
+        - Name: PUBLIC_COGNITO_USER_POOL_CLIENT_ID
+          Value: !Ref CognitoUserPoolClient
+        - Name: PUBLIC_COGNITO_HOSTED_UI_DOMAIN
+          Value: !Sub '${CognitoUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com'
+        - Name: PUBLIC_RAGSTACK_GRAPHQL_API_URL
+          Value: !If [ShouldDeployRagStack, !GetAtt ragstack.Outputs.GraphQLApiUrl, '']
+        - Name: PUBLIC_RAGSTACK_GRAPHQL_API_KEY
+          Value: !If [ShouldDeployRagStack, !GetAtt ragstack.Outputs.GraphQLApiKey, '']
+        - Name: PUBLIC_RAGSTACK_CHAT_WIDGET_URL
+          Value: !If [ShouldDeployRagStack, !GetAtt ragstack.Outputs.WebComponentCDNUrl, '']
 
   # Lambda to trigger Amplify deployment
   AmplifyDeployerFunction:
@@ -909,6 +925,7 @@ Resources:
     DependsOn:
       - AmplifyBranch
       - ApiFunction
+      - ragstack
     Properties:
       ServiceToken: !GetAtt AmplifyDeployerFunction.Arn
       AppId: !GetAtt AmplifyApp.AppId
