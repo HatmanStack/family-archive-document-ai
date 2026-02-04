@@ -122,6 +122,18 @@ Parameters:
     Description: Admin email for RAGStack (only required for new deployments)
     Default: 'placeholder@example.com'
 
+  RagStackBuildWebComponent:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: Build RAGStack chat widget (set to false on updates to skip rebuild)
+
+  RagStackBuildDashboard:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: Build RAGStack admin dashboard (set to false on updates to skip rebuild)
+
   SesFromEmail:
     Type: String
     Description: Email address to send notifications from (domain must be verified in SES)
@@ -758,6 +770,8 @@ Resources:
       Parameters:
         AdminEmail: !Ref RagStackAdminEmail
         StackPrefix: !Sub '${AWS::StackName}-rag'
+        BuildWebComponent: !Ref RagStackBuildWebComponent
+        BuildDashboard: !Ref RagStackBuildDashboard
 
   # =============================================================================
   # Amplify Hosting
