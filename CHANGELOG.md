@@ -5,6 +5,18 @@ All notable changes to Family Archive - Document AI will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-02-04
+
+### Added
+- Stale-while-revalidate caching for gallery media (pictures, videos, documents)
+- Background refresh with diff-based UI updates (no flicker)
+- DeepWiki documentation badge
+
+### Changed
+- Unified cache structure for all media types
+- Tab switching now returns cached data instantly with background refresh
+- New uploads appear automatically when indexed (no page refresh needed)
+
 ## [1.0.1] - 2026-02-04
 
 ### Added
