@@ -5,7 +5,7 @@ Description: |
 
   IMPORTANT: STACK NAME MUST BE LOWERCASE (e.g., doc-ai, fam-archive, memory-app)
 
-  Parameters can use placeholder values initially. Update them later via CloudFormation > Update Stack with the same stack name.
+  This template creates a new stack. To update an existing stack, use CloudFormation Console > Stacks > [Your Stack] > Update.
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -70,21 +70,20 @@ Metadata:
     - Examples: doc-ai, fam-archive, memory-app
     - Uppercase or long names will cause S3 bucket creation failures
 
-    IMPORTANT: Parameters can be updated after initial deployment.
+    Initial Deployment:
+    - This one-click URL creates a NEW stack
+    - Required parameters: AdminEmail, RagStackAdminEmail
+    - Optional: Set AppDomain to your domain, or use default localhost:5173
+    - OAuth credentials (GoogleClientId/Secret) can be added later
 
-    Parameters are defined in your template and allow you to input custom values when you create or update a stack.
-
-    You can use placeholder values during initial deployment and update them later:
-    1. Deploy the stack with placeholder values (use the same stack name)
-    2. After deployment, go to CloudFormation > Stacks > [Your Stack] > Update
-    3. Select "Use current template" and update parameter values
-    4. Keep the stack name and other parameters the same
-    5. CloudFormation will safely update only the changed parameters
-
-    Common update scenarios:
-    - Update AppDomain with your Amplify URL after first deployment
-    - Add Google OAuth credentials after setting up OAuth app
-    - Update API keys or email addresses as needed
+    To Update an Existing Stack:
+    - This one-click URL ONLY creates new stacks
+    - To update parameters or template:
+      1. Go to CloudFormation Console > Stacks
+      2. Select your stack
+      3. Click "Update"
+      4. Choose "Replace current template" and paste template URL
+      5. Modify parameters as needed
 
 Parameters:
   AllowedOrigins:
@@ -94,7 +93,7 @@ Parameters:
 
   AppDomain:
     Type: String
-    Description: App domain for OAuth callbacks - Use 'localhost:5173' for local dev, or after stack creation update with the AmplifyUrl output (e.g., 'main.d123abc.amplifyapp.com')
+    Description: App domain for OAuth callbacks - Use 'localhost:5173' for local dev, or set to your Amplify domain after first deployment (e.g., 'main.d123abc.amplifyapp.com'). Update via CloudFormation Console.
     Default: 'localhost:5173'
 
   GoogleClientId:
