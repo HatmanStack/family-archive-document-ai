@@ -810,7 +810,7 @@ Resources:
           phases:
             install:
               runtime-versions:
-                nodejs: 22
+                nodejs: 24
             pre_build:
               commands:
                 - echo "Downloading frontend source from S3..."
