@@ -1,6 +1,9 @@
 AWSTemplateFormatVersion: 2010-09-09
 Transform: AWS::Serverless-2016-10-31
-Description: Hold That Thought - Consolidated API with Single-Table DynamoDB
+Description: |
+  Family Archive - Document AI: AI-powered platform for preserving family memories, letters, and photos.
+
+  TIP: Parameters can use placeholder values initially. Update them later via CloudFormation > Update Stack with the same stack name.
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -755,7 +758,7 @@ Resources:
     Type: AWS::Amplify::App
     Properties:
       Name: !Sub '${AWS::StackName}'
-      Description: Hold That Thought - Family Memory Platform
+      Description: Family Archive - Document AI Platform
 
       # Build settings (uses amplify.yml from source, but inline as backup)
       BuildSpec: |
