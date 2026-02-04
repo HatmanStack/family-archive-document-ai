@@ -1,4 +1,4 @@
-<img align="center" src="htt_banner_1.jpg" alt="Family Archive - Document AI">
+<img align="center" src="data/images/htt_banner_1.jpg" alt="Family Archive - Document AI">
 
 <p align="center">
 <a href="https://github.com/HatmanStack/family-archive-document-ai/actions"><img src="https://github.com/HatmanStack/family-archive-document-ai/workflows/CI/badge.svg" alt="CI Status" /></a>
@@ -43,20 +43,7 @@ A private family platform for sharing letters, photos, and memories. Upload scan
 
 ## Architecture
 
-```
-Frontend (SvelteKit)          Backend (AWS Lambda)
-       │                              │
-       ├── Auth ──────────────► Cognito (JWT)
-       │                              │
-       ├── API ───────────────► API Gateway ──► Lambda
-       │                              │              │
-       │                              │         ┌────┴────┐
-       │                              │         │         │
-       │                         DynamoDB    S3 Buckets
-       │                      (single-table)  (media/letters)
-       │                              │
-       └── RAGStack ──────────► AppSync (optional)
-```
+<img align="center" src="data/images/family-archive-architecture.png" alt="Family Archive - Document AI - Architecture">
 
 **Key Components:**
 - **Frontend**: SvelteKit 2.x + Svelte 4, DaisyUI components, TailwindCSS
