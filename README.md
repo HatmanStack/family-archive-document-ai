@@ -21,6 +21,13 @@
 
 A private family platform for sharing letters, photos, and memories. Upload scanned letters with AI-powered transcription, browse a shared media gallery, and engage with family content through comments and reactions.
 
+<p align="center">
+  <b>QUESTIONS?</b>
+  <a href="https://deepwiki.com/HatmanStack/family-archive-document-ai/">
+    <sub><img src="https://deepwiki.com/badge.svg" alt="Deep WIKI" height="20" /></sub>
+  </a>
+</p>
+
 ## Features
 
 - **Letter Archive** - Upload scanned letters (PDF/images), AI transcription via Google Gemini
