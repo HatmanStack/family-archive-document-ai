@@ -171,10 +171,8 @@ async function fetchDocuments(): Promise<RagDocument[]> {
   }`) as { listDocuments: { items: RagDocument[] } }
 
   const allItems = data.listDocuments.items || []
-  // Include INDEXED and OCR_COMPLETE (.txt files stop at OCR_COMPLETE)
-  const validStatuses = ['INDEXED', 'OCR_COMPLETE']
   cachedDocuments = allItems.filter(d =>
-    validStatuses.includes(d.status)
+    d.status === 'INDEXED'
     && !/^\d{4}-\d{2}-\d{2}(?:[_\-.].+)?\.(?:md|pdf)$/.test(d.filename),
   )
   return cachedDocuments
