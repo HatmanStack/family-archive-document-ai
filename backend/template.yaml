@@ -26,56 +26,22 @@ Parameters:
 
   TableName:
     Type: String
-    Description: DynamoDB table name (single table design)
-    Default: HoldThatThought
+    Description: DynamoDB table name (single table design) - auto-generated from stack name if not specified
+    Default: ''
 
   ArchiveBucket:
     Type: String
     Description: S3 bucket for letters, media, and profile photos (single bucket architecture)
 
-  RagStackStackName:
-    Type: String
-    Description: Name of an existing RAGStack stack (informational only). Leave empty to deploy a new nested RAGStack stack.
-    Default: ''
-
-  RagStackDataBucketName:
-    Type: String
-    Description: RAGStack data S3 bucket name (required for existing stack, auto-populated for new)
-    Default: ''
-
-  RagStackGraphQLApiUrl:
-    Type: String
-    Description: RAGStack GraphQL API URL (required for existing stack, auto-populated for new)
-    Default: ''
-
-  RagStackGraphQLApiKey:
-    Type: String
-    Description: RAGStack GraphQL API Key (required for existing stack, auto-populated for new)
-    Default: ''
-    NoEcho: true
-
-  RagStackChatWidgetUrl:
-    Type: String
-    Description: RAGStack Chat Widget CDN URL (required for existing stack, auto-populated for new)
-    Default: ''
-
   RagStackTemplateUrl:
     Type: String
-    Description: S3 URL of the packaged RAGStack CloudFormation template (only used for new deployments)
+    Description: S3 URL of the packaged RAGStack CloudFormation template
     Default: 'https://ragstack-quicklaunch-public-631094035453.s3.us-east-1.amazonaws.com/ragstack-template.yaml'
 
   RagStackAdminEmail:
     Type: String
     Description: Admin email for RAGStack (only required for new deployments)
     Default: 'placeholder@example.com'
-
-  # Legacy parameters (kept for backwards-compatible stack updates)
-  PhotoBucket:
-    Type: String
-    Default: ''
-  MediaBucket:
-    Type: String
-    Default: ''
 
   SesFromEmail:
     Type: String
@@ -93,11 +59,11 @@ Parameters:
     Default: ''
     NoEcho: true
 
-  # UI Source for one-click deployments
+  # UI Source for one-click deployments (auto-configured for marketplace)
   UISourceBucket:
     Type: String
     Description: S3 bucket containing frontend source zip
-    Default: ''
+    Default: 'hold-that-thought-quicklaunch-public'
 
   UISourceKey:
     Type: String
@@ -113,8 +79,7 @@ Parameters:
 Conditions:
   HasGoogleOAuth: !Not [!Equals [!Ref GoogleClientId, '']]
   IsLocalhost: !Equals [!Select [0, !Split [":", !Ref AppDomain]], "localhost"]
-  DeployNewRagStack: !Equals [!Ref RagStackStackName, '']
-  UseExistingRagStack: !Not [!Equals [!Ref RagStackStackName, '']]
+  HasTableName: !Not [!Equals [!Ref TableName, '']]
   ShouldDeployUI: !And
     - !Equals [!Ref DeployUI, 'true']
     - !Not [!Equals [!Ref UISourceBucket, '']]
@@ -319,7 +284,7 @@ Resources:
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      TableName: !Ref TableName
+      TableName: !If [HasTableName, !Ref TableName, !Sub '${AWS::StackName}-Table']
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: PK
@@ -373,12 +338,9 @@ Resources:
       Description: Consolidated API - comments, messages, profiles, reactions, media
       Environment:
         Variables:
-          TABLE_NAME: !Ref TableName
+          TABLE_NAME: !If [HasTableName, !Ref TableName, !Sub '${AWS::StackName}-Table']
           ARCHIVE_BUCKET: !Ref ArchiveBucket
-          RAGSTACK_BUCKET: !If
-            - UseExistingRagStack
-            - !Ref RagStackDataBucketName
-            - !GetAtt RagStackNestedStack.Outputs.DataBucketName
+          RAGSTACK_BUCKET: !GetAtt RagStackNestedStack.Outputs.DataBucketName
           RAGSTACK_REGION: us-east-1
           LETTER_PROCESSOR_FUNCTION_NAME: !Ref LetterProcessorFunction
           SES_FROM_EMAIL: !Ref SesFromEmail
@@ -398,10 +360,7 @@ Resources:
         - S3CrudPolicy:
             BucketName: !Ref ArchiveBucket
         - S3ReadPolicy:
-            BucketName: !If
-              - UseExistingRagStack
-              - !Ref RagStackDataBucketName
-              - !GetAtt RagStackNestedStack.Outputs.DataBucketName
+            BucketName: !GetAtt RagStackNestedStack.Outputs.DataBucketName
       Events:
         # Comments
         GetComments:
@@ -687,11 +646,9 @@ Resources:
   # NOTE: The RAGStack template uses AWS::Serverless-2016-10-31 transform.
   # The TemplateURL must point to a pre-packaged template (sam package output)
   # since nested SAM templates require packaging before deployment.
-  # The default URL points to the pre-packaged public quicklaunch template.
-  # Only created when RagStackStackName is empty (new deployment).
+  # RAGStack is always deployed as a nested stack for marketplace deployments
   RagStackNestedStack:
     Type: AWS::CloudFormation::Stack
-    Condition: DeployNewRagStack
     Properties:
       TemplateURL: !Ref RagStackTemplateUrl
       Parameters:
@@ -743,29 +700,11 @@ Resources:
         - Name: PUBLIC_COGNITO_HOSTED_UI_URL
           Value: !Sub 'https://${AWS::StackName}-${AWS::AccountId}.auth.${AWS::Region}.amazoncognito.com'
         - Name: PUBLIC_RAGSTACK_GRAPHQL_URL
-          Value: !If
-            - UseExistingRagStack
-            - !Ref RagStackGraphQLApiUrl
-            - !If
-              - DeployNewRagStack
-              - !GetAtt RagStackNestedStack.Outputs.GraphQLApiUrl
-              - ''
+          Value: !GetAtt RagStackNestedStack.Outputs.GraphQLApiUrl
         - Name: PUBLIC_RAGSTACK_API_KEY
-          Value: !If
-            - UseExistingRagStack
-            - !Ref RagStackGraphQLApiKey
-            - !If
-              - DeployNewRagStack
-              - !GetAtt RagStackNestedStack.Outputs.GraphQLApiKey
-              - ''
+          Value: !GetAtt RagStackNestedStack.Outputs.GraphQLApiKey
         - Name: PUBLIC_RAGSTACK_CHAT_URL
-          Value: !If
-            - UseExistingRagStack
-            - !Ref RagStackChatWidgetUrl
-            - !If
-              - DeployNewRagStack
-              - !GetAtt RagStackNestedStack.Outputs.WebComponentCDNUrl
-              - ''
+          Value: !GetAtt RagStackNestedStack.Outputs.WebComponentCDNUrl
 
       # SPA rewrite rule
       CustomRules:
@@ -814,7 +753,7 @@ Resources:
             - Effect: Allow
               Action:
                 - s3:GetObject
-              Resource: !Sub 'arn:${AWS::Partition}:s3:::${UISourceBucket}/*'
+              Resource: !Sub 'arn:${AWS::Partition}:s3:::${UISourceBucket}-${AWS::AccountId}/*'
         - Statement:
             - Effect: Allow
               Action:
@@ -834,7 +773,7 @@ Resources:
       ServiceToken: !GetAtt AmplifyDeployerFunction.Arn
       AppId: !GetAtt AmplifyApp.AppId
       BranchName: main
-      SourceBucket: !Ref UISourceBucket
+      SourceBucket: !Sub '${UISourceBucket}-${AWS::AccountId}'
       SourceKey: !Ref UISourceKey
 
 Outputs:
@@ -872,31 +811,19 @@ Outputs:
 
   RagStackGraphQLUrl:
     Description: RAGStack GraphQL API URL
-    Value: !If
-      - UseExistingRagStack
-      - !Ref RagStackGraphQLApiUrl
-      - !GetAtt RagStackNestedStack.Outputs.GraphQLApiUrl
+    Value: !GetAtt RagStackNestedStack.Outputs.GraphQLApiUrl
 
   RagStackApiKey:
     Description: RAGStack GraphQL API Key
-    Value: !If
-      - UseExistingRagStack
-      - !Ref RagStackGraphQLApiKey
-      - !GetAtt RagStackNestedStack.Outputs.GraphQLApiKey
+    Value: !GetAtt RagStackNestedStack.Outputs.GraphQLApiKey
 
   RagStackChatWidgetUrl:
     Description: RAGStack Chat Widget CDN URL
-    Value: !If
-      - UseExistingRagStack
-      - !Ref RagStackChatWidgetUrl
-      - !GetAtt RagStackNestedStack.Outputs.WebComponentCDNUrl
+    Value: !GetAtt RagStackNestedStack.Outputs.WebComponentCDNUrl
 
   RagStackDataBucket:
     Description: RAGStack data bucket name
-    Value: !If
-      - UseExistingRagStack
-      - !Ref RagStackDataBucketName
-      - !GetAtt RagStackNestedStack.Outputs.DataBucketName
+    Value: !GetAtt RagStackNestedStack.Outputs.DataBucketName
 
   AmplifyAppId:
     Description: Amplify App ID
