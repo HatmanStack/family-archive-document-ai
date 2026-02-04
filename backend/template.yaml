@@ -780,6 +780,146 @@ Resources:
         BuildDashboard: !Ref RagStackBuildDashboard
 
   # =============================================================================
+  # Frontend Build (CodeBuild)
+  # =============================================================================
+
+  FrontendBuildProject:
+    Type: AWS::CodeBuild::Project
+    Condition: ShouldDeployUI
+    Properties:
+      Name: !Sub '${AWS::StackName}-frontend-build'
+      Description: Builds SvelteKit frontend with stack-specific environment variables
+      ServiceRole: !GetAtt FrontendBuildRole.Arn
+      Artifacts:
+        Type: S3
+        Location: !Sub '${UISourceBucket}-${AWS::AccountId}'
+        Name: built-frontend.zip
+        Packaging: ZIP
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:7.0
+        EnvironmentVariables:
+          - Name: SOURCE_BUCKET
+            Value: !Sub '${UISourceBucket}-${AWS::AccountId}'
+          - Name: SOURCE_KEY
+            Value: !Ref UISourceKey
+      Source:
+        Type: NO_SOURCE
+        BuildSpec: |
+          version: 0.2
+          phases:
+            pre_build:
+              commands:
+                - echo "Downloading frontend source from S3..."
+                - aws s3 cp s3://$SOURCE_BUCKET/$SOURCE_KEY /tmp/frontend.zip
+                - mkdir -p /tmp/source
+                - cd /tmp/source
+                - unzip /tmp/frontend.zip
+            build:
+              commands:
+                - echo "Building frontend with environment variables..."
+                - cd frontend
+                - npm ci
+                - npm run build
+                - echo "Build complete"
+            post_build:
+              commands:
+                - echo "Packaging built frontend..."
+                - cd /tmp/source
+                - zip -r /tmp/built-frontend.zip frontend/build
+          artifacts:
+            files:
+              - '**/*'
+            base-directory: /tmp/source/frontend/build
+      TimeoutInMinutes: 15
+
+  FrontendBuildRole:
+    Type: AWS::IAM::Role
+    Condition: ShouldDeployUI
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:s3:::${UISourceBucket}-${AWS::AccountId}/*'
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:s3:::${UISourceBucket}-${AWS::AccountId}'
+
+  FrontendBuilderFunction:
+    Type: AWS::Serverless::Function
+    Condition: ShouldDeployUI
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-frontend-builder'
+      CodeUri: lambdas/frontend-builder/
+      Handler: index.lambda_handler
+      Runtime: python3.13
+      Timeout: 900
+      MemorySize: 256
+      Environment:
+        Variables:
+          LOG_LEVEL: INFO
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - codebuild:StartBuild
+                - codebuild:BatchGetBuilds
+              Resource: !GetAtt FrontendBuildProject.Arn
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: '*'
+
+  FrontendBuild:
+    Type: Custom::FrontendBuild
+    Condition: ShouldDeployUI
+    DependsOn:
+      - ragstack
+      - ApiFunction
+    Properties:
+      ServiceToken: !GetAtt FrontendBuilderFunction.Arn
+      ProjectName: !Ref FrontendBuildProject
+      EnvironmentVariables:
+        - Name: PUBLIC_AWS_REGION
+          Value: !Ref AWS::Region
+        - Name: PUBLIC_API_GATEWAY_URL
+          Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod'
+        - Name: PUBLIC_COGNITO_USER_POOL_ID
+          Value: !Ref UserPool
+        - Name: PUBLIC_COGNITO_USER_POOL_CLIENT_ID
+          Value: !Ref UserPoolClient
+        - Name: PUBLIC_COGNITO_HOSTED_UI_DOMAIN
+          Value: !Sub '${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com'
+        - Name: PUBLIC_RAGSTACK_GRAPHQL_API_URL
+          Value: !GetAtt ragstack.Outputs.GraphQLApiUrl
+        - Name: PUBLIC_RAGSTACK_GRAPHQL_API_KEY
+          Value: !GetAtt ragstack.Outputs.GraphQLApiKey
+        - Name: PUBLIC_RAGSTACK_CHAT_WIDGET_URL
+          Value: !GetAtt ragstack.Outputs.WebComponentCDNUrl
+
+  # =============================================================================
   # Amplify Hosting
   # =============================================================================
 
@@ -924,14 +1064,13 @@ Resources:
     Condition: ShouldDeployUI
     DependsOn:
       - AmplifyBranch
-      - ApiFunction
-      - ragstack
+      - FrontendBuild
     Properties:
       ServiceToken: !GetAtt AmplifyDeployerFunction.Arn
       AppId: !GetAtt AmplifyApp.AppId
       BranchName: main
       SourceBucket: !Sub '${UISourceBucket}-${AWS::AccountId}'
-      SourceKey: !Ref UISourceKey
+      SourceKey: built-frontend.zip
 
 Outputs:
   ApiUrl:
