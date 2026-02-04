@@ -52,7 +52,13 @@ def poll(event, context):
     build_id = data["BuildId"]
 
     response = codebuild.batch_get_builds(ids=[build_id])
-    build = response["builds"][0]
+    builds = response.get("builds", [])
+
+    if not builds:
+        logger.error(f"No build found for build_id: {build_id}")
+        raise RuntimeError(f"Build {build_id} not found in CodeBuild response (eventual consistency or invalid ID)")
+
+    build = builds[0]
     status = build["buildStatus"]
 
     logger.info(f"Build status: {status}")
@@ -77,6 +83,22 @@ def delete(event, context):
     logger.info("Delete - no action required")
 
 
+def scrub_event(event):
+    """Remove sensitive data from event before logging."""
+    scrubbed = event.copy()
+    if "ResourceProperties" in scrubbed:
+        props = scrubbed["ResourceProperties"].copy()
+        # Scrub environment variables that may contain secrets
+        if "EnvironmentVariables" in props:
+            props["EnvironmentVariables"] = [
+                {**env, "Value": "***REDACTED***"} for env in props["EnvironmentVariables"]
+            ]
+        scrubbed["ResourceProperties"] = props
+    return scrubbed
+
+
 def lambda_handler(event, context):
-    logger.info(f"Event: {json.dumps(event, default=str)}")
+    # Log sanitized event without exposing secrets
+    scrubbed = scrub_event(event)
+    logger.info(f"Event: {json.dumps(scrubbed, default=str)}")
     return helper(event, context)
