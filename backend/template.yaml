@@ -10,7 +10,7 @@ Parameters:
 
   AppDomain:
     Type: String
-    Description: App domain for OAuth callbacks (e.g., localhost:5173 for dev, holdthatthought.family for prod)
+    Description: App domain for OAuth callbacks - Use 'localhost:5173' for local dev, or after stack creation update with the AmplifyUrl output (e.g., 'main.d123abc.amplifyapp.com')
     Default: 'localhost:5173'
 
   GoogleClientId:
@@ -31,7 +31,8 @@ Parameters:
 
   ArchiveBucket:
     Type: String
-    Description: S3 bucket for letters, media, and profile photos (single bucket architecture)
+    Description: S3 bucket for letters, media, and profile photos - auto-generated from stack name if not specified
+    Default: ''
 
   RagStackTemplateUrl:
     Type: String
@@ -72,14 +73,15 @@ Parameters:
 
   DeployUI:
     Type: String
-    Default: 'false'
+    Default: 'true'
     AllowedValues: ['true', 'false']
-    Description: Deploy frontend via Amplify
+    Description: Deploy frontend via Amplify (includes full-stack deployment)
 
 Conditions:
   HasGoogleOAuth: !Not [!Equals [!Ref GoogleClientId, '']]
   IsLocalhost: !Equals [!Select [0, !Split [":", !Ref AppDomain]], "localhost"]
   HasTableName: !Not [!Equals [!Ref TableName, '']]
+  HasArchiveBucket: !Not [!Equals [!Ref ArchiveBucket, '']]
   ShouldDeployUI: !And
     - !Equals [!Ref DeployUI, 'true']
     - !Not [!Equals [!Ref UISourceBucket, '']]
@@ -277,6 +279,30 @@ Resources:
                 Resource: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ServerlessRestApi}/*'
 
   # =============================================================================
+  # S3 Archive Bucket
+  # =============================================================================
+  ArchiveBucketResource:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !If [HasArchiveBucket, !Ref ArchiveBucket, !Sub '${AWS::StackName}-archive']
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders: ['*']
+            AllowedMethods: [GET, PUT, POST, HEAD]
+            AllowedOrigins: ['*']
+            ExposedHeaders: [ETag]
+            MaxAge: 3000
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+
+  # =============================================================================
   # DynamoDB Single Table
   # =============================================================================
   DynamoDBTable:
@@ -339,7 +365,7 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !If [HasTableName, !Ref TableName, !Sub '${AWS::StackName}-Table']
-          ARCHIVE_BUCKET: !Ref ArchiveBucket
+          ARCHIVE_BUCKET: !Ref ArchiveBucketResource
           RAGSTACK_BUCKET: !GetAtt RagStackNestedStack.Outputs.DataBucketName
           RAGSTACK_REGION: us-east-1
           LETTER_PROCESSOR_FUNCTION_NAME: !Ref LetterProcessorFunction
@@ -356,9 +382,9 @@ Resources:
         - LambdaInvokePolicy:
             FunctionName: !Ref LetterProcessorFunction
         - DynamoDBCrudPolicy:
-            TableName: !Ref TableName
+            TableName: !Ref DynamoDBTable
         - S3CrudPolicy:
-            BucketName: !Ref ArchiveBucket
+            BucketName: !Ref ArchiveBucketResource
         - S3ReadPolicy:
             BucketName: !GetAtt RagStackNestedStack.Outputs.DataBucketName
       Events:
@@ -631,14 +657,14 @@ Resources:
       MemorySize: 512
       Environment:
         Variables:
-          TABLE_NAME: !Ref TableName
-          ARCHIVE_BUCKET: !Ref ArchiveBucket
+          TABLE_NAME: !If [HasTableName, !Ref TableName, !Sub '${AWS::StackName}-Table']
+          ARCHIVE_BUCKET: !Ref ArchiveBucketResource
           GEMINI_API_KEY: !Ref GeminiApiKey
       Policies:
         - DynamoDBCrudPolicy:
-            TableName: !Ref TableName
+            TableName: !Ref DynamoDBTable
         - S3CrudPolicy:
-            BucketName: !Ref ArchiveBucket
+            BucketName: !Ref ArchiveBucketResource
 
   # =============================================================================
   # RAGStack Nested Stack
@@ -780,10 +806,18 @@ Outputs:
   ApiUrl:
     Description: API Gateway endpoint URL
     Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/'
+    Export:
+      Name: !Sub '${AWS::StackName}-ApiUrl'
 
   TableName:
     Description: DynamoDB Table Name
     Value: !Ref DynamoDBTable
+
+  ArchiveBucketName:
+    Description: S3 Archive Bucket Name (for letters, media, and profile photos)
+    Value: !Ref ArchiveBucketResource
+    Export:
+      Name: !Sub '${AWS::StackName}-ArchiveBucket'
 
   UserPoolId:
     Description: Cognito User Pool ID
@@ -812,26 +846,36 @@ Outputs:
   RagStackGraphQLUrl:
     Description: RAGStack GraphQL API URL
     Value: !GetAtt RagStackNestedStack.Outputs.GraphQLApiUrl
+    Export:
+      Name: !Sub '${AWS::StackName}-RagStackGraphQLUrl'
 
   RagStackApiKey:
     Description: RAGStack GraphQL API Key
     Value: !GetAtt RagStackNestedStack.Outputs.GraphQLApiKey
+    Export:
+      Name: !Sub '${AWS::StackName}-RagStackApiKey'
 
   RagStackChatWidgetUrl:
-    Description: RAGStack Chat Widget CDN URL
+    Description: RAGStack Chat Widget CDN URL (Web UI Component)
     Value: !GetAtt RagStackNestedStack.Outputs.WebComponentCDNUrl
+    Export:
+      Name: !Sub '${AWS::StackName}-RagStackWebUICDN'
 
   RagStackDataBucket:
     Description: RAGStack data bucket name
     Value: !GetAtt RagStackNestedStack.Outputs.DataBucketName
+    Export:
+      Name: !Sub '${AWS::StackName}-RagStackDataBucket'
 
   AmplifyAppId:
     Description: Amplify App ID
     Value: !GetAtt AmplifyApp.AppId
 
   AmplifyUrl:
-    Description: Amplify Hosting URL
+    Description: Amplify Hosting URL (Frontend Application CDN)
     Value: !Sub 'https://main.${AmplifyApp.DefaultDomain}'
+    Export:
+      Name: !Sub '${AWS::StackName}-FrontendUrl'
 
   AmplifyConsoleUrl:
     Description: Amplify Console URL (for managing environment variables)
