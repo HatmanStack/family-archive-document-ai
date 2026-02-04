@@ -854,19 +854,19 @@ Resources:
         - Name: PUBLIC_AWS_REGION
           Value: !Ref AWS::Region
         - Name: PUBLIC_API_GATEWAY_URL
-          Value: !Sub 'https://${RestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod'
+          Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod'
         - Name: PUBLIC_COGNITO_USER_POOL_ID
-          Value: !Ref CognitoUserPool
+          Value: !Ref UserPool
         - Name: PUBLIC_COGNITO_USER_POOL_CLIENT_ID
-          Value: !Ref CognitoUserPoolClient
+          Value: !Ref UserPoolClient
         - Name: PUBLIC_COGNITO_HOSTED_UI_DOMAIN
-          Value: !Sub '${CognitoUserPoolDomain}.auth.${AWS::Region}.amazoncognito.com'
+          Value: !Sub '${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com'
         - Name: PUBLIC_RAGSTACK_GRAPHQL_API_URL
-          Value: !If [ShouldDeployRagStack, !GetAtt ragstack.Outputs.GraphQLApiUrl, '']
+          Value: !GetAtt ragstack.Outputs.GraphQLApiUrl
         - Name: PUBLIC_RAGSTACK_GRAPHQL_API_KEY
-          Value: !If [ShouldDeployRagStack, !GetAtt ragstack.Outputs.GraphQLApiKey, '']
+          Value: !GetAtt ragstack.Outputs.GraphQLApiKey
         - Name: PUBLIC_RAGSTACK_CHAT_WIDGET_URL
-          Value: !If [ShouldDeployRagStack, !GetAtt ragstack.Outputs.WebComponentCDNUrl, '']
+          Value: !GetAtt ragstack.Outputs.WebComponentCDNUrl
 
   # Lambda to trigger Amplify deployment
   AmplifyDeployerFunction:
