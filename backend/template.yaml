@@ -2,6 +2,73 @@ AWSTemplateFormatVersion: 2010-09-09
 Transform: AWS::Serverless-2016-10-31
 Description: Hold That Thought - Consolidated API with Single-Table DynamoDB
 
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterLabels:
+      AppDomain:
+        default: "Application Domain (for OAuth)"
+      ArchiveBucket:
+        default: "Archive S3 Bucket Name"
+      GeminiApiKey:
+        default: "Google Gemini API Key"
+      GoogleClientId:
+        default: "Google OAuth Client ID"
+      GoogleClientSecret:
+        default: "Google OAuth Client Secret"
+      AdminEmail:
+        default: "Administrator Email"
+      SesFromEmail:
+        default: "Notification From Email"
+      RagStackAdminEmail:
+        default: "RAGStack Admin Email"
+    ParameterGroups:
+      - Label:
+          default: "Deployment Configuration"
+        Parameters:
+          - AppDomain
+          - ArchiveBucket
+          - TableName
+          - DeployUI
+      - Label:
+          default: "Authentication & API Keys"
+        Parameters:
+          - GoogleClientId
+          - GoogleClientSecret
+          - GeminiApiKey
+      - Label:
+          default: "Email Notifications"
+        Parameters:
+          - AdminEmail
+          - SesFromEmail
+      - Label:
+          default: "RAGStack AI Configuration"
+        Parameters:
+          - RagStackAdminEmail
+          - RagStackTemplateUrl
+      - Label:
+          default: "Advanced Options"
+        Parameters:
+          - AllowedOrigins
+          - UISourceBucket
+          - UISourceKey
+
+  DeploymentNotes: |
+    IMPORTANT: Parameters can be updated after initial deployment.
+
+    Parameters are defined in your template and allow you to input custom values when you create or update a stack.
+
+    You can use placeholder values during initial deployment and update them later:
+    1. Deploy the stack with placeholder values (use the same stack name)
+    2. After deployment, go to CloudFormation > Stacks > [Your Stack] > Update
+    3. Select "Use current template" and update parameter values
+    4. Keep the stack name and other parameters the same
+    5. CloudFormation will safely update only the changed parameters
+
+    Common update scenarios:
+    - Update AppDomain with your Amplify URL after first deployment
+    - Add Google OAuth credentials after setting up OAuth app
+    - Update API keys or email addresses as needed
+
 Parameters:
   AllowedOrigins:
     Type: String
