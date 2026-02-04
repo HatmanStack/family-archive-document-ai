@@ -389,12 +389,12 @@ Frontend environment variables (must be prefixed with `PUBLIC_`):
 PUBLIC_API_GATEWAY_URL=https://xxx.execute-api.us-east-1.amazonaws.com
 
 # Cognito
+PUBLIC_AWS_REGION=us-east-1
 PUBLIC_COGNITO_USER_POOL_ID=us-east-1_XXXXXXXXX
-PUBLIC_COGNITO_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxxx
-PUBLIC_COGNITO_DOMAIN=your-app.auth.us-east-1.amazoncognito.com
-PUBLIC_COGNITO_REDIRECT_URI=https://your-app.com/auth/callback
-PUBLIC_COGNITO_LOGOUT_URI=https://your-app.com/auth/logout
-PUBLIC_COGNITO_REGION=us-east-1
+PUBLIC_COGNITO_USER_POOL_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxxx
+PUBLIC_COGNITO_IDENTITY_POOL_ID=us-east-1:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+PUBLIC_COGNITO_HOSTED_UI_URL=https://your-app.auth.us-east-1.amazoncognito.com
+PUBLIC_COGNITO_HOSTED_UI_DOMAIN=your-app
 
 # RAGStack (optional)
 PUBLIC_RAGSTACK_CHAT_URL=https://xxx.cloudfront.net/ragstack-chat.js

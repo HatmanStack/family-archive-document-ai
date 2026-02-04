@@ -33,12 +33,12 @@ The SAM template creates a Cognito User Pool with:
 Frontend requires these Cognito settings:
 
 ```bash
+PUBLIC_AWS_REGION=us-east-1
 PUBLIC_COGNITO_USER_POOL_ID=us-east-1_XXXXXXXXX
-PUBLIC_COGNITO_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxxx
-PUBLIC_COGNITO_DOMAIN=your-app.auth.us-east-1.amazoncognito.com
-PUBLIC_COGNITO_REDIRECT_URI=https://your-app.com/auth/callback
-PUBLIC_COGNITO_LOGOUT_URI=https://your-app.com/auth/logout
-PUBLIC_COGNITO_REGION=us-east-1
+PUBLIC_COGNITO_USER_POOL_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxxx
+PUBLIC_COGNITO_IDENTITY_POOL_ID=us-east-1:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+PUBLIC_COGNITO_HOSTED_UI_URL=https://your-app.auth.us-east-1.amazoncognito.com
+PUBLIC_COGNITO_HOSTED_UI_DOMAIN=your-app
 ```
 
 ### Google OAuth (Optional)
@@ -125,9 +125,8 @@ Cognito automatically configures the identity provider and attribute mapping (em
 For demo purposes, enable one-click guest login:
 
 ```bash
-PUBLIC_COGNITO_GUEST_ENABLED=true
-PUBLIC_COGNITO_GUEST_USERNAME=guest@example.com
-PUBLIC_COGNITO_GUEST_PASSWORD=GuestPassword123!
+PUBLIC_GUEST_EMAIL=guest@example.com
+PUBLIC_GUEST_PASSWORD=GuestPassword123!
 ```
 
 ## JWT Token Structure
@@ -155,7 +154,7 @@ import { CognitoIdentityProviderClient, InitiateAuthCommand } from '@aws-sdk/cli
 async function login(email: string, password: string) {
   const response = await client.send(new InitiateAuthCommand({
     AuthFlow: 'USER_PASSWORD_AUTH',
-    ClientId: PUBLIC_COGNITO_CLIENT_ID,
+    ClientId: PUBLIC_COGNITO_USER_POOL_CLIENT_ID,
     AuthParameters: {
       USERNAME: email,
       PASSWORD: password
@@ -177,7 +176,7 @@ async function login(email: string, password: string) {
 async function refreshSession() {
   const response = await client.send(new InitiateAuthCommand({
     AuthFlow: 'REFRESH_TOKEN_AUTH',
-    ClientId: PUBLIC_COGNITO_CLIENT_ID,
+    ClientId: PUBLIC_COGNITO_USER_POOL_CLIENT_ID,
     AuthParameters: {
       REFRESH_TOKEN: currentRefreshToken
     }
@@ -327,7 +326,7 @@ async function logout() {
   // Optionally revoke refresh token
   await client.send(new RevokeTokenCommand({
     Token: refreshToken,
-    ClientId: PUBLIC_COGNITO_CLIENT_ID
+    ClientId: PUBLIC_COGNITO_USER_POOL_CLIENT_ID
   }))
 
   // Redirect to logout endpoint

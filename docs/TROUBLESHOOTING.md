@@ -27,7 +27,7 @@ Common issues and solutions for Family Archive - Document AI.
 
 4. **Cognito misconfiguration**
    - Verify `PUBLIC_COGNITO_USER_POOL_ID` matches your pool
-   - Verify `PUBLIC_COGNITO_CLIENT_ID` matches your app client
+   - Verify `PUBLIC_COGNITO_USER_POOL_CLIENT_ID` matches your app client
 
 ### "User is not authorized" (403)
 
@@ -55,7 +55,7 @@ Common issues and solutions for Family Archive - Document AI.
 **Causes & Solutions:**
 
 1. **Mismatched redirect URI**
-   - `PUBLIC_COGNITO_REDIRECT_URI` must exactly match Cognito app client settings
+   - `PUBLIC_COGNITO_HOSTED_UI_URL` must match your Cognito domain
    - Include protocol: `https://` or `http://localhost:5173`
 
 2. **Cookie issues**
