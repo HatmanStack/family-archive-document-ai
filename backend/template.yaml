@@ -890,6 +890,21 @@ Resources:
                 - logs:CreateLogStream
                 - logs:PutLogEvents
               Resource: '*'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - events:PutRule
+                - events:PutTargets
+                - events:DescribeRule
+                - events:RemoveTargets
+                - events:DeleteRule
+              Resource: !Sub 'arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/*'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - lambda:AddPermission
+                - lambda:RemovePermission
+              Resource: !Sub 'arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-frontend-builder'
 
   FrontendBuild:
     Type: Custom::FrontendBuild
