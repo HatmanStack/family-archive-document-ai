@@ -131,13 +131,13 @@ Parameters:
     Type: String
     Default: 'true'
     AllowedValues: ['true', 'false']
-    Description: Build RAGStack chat widget (set to false on updates to skip rebuild)
+    Description: Build RAGStack chat widget. On initial deployment use 'true'. When updating stack via Console, set to 'false' to skip rebuild.
 
   RagStackBuildDashboard:
     Type: String
     Default: 'true'
     AllowedValues: ['true', 'false']
-    Description: Build RAGStack admin dashboard (set to false on updates to skip rebuild)
+    Description: Build RAGStack admin dashboard. On initial deployment use 'true'. When updating stack via Console, set to 'false' to skip rebuild.
 
   SesFromEmail:
     Type: String
