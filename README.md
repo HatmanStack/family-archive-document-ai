@@ -1,4 +1,4 @@
-<img align="center" src="htt_banner.jpg" alt="Family Archive - Document AI">
+<img align="center" src="htt_banner_1.jpg" alt="Family Archive - Document AI">
 
 <p align="center">
 <a href="https://github.com/HatmanStack/family-archive-document-ai/actions"><img src="https://github.com/HatmanStack/family-archive-document-ai/workflows/CI/badge.svg" alt="CI Status" /></a>
@@ -39,6 +39,7 @@ A private family platform for sharing letters, photos, and memories. Upload scan
 | Environment | URL | Access |
 |-------------|-----|--------|
 | **Showcase** | [showcase-htt.hatstack.fun](https://showcase-htt.hatstack.fun) | Login as guest |
+| **One Click** | [Template](https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/quickcreate?templateURL=https://hold-that-thought-quicklaunch-public-631094035453.s3.us-east-1.amazonaws.com/hold-that-thought-template.yaml) | Sign into AWS |
 
 ## Architecture
 
