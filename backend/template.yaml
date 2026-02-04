@@ -124,7 +124,7 @@ Parameters:
 
   RagStackAdminEmail:
     Type: String
-    Description: Admin email for RAGStack (only required for new deployments)
+    Description: Admin email for RAGStack (required)
     Default: 'placeholder@example.com'
 
   RagStackBuildWebComponent:
