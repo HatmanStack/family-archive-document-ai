@@ -981,6 +981,12 @@ Outputs:
     Export:
       Name: !Sub '${AWS::StackName}-RagStackDataBucket'
 
+  RagStackAdminDashboardUrl:
+    Description: RAGStack Admin Dashboard URL (React UI for managing knowledge base)
+    Value: !GetAtt ragstack.Outputs.UIUrl
+    Export:
+      Name: !Sub '${AWS::StackName}-RagStackAdminDashboard'
+
   AmplifyAppId:
     Description: Amplify App ID
     Value: !GetAtt AmplifyApp.AppId
