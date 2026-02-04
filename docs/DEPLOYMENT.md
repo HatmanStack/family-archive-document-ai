@@ -142,27 +142,39 @@ Required variables (set in `.env` or hosting platform):
 3. Enter Google Client ID and Secret
 4. Map attributes: `email`, `name`, `picture`
 
-### Create Groups
+### User Groups
 
-```bash
-# ApprovedUsers - can comment, message, react
-aws cognito-idp create-group \
-  --user-pool-id YOUR_POOL_ID \
-  --group-name ApprovedUsers
+**Groups are auto-created by CloudFormation:**
+- `ApprovedUsers` - Required for app access (frontend enforces this)
+- `Admins` - Full administrative access
 
-# Admins - full access including moderation
-aws cognito-idp create-group \
-  --user-pool-id YOUR_POOL_ID \
-  --group-name Admins
-```
-
-### Add User to Group
+**Add users to ApprovedUsers group** (required after signup):
 
 ```bash
 aws cognito-idp admin-add-user-to-group \
   --user-pool-id YOUR_POOL_ID \
-  --username USER_EMAIL \
-  --group-name ApprovedUsers
+  --username user@example.com \
+  --group-name ApprovedUsers \
+  --region us-east-1
+```
+
+**Verify group membership:**
+
+```bash
+aws cognito-idp admin-list-groups-for-user \
+  --user-pool-id YOUR_POOL_ID \
+  --username user@example.com \
+  --region us-east-1
+```
+
+**Add admin privileges** (optional):
+
+```bash
+aws cognito-idp admin-add-user-to-group \
+  --user-pool-id YOUR_POOL_ID \
+  --username user@example.com \
+  --group-name Admins \
+  --region us-east-1
 ```
 
 ### Guest Access (Optional)
