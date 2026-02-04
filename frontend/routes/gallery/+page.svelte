@@ -61,19 +61,25 @@
   const allMediaItems: Map<string, MediaItem> = new Map()
   let mediaItemsLoaded = false
 
-  // Load media items for the selected section
+  // Load media items for the selected section with stale-while-revalidate
   async function loadMediaItems(section: 'pictures' | 'videos' | 'documents', loadMore = false) {
     if (loadMore) {
       loadingMore = true
     }
-    else {
+    else if (mediaItems.length === 0) {
+      // Only show loading spinner if no cached data
       loading = true
-      resetPagination()
     }
     error = ''
 
     try {
-      const page = await getMediaItems(section, loadMore)
+      const page = await getMediaItems(section, loadMore, {
+        // Smooth update when fresh data has new items (no loading state)
+        onFreshData: (freshPage) => {
+          mediaItems = freshPage.items
+          hasMore = freshPage.hasMore
+        },
+      })
       mediaItems = page.items
       hasMore = page.hasMore
 
@@ -180,25 +186,23 @@
       // Show success message immediately
       uploadSuccess = `"${file.name}" uploaded successfully`
 
-      // Clear media items cache so next search will reload
+      // Clear caches so fresh data is fetched
       mediaItemsLoaded = false
       allMediaItems.clear()
       invalidateMediaCache()
 
-      // Silently poll for the new item without showing loading state
-      // RAGStack processes asynchronously, so the item may not appear immediately
+      // Poll for the new item - RAGStack processes asynchronously
       const maxAttempts = 3
       const pollDelay = 1500
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
         if (attempt > 0) {
           await new Promise(resolve => setTimeout(resolve, pollDelay))
+          // Invalidate again before each retry to force fresh fetch
+          invalidateMediaCache()
         }
         try {
-          resetPagination()
-          const page = await getMediaItems(selectedSection, false, { bypassCache: true })
-          // Update items silently (no loading state)
-          mediaItems = page.items
-          hasMore = page.hasMore
+          // Fetch fresh and update UI via onFreshData callback
+          await loadMediaItems(selectedSection)
         }
         catch (err) {
           console.error('Error refreshing media after upload:', err)
@@ -219,7 +223,7 @@
     }
   }
 
-  // Handle section change
+  // Handle section change - stale-while-revalidate handles cache refresh
   function changeSection(section: 'pictures' | 'videos' | 'documents') {
     selectedSection = section
     loadMediaItems(section)

@@ -43,7 +43,19 @@ interface RagDocument {
   createdAt: string
 }
 
+// Unified cache structure
+interface MediaCache {
+  pictures: { items: MediaItem[], nextToken: string | null } | null
+  documents: RagDocument[] | null
+}
+
+const cache: MediaCache = {
+  pictures: null,
+  documents: null,
+}
+
 const API_URL = getApiBaseUrl()
+const PAGE_SIZE = 50
 
 async function ragstackQuery(query: string, variables: Record<string, unknown> = {}): Promise<unknown> {
   if (!PUBLIC_RAGSTACK_GRAPHQL_URL || !PUBLIC_RAGSTACK_API_KEY) {
@@ -72,7 +84,6 @@ async function ragstackQuery(query: string, variables: Record<string, unknown> =
 
 /**
  * Extract S3 key from an s3:// URI
- * e.g. "s3://bucket-name/content/abc/file.mp4" -> "content/abc/file.mp4"
  */
 function s3UriToKey(s3Uri: string): string {
   const match = s3Uri.match(/^s3:\/\/[^/]+\/(.+)$/)
@@ -139,7 +150,7 @@ function imageToMediaItem(img: RagImage): MediaItem {
     fileSize: img.fileSize || 0,
     contentType: img.contentType || inferContentType(img.filename),
     thumbnailUrl: img.thumbnailUrl || undefined,
-    signedUrl: img.thumbnailUrl || undefined, // RAGStack provides presigned thumbnailUrl for images
+    signedUrl: img.thumbnailUrl || undefined,
     category: 'pictures',
   }
 }
@@ -150,20 +161,50 @@ function documentToMediaItem(doc: RagDocument, category: 'videos' | 'documents')
     filename: doc.filename,
     title: doc.filename,
     uploadDate: doc.createdAt,
-    fileSize: 0, // not available from listDocuments
+    fileSize: 0,
     contentType: inferContentType(doc.filename),
-    signedUrl: '', // populated lazily via getPresignedUrl when needed
+    signedUrl: '',
     category,
   }
 }
 
-// Cache of documents fetched from RAGStack (no pagination, returns all at once)
-let cachedDocuments: RagDocument[] | null = null
+function sortByDate(items: MediaItem[]): MediaItem[] {
+  return items.sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime())
+}
 
-async function fetchDocuments(bypassCache = false): Promise<RagDocument[]> {
-  if (cachedDocuments && !bypassCache)
-    return cachedDocuments
+/**
+ * Check if two arrays of media items have different IDs (new items added)
+ */
+function hasNewItems(oldItems: MediaItem[], newItems: MediaItem[]): boolean {
+  if (newItems.length !== oldItems.length) return true
+  const oldIds = new Set(oldItems.map(i => i.id))
+  return newItems.some(i => !oldIds.has(i.id))
+}
 
+/**
+ * Fetch images from RAGStack
+ */
+async function fetchImages(nextToken: string | null = null): Promise<{ items: RagImage[], nextToken: string | null }> {
+  const data = await ragstackQuery(`query ListImages($limit: Int, $nextToken: String) {
+    listImages(limit: $limit, nextToken: $nextToken) {
+      items { imageId filename s3Uri thumbnailUrl caption contentType fileSize createdAt }
+      nextToken
+    }
+  }`, {
+    limit: PAGE_SIZE,
+    nextToken,
+  }) as { listImages: { items: RagImage[], nextToken: string | null } }
+
+  return {
+    items: data.listImages.items || [],
+    nextToken: data.listImages.nextToken,
+  }
+}
+
+/**
+ * Fetch documents from RAGStack (filters to INDEXED status, excludes letter files)
+ */
+async function fetchDocuments(): Promise<RagDocument[]> {
   const data = await ragstackQuery(`query {
     listDocuments {
       items { documentId filename type mediaType inputS3Uri previewUrl status createdAt }
@@ -171,85 +212,30 @@ async function fetchDocuments(bypassCache = false): Promise<RagDocument[]> {
   }`) as { listDocuments: { items: RagDocument[] } }
 
   const allItems = data.listDocuments.items || []
-  const filtered = allItems.filter(d =>
+  return allItems.filter(d =>
     d.status === 'INDEXED'
     && !/^\d{4}-\d{2}-\d{2}(?:[_\-.].+)?\.(?:md|pdf)$/.test(d.filename),
   )
-  // Only update cache if not bypassing (polling shouldn't pollute cache)
-  if (!bypassCache) {
-    cachedDocuments = filtered
+}
+
+/**
+ * Build MediaPage for videos from document list
+ */
+function buildVideosPage(docs: RagDocument[]): MediaPage {
+  const videos = docs.filter(d =>
+    (d.type === 'media' && d.mediaType === 'video')
+    || /\.(?:mp4|webm|mov|avi|mkv)$/i.test(d.filename),
+  )
+  return {
+    items: sortByDate(videos.map(d => documentToMediaItem(d, 'videos'))),
+    hasMore: false,
   }
-  return filtered
 }
 
-function sortByDate(items: MediaItem[]): MediaItem[] {
-  return items.sort((a, b) => new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime())
-}
-
-const PAGE_SIZE = 50
-
-// Track pagination state for images
-let imageNextToken: string | null = null
-let allLoadedImages: MediaItem[] = []
-
-export function resetPagination() {
-  imageNextToken = null
-  allLoadedImages = []
-}
-
-export interface GetMediaOptions {
-  loadMore?: boolean
-  bypassCache?: boolean
-}
-
-export async function getMediaItems(
-  category: 'pictures' | 'videos' | 'documents',
-  loadMore = false,
-  options: GetMediaOptions = {},
-): Promise<MediaPage> {
-  const { bypassCache = false } = options
-
-  if (category === 'pictures') {
-    if (!loadMore) {
-      imageNextToken = null
-      allLoadedImages = []
-    }
-
-    const data = await ragstackQuery(`query ListImages($limit: Int, $nextToken: String) {
-      listImages(limit: $limit, nextToken: $nextToken) {
-        items { imageId filename s3Uri thumbnailUrl caption contentType fileSize createdAt }
-        nextToken
-      }
-    }`, {
-      limit: PAGE_SIZE,
-      nextToken: imageNextToken,
-    }) as { listImages: { items: RagImage[], nextToken: string | null } }
-
-    const newItems = (data.listImages.items || []).map(imageToMediaItem)
-    imageNextToken = data.listImages.nextToken
-    allLoadedImages = [...allLoadedImages, ...newItems]
-
-    return {
-      items: sortByDate(allLoadedImages),
-      hasMore: !!imageNextToken,
-    }
-  }
-
-  // Videos and documents both come from listDocuments (no server pagination)
-  const docs = await fetchDocuments(bypassCache)
-
-  if (category === 'videos') {
-    const videos = docs.filter(d =>
-      (d.type === 'media' && d.mediaType === 'video')
-      || /\.(?:mp4|webm|mov|avi|mkv)$/i.test(d.filename),
-    )
-    return {
-      items: sortByDate(videos.map(d => documentToMediaItem(d, 'videos'))),
-      hasMore: false,
-    }
-  }
-
-  // Documents: exclude videos and media-typed items (letters already excluded in fetchDocuments)
+/**
+ * Build MediaPage for documents from document list
+ */
+function buildDocumentsPage(docs: RagDocument[]): MediaPage {
   const documents = docs.filter(d =>
     d.type === 'document'
     && !d.mediaType
@@ -261,29 +247,136 @@ export async function getMediaItems(
   }
 }
 
+export interface GetMediaOptions {
+  loadMore?: boolean
+  /** Callback when fresh data differs from cached - enables stale-while-revalidate */
+  onFreshData?: (page: MediaPage) => void
+}
+
+/**
+ * Get media items with stale-while-revalidate caching.
+ * Returns cached data immediately, then fetches fresh data in background.
+ * If fresh data has new items, calls onFreshData callback for smooth UI update.
+ */
+export async function getMediaItems(
+  category: 'pictures' | 'videos' | 'documents',
+  loadMore = false,
+  options: GetMediaOptions = {},
+): Promise<MediaPage> {
+  const { onFreshData } = options
+
+  if (category === 'pictures') {
+    // For loadMore, always fetch next page
+    if (loadMore && cache.pictures) {
+      const { items: freshImages, nextToken } = await fetchImages(cache.pictures.nextToken)
+      const newItems = freshImages.map(imageToMediaItem)
+      cache.pictures = {
+        items: [...cache.pictures.items, ...newItems],
+        nextToken,
+      }
+      return {
+        items: sortByDate(cache.pictures.items),
+        hasMore: !!nextToken,
+      }
+    }
+
+    // Return cached immediately, refresh in background
+    if (cache.pictures && onFreshData) {
+      const cachedResult: MediaPage = {
+        items: sortByDate(cache.pictures.items),
+        hasMore: !!cache.pictures.nextToken,
+      }
+
+      // Background refresh
+      fetchImages().then(({ items: freshImages, nextToken }) => {
+        const freshItems = freshImages.map(imageToMediaItem)
+        if (hasNewItems(cache.pictures?.items || [], freshItems)) {
+          cache.pictures = { items: freshItems, nextToken }
+          onFreshData({
+            items: sortByDate(freshItems),
+            hasMore: !!nextToken,
+          })
+        }
+      }).catch(err => console.error('Background refresh failed:', err))
+
+      return cachedResult
+    }
+
+    // No cache - fetch fresh
+    const { items: freshImages, nextToken } = await fetchImages()
+    const items = freshImages.map(imageToMediaItem)
+    cache.pictures = { items, nextToken }
+    return {
+      items: sortByDate(items),
+      hasMore: !!nextToken,
+    }
+  }
+
+  // Videos and documents both use document cache
+  if (cache.documents && onFreshData) {
+    const cachedResult = category === 'videos'
+      ? buildVideosPage(cache.documents)
+      : buildDocumentsPage(cache.documents)
+
+    // Background refresh
+    fetchDocuments().then(freshDocs => {
+      const freshPage = category === 'videos'
+        ? buildVideosPage(freshDocs)
+        : buildDocumentsPage(freshDocs)
+
+      const cachedPage = category === 'videos'
+        ? buildVideosPage(cache.documents || [])
+        : buildDocumentsPage(cache.documents || [])
+
+      if (hasNewItems(cachedPage.items, freshPage.items)) {
+        cache.documents = freshDocs
+        onFreshData(freshPage)
+      }
+    }).catch(err => console.error('Background refresh failed:', err))
+
+    return cachedResult
+  }
+
+  // No cache - fetch fresh
+  const freshDocs = await fetchDocuments()
+  cache.documents = freshDocs
+
+  return category === 'videos'
+    ? buildVideosPage(freshDocs)
+    : buildDocumentsPage(freshDocs)
+}
+
+/**
+ * Invalidate all media caches (call after uploads)
+ */
+export function invalidateMediaCache() {
+  cache.pictures = null
+  cache.documents = null
+}
+
+/**
+ * Reset pagination state (for pictures)
+ */
+export function resetPagination() {
+  if (cache.pictures) {
+    cache.pictures = null
+  }
+}
+
 /**
  * Resolve the signedUrl for a media item that needs a backend-proxied presigned URL.
- * Images already have signedUrl from thumbnailUrl. Videos/documents need this.
  */
 export async function resolveSignedUrl(item: MediaItem): Promise<string> {
   if (item.signedUrl)
     return item.signedUrl
 
-  // Look up the inputS3Uri from the cached documents
-  const docs = cachedDocuments || await fetchDocuments()
+  const docs = cache.documents || await fetchDocuments()
   const doc = docs.find(d => d.documentId === item.id)
   if (!doc)
     throw new Error(`Document ${item.id} not found`)
 
   const key = s3UriToKey(doc.inputS3Uri)
   return getPresignedUrl(key)
-}
-
-/**
- * Invalidate the document cache (call after uploads)
- */
-export function invalidateMediaCache() {
-  cachedDocuments = null
 }
 
 /**
