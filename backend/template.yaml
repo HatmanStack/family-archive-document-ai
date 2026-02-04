@@ -5,7 +5,7 @@ Description: |
 
   IMPORTANT: STACK NAME MUST BE LOWERCASE (e.g., doc-ai, fam-archive, memory-app)
 
-  Parameters can use placeholder values initially. Update them later via CloudFormation > Update Stack with the same stack name.
+  This template creates a new stack. To update an existing stack, use CloudFormation Console > Stacks > [Your Stack] > Update.
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -70,21 +70,20 @@ Metadata:
     - Examples: doc-ai, fam-archive, memory-app
     - Uppercase or long names will cause S3 bucket creation failures
 
-    IMPORTANT: Parameters can be updated after initial deployment.
+    Initial Deployment:
+    - This one-click URL creates a NEW stack
+    - Required parameters: AdminEmail, RagStackAdminEmail
+    - Optional: Set AppDomain to your domain, or use default localhost:5173
+    - OAuth credentials (GoogleClientId/Secret) can be added later
 
-    Parameters are defined in your template and allow you to input custom values when you create or update a stack.
-
-    You can use placeholder values during initial deployment and update them later:
-    1. Deploy the stack with placeholder values (use the same stack name)
-    2. After deployment, go to CloudFormation > Stacks > [Your Stack] > Update
-    3. Select "Use current template" and update parameter values
-    4. Keep the stack name and other parameters the same
-    5. CloudFormation will safely update only the changed parameters
-
-    Common update scenarios:
-    - Update AppDomain with your Amplify URL after first deployment
-    - Add Google OAuth credentials after setting up OAuth app
-    - Update API keys or email addresses as needed
+    To Update an Existing Stack:
+    - This one-click URL ONLY creates new stacks
+    - To update parameters or template:
+      1. Go to CloudFormation Console > Stacks
+      2. Select your stack
+      3. Click "Update"
+      4. Choose "Replace current template" and paste template URL
+      5. Modify parameters as needed
 
 Parameters:
   AllowedOrigins:
@@ -94,7 +93,7 @@ Parameters:
 
   AppDomain:
     Type: String
-    Description: App domain for OAuth callbacks - Use 'localhost:5173' for local dev, or after stack creation update with the AmplifyUrl output (e.g., 'main.d123abc.amplifyapp.com')
+    Description: App domain for OAuth callbacks - Use 'localhost:5173' for local dev, or set to your Amplify domain after first deployment (e.g., 'main.d123abc.amplifyapp.com'). Update via CloudFormation Console.
     Default: 'localhost:5173'
 
   GoogleClientId:
@@ -132,13 +131,13 @@ Parameters:
     Type: String
     Default: 'true'
     AllowedValues: ['true', 'false']
-    Description: Build RAGStack chat widget (set to false on updates to skip rebuild)
+    Description: Build RAGStack chat widget. On initial deployment use 'true'. When updating stack via Console, set to 'false' to skip rebuild.
 
   RagStackBuildDashboard:
     Type: String
     Default: 'true'
     AllowedValues: ['true', 'false']
-    Description: Build RAGStack admin dashboard (set to false on updates to skip rebuild)
+    Description: Build RAGStack admin dashboard. On initial deployment use 'true'. When updating stack via Console, set to 'false' to skip rebuild.
 
   SesFromEmail:
     Type: String
@@ -780,6 +779,175 @@ Resources:
         BuildDashboard: !Ref RagStackBuildDashboard
 
   # =============================================================================
+  # Frontend Build (CodeBuild)
+  # =============================================================================
+
+  FrontendBuildProject:
+    Type: AWS::CodeBuild::Project
+    Condition: ShouldDeployUI
+    Properties:
+      Name: !Sub '${AWS::StackName}-frontend-build'
+      Description: Builds SvelteKit frontend with stack-specific environment variables
+      ServiceRole: !GetAtt FrontendBuildRole.Arn
+      Artifacts:
+        Type: S3
+        Location: !Sub '${UISourceBucket}-${AWS::AccountId}'
+        Name: built-frontend.zip
+        Packaging: ZIP
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:7.0
+        EnvironmentVariables:
+          - Name: SOURCE_BUCKET
+            Value: !Sub '${UISourceBucket}-${AWS::AccountId}'
+          - Name: SOURCE_KEY
+            Value: !Ref UISourceKey
+      Source:
+        Type: NO_SOURCE
+        BuildSpec: |
+          version: 0.2
+          phases:
+            install:
+              runtime-versions:
+                nodejs: 24
+            pre_build:
+              commands:
+                - echo "Downloading frontend source from S3..."
+                - aws s3 cp s3://$SOURCE_BUCKET/$SOURCE_KEY /tmp/frontend.zip
+                - mkdir -p /tmp/source
+                - cd /tmp/source
+                - unzip /tmp/frontend.zip
+            build:
+              commands:
+                - echo "Building frontend with environment variables..."
+                - cd frontend
+                - echo "=== Environment Info ==="
+                - node --version
+                - npm --version
+                - npm install -g pnpm
+                - pnpm --version
+                - echo "=== Files present ==="
+                - ls -la
+                - echo "=== Installing dependencies ==="
+                - pnpm install --frozen-lockfile
+                - echo "=== Checking for workbox-window ==="
+                - find node_modules -name "workbox-window" -type d 2>/dev/null || echo "workbox-window not found"
+                - ls node_modules/workbox-window 2>/dev/null || echo "workbox-window directory does not exist"
+                - echo "=== Building ==="
+                - pnpm run build
+                - echo "Build complete"
+          artifacts:
+            files:
+              - '**/*'
+            base-directory: /tmp/source/frontend/build
+      TimeoutInMinutes: 15
+
+  FrontendBuildRole:
+    Type: AWS::IAM::Role
+    Condition: ShouldDeployUI
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+      Policies:
+        - PolicyName: S3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:s3:::${UISourceBucket}-${AWS::AccountId}/*'
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource:
+                  - !Sub 'arn:${AWS::Partition}:s3:::${UISourceBucket}-${AWS::AccountId}'
+
+  FrontendBuilderFunction:
+    Type: AWS::Serverless::Function
+    Condition: ShouldDeployUI
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-frontend-builder'
+      CodeUri: lambdas/frontend-builder/
+      Handler: index.lambda_handler
+      Runtime: python3.13
+      Timeout: 900
+      MemorySize: 256
+      Environment:
+        Variables:
+          LOG_LEVEL: INFO
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - codebuild:StartBuild
+                - codebuild:BatchGetBuilds
+              Resource: !GetAtt FrontendBuildProject.Arn
+        - Statement:
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: '*'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - events:PutRule
+                - events:PutTargets
+                - events:DescribeRule
+                - events:RemoveTargets
+                - events:DeleteRule
+              Resource: !Sub 'arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/*'
+        - Statement:
+            - Effect: Allow
+              Action:
+                - lambda:AddPermission
+                - lambda:RemovePermission
+              Resource: !Sub 'arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${AWS::StackName}-frontend-builder'
+
+  FrontendBuild:
+    Type: Custom::FrontendBuild
+    Condition: ShouldDeployUI
+    DependsOn:
+      - ragstack
+      - ApiFunction
+    Properties:
+      ServiceToken: !GetAtt FrontendBuilderFunction.Arn
+      ProjectName: !Ref FrontendBuildProject
+      EnvironmentVariables:
+        - Name: PUBLIC_AWS_REGION
+          Value: !Ref AWS::Region
+        - Name: PUBLIC_API_GATEWAY_URL
+          Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod'
+        - Name: PUBLIC_COGNITO_USER_POOL_ID
+          Value: !Ref UserPool
+        - Name: PUBLIC_COGNITO_USER_POOL_CLIENT_ID
+          Value: !Ref UserPoolClient
+        - Name: PUBLIC_COGNITO_IDENTITY_POOL_ID
+          Value: !Ref IdentityPool
+        - Name: PUBLIC_COGNITO_HOSTED_UI_DOMAIN
+          Value: !Sub '${UserPoolDomain}'
+        - Name: PUBLIC_COGNITO_HOSTED_UI_URL
+          Value: !Sub 'https://${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com'
+        - Name: PUBLIC_RAGSTACK_GRAPHQL_URL
+          Value: !Sub '${ragstack.Outputs.GraphQLApiUrl}'
+        - Name: PUBLIC_RAGSTACK_API_KEY
+          Value: !Sub '${ragstack.Outputs.GraphQLApiKey}'
+        - Name: PUBLIC_RAGSTACK_CHAT_URL
+          Value: !Sub '${ragstack.Outputs.WebComponentCDNUrl}'
+
+  # =============================================================================
   # Amplify Hosting
   # =============================================================================
 
@@ -851,6 +1019,26 @@ Resources:
       EnvironmentVariables:
         - Name: NODE_ENV
           Value: production
+        - Name: PUBLIC_AWS_REGION
+          Value: !Ref AWS::Region
+        - Name: PUBLIC_API_GATEWAY_URL
+          Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod'
+        - Name: PUBLIC_COGNITO_USER_POOL_ID
+          Value: !Ref UserPool
+        - Name: PUBLIC_COGNITO_USER_POOL_CLIENT_ID
+          Value: !Ref UserPoolClient
+        - Name: PUBLIC_COGNITO_IDENTITY_POOL_ID
+          Value: !Ref IdentityPool
+        - Name: PUBLIC_COGNITO_HOSTED_UI_DOMAIN
+          Value: !Sub '${UserPoolDomain}'
+        - Name: PUBLIC_COGNITO_HOSTED_UI_URL
+          Value: !Sub 'https://${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com'
+        - Name: PUBLIC_RAGSTACK_GRAPHQL_URL
+          Value: !GetAtt ragstack.Outputs.GraphQLApiUrl
+        - Name: PUBLIC_RAGSTACK_API_KEY
+          Value: !GetAtt ragstack.Outputs.GraphQLApiKey
+        - Name: PUBLIC_RAGSTACK_CHAT_URL
+          Value: !GetAtt ragstack.Outputs.WebComponentCDNUrl
 
   # Lambda to trigger Amplify deployment
   AmplifyDeployerFunction:
@@ -908,13 +1096,13 @@ Resources:
     Condition: ShouldDeployUI
     DependsOn:
       - AmplifyBranch
-      - ApiFunction
+      - FrontendBuild
     Properties:
       ServiceToken: !GetAtt AmplifyDeployerFunction.Arn
       AppId: !GetAtt AmplifyApp.AppId
       BranchName: main
       SourceBucket: !Sub '${UISourceBucket}-${AWS::AccountId}'
-      SourceKey: !Ref UISourceKey
+      SourceKey: built-frontend.zip
 
 Outputs:
   ApiUrl:

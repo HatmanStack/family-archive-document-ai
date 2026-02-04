@@ -62,11 +62,11 @@ package_frontend_source() {
 
     echo "Packaging frontend source..."
 
-    # Create zip from project root (Amplify expects frontend/ directory)
+    # Ship frontend/ directory and amplify.yml - Amplify will install deps and build
     (cd .. && zip -r "$zip_file" frontend amplify.yml \
         -x "frontend/node_modules/*" \
-        -x "frontend/build/*" \
         -x "frontend/.svelte-kit/*" \
+        -x "frontend/build/*" \
         -x "frontend/.env*")
 
     echo "  Uploading to s3://${bucket_name}/${s3_key}..."
