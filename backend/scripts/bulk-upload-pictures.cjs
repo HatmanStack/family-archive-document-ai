@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Bulk upload pictures to Hold That Thought
+ * Bulk upload pictures to Family Archive - Document AI
  * Follows the same logic as the frontend gallery upload
  *
  * Usage: node bulk-upload-pictures.cjs [--dry-run]

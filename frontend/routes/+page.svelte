@@ -89,7 +89,7 @@
           const container = document.getElementById('ragstack-chat-container')
           if (container) {
             const chat = document.createElement('ragstack-chat')
-            chat.setAttribute('conversation-id', 'hold-that-thought')
+            chat.setAttribute('conversation-id', 'family-archive')
             chat.setAttribute('header-text', 'Family Chat')
             chat.setAttribute('header-subtitle', ' ')
 

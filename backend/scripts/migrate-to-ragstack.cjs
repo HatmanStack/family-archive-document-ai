@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Migrate Hold That Thought letters to RAGStack
+ * Migrate Family Archive - Document AI letters to RAGStack
  *
  * 1. Matches HTT DynamoDB letter records to RAGStack documents by date
  * 2. Copies missing letter PDFs from archive bucket to RAGStack data bucket
@@ -456,7 +456,7 @@ async function scanMedia() {
 // --- Entry point ---
 
 async function main() {
-  console.log('=== Hold That Thought → RAGStack Migration ===')
+  console.log('=== Family Archive - Document AI → RAGStack Migration ===')
   console.log(`HTT Table:       ${TABLE_NAME} (${HTT_REGION})`)
   console.log(`Archive Bucket:  ${ARCHIVE_BUCKET || '(not set)'}`)
   console.log(`RAGStack Bucket: ${RAGSTACK_DATA_BUCKET || '(not set)'} (${RAGSTACK_REGION})`)

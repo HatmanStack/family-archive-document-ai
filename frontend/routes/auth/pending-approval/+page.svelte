@@ -63,7 +63,7 @@
 </script>
 
 <svelte:head>
-  <title>Pending Approval - Hold That Thought</title>
+  <title>Pending Approval - Family Archive</title>
   <meta name='description' content='Your account is pending approval. Please wait for family administrator approval.' />
 </svelte:head>
 

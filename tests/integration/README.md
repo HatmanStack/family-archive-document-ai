@@ -1,6 +1,6 @@
 # Integration Tests
 
-Automated integration tests for Hold That Thought backend APIs.
+Automated integration tests for Family Archive - Document AI backend APIs.
 
 ## Setup
 

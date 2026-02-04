@@ -12,7 +12,7 @@
   <meta content={site.title} property='og:site_name' />
   <meta content={site.lang} property='og:locale' />
   <!-- Twitter meta tags -->
-  <meta name='twitter:site' content='@holdthatthought' />
+  <meta name='twitter:site' content='@familyarchiveai' />
   {#if post}
     <meta content='article' property='og:type' />
     <meta content={post.title ?? post.summary ?? post.path.slice(1)} property='og:title' />

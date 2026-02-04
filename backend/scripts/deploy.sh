@@ -7,7 +7,7 @@ ENV_DEPLOY_FILE=".env.deploy"
 FRONTEND_ENV="../.env"
 
 echo "==================================="
-echo "Hold That Thought - Backend Deployment"
+echo "Family Archive - Document AI - Backend Deployment"
 echo "==================================="
 echo ""
 
@@ -93,7 +93,7 @@ publish_to_marketplace() {
 
     echo ""
     echo "============================================================"
-    echo "Hold That Thought - Marketplace Publishing"
+    echo "Family Archive - Document AI - Marketplace Publishing"
     echo "============================================================"
     echo ""
 

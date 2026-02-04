@@ -96,7 +96,7 @@ async function processMessageNotification(newImage) {
       }
 
       // Send notification email
-      const subject = `New message from ${senderName} on Hold That Thought`
+      const subject = `New message from ${senderName} on Family Archive`
       const preview = messageText.length > 100 ? messageText.substring(0, 100) + '...' : messageText
       const conversationUrl = `${BASE_URL}/messages/${conversationId}`
 

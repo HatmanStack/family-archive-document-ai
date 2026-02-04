@@ -46,7 +46,7 @@
 </script>
 
 <svelte:head>
-  <title>{profile ? `${profile.displayName}'s Profile` : 'Profile'} | Hold That Thought</title>
+  <title>{profile ? `${profile.displayName}'s Profile` : 'Profile'} | Family Archive</title>
 </svelte:head>
 
 <div class='mx-auto px-4 py-8 max-w-5xl'>

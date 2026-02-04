@@ -1,6 +1,6 @@
 # Authentication
 
-Hold That Thought uses Amazon Cognito for authentication with JWT tokens.
+Family Archive - Document AI uses Amazon Cognito for authentication with JWT tokens.
 
 ## Overview
 
@@ -48,7 +48,7 @@ To enable "Sign in with Google":
 #### Step 1: Create Google Cloud Project
 1. Navigate to https://console.cloud.google.com
 2. Click "Select a project" → "New Project"
-3. Name: `hold-that-thought-oauth`
+3. Name: `family-archive-oauth`
 4. Click "Create"
 
 #### Step 2: Configure OAuth Consent Screen
@@ -56,7 +56,7 @@ To enable "Sign in with Google":
 2. Select "External" (unless using Google Workspace)
 3. Click "Create"
 4. Fill required fields:
-   - App name: `Hold That Thought`
+   - App name: `Family Archive - Document AI`
    - User support email: your email
    - Developer contact: your email
 5. Click "Save and Continue"
@@ -72,7 +72,7 @@ To enable "Sign in with Google":
 1. Navigate to "APIs & Services" → "Credentials"
 2. Click "Create Credentials" → "OAuth client ID"
 3. Application type: "Web application"
-4. Name: `Hold That Thought Web Client`
+4. Name: `Family Archive - Document AI Web Client`
 5. Authorized JavaScript origins:
    - `https://your-app-domain.com`
    - `http://localhost:5173` (for dev)

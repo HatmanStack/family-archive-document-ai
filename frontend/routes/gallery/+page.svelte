@@ -537,7 +537,7 @@ return
 <svelte:window on:keydown={handleKeydown} />
 
 <svelte:head>
-  <title>Gallery - Hold That Thought</title>
+  <title>Gallery - Family Archive</title>
   <meta name='description' content='Explore our collection of preserved family letters, memories, and historical correspondence.' />
 </svelte:head>
 

@@ -1,7 +1,7 @@
-<img align="center" src="htt_banner.jpg" alt="Hold That Thought - Banner">
+<img align="center" src="htt_banner.jpg" alt="Family Archive - Document AI">
 
 <p align="center">
-<a href="https://github.com/HatmanStack/hold-that-thought/actions"><img src="https://github.com/HatmanStack/hold-that-thought/workflows/CI/badge.svg" alt="CI Status" /></a>
+<a href="https://github.com/HatmanStack/family-archive-document-ai/actions"><img src="https://github.com/HatmanStack/family-archive-document-ai/workflows/CI/badge.svg" alt="CI Status" /></a>
 <a href="https://www.apache.org/licenses/LICENSE-2.0.html"><img src="https://img.shields.io/badge/license-Apache2.0-blue" alt="Apache 2.0 License" /></a>
 </p>
 
@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-<b>Sharing letters, one typo at a time</b>
+<b>Preserving family memories with AI</b>
 </p>
 
 A private family platform for sharing letters, photos, and memories. Upload scanned letters with AI-powered transcription, browse a shared media gallery, and engage with family content through comments and reactions.

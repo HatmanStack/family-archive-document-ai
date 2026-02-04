@@ -1,7 +1,7 @@
 {
-  "name": "hold-that-thought-api",
+  "name": "family-archive-document-ai-api",
   "version": "1.0.0",
-  "description": "Consolidated API Lambda for Hold That Thought",
+  "description": "Consolidated API Lambda for Family Archive - Document AI",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",

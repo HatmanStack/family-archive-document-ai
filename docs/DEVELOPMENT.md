@@ -1,6 +1,6 @@
 # Development
 
-Local development setup and workflows for Hold That Thought.
+Local development setup and workflows for Family Archive - Document AI.
 
 ## Prerequisites
 
@@ -52,8 +52,8 @@ pip install aws-sam-cli
 ### Clone and Install
 
 ```bash
-git clone https://github.com/HatmanStack/hold-that-thought.git
-cd hold-that-thought
+git clone https://github.com/HatmanStack/family-archive-document-ai.git
+cd family-archive-document-ai
 
 # Install root dependencies
 npm install

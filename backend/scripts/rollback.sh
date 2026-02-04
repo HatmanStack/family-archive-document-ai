@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Rollback Script for Hold That Thought
+# Rollback Script for Family Archive - Document AI
 # Usage: ./scripts/rollback.sh [environment]
 #
 
@@ -9,7 +9,7 @@ set -e
 ENVIRONMENT=${1:-production}
 
 echo "========================================="
-echo "Rolling back Hold That Thought"
+echo "Rolling back Family Archive - Document AI"
 echo "Environment: $ENVIRONMENT"
 echo "========================================="
 echo ""

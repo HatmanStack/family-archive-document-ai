@@ -14,5 +14,5 @@ export const site: SiteConfig = {
   protocol: 'https://',
   subtitle: 'Family Letters & Memories',
   themeColor: '#3D4451',
-  title: 'Hold That Thought',
+  title: 'Family Archive',
 }

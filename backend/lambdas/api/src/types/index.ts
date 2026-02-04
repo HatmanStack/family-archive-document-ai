@@ -1,5 +1,5 @@
 /**
- * Core type definitions for Hold That Thought API
+ * Core type definitions for Family Archive - Document AI API
  */
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 

@@ -1,5 +1,5 @@
 /**
- * Hold That Thought API - Main Entry Point
+ * Family Archive - Document AI API - Main Entry Point
  *
  * This is a consolidated API Lambda that routes requests to appropriate handlers.
  * TypeScript version with type-safe routing and repositories.

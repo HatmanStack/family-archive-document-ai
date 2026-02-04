@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Common issues and solutions for Hold That Thought.
+Common issues and solutions for Family Archive - Document AI.
 
 ## Authentication Issues
 

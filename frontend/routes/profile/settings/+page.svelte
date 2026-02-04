@@ -258,7 +258,7 @@
 </script>
 
 <svelte:head>
-  <title>Profile Settings | Hold That Thought</title>
+  <title>Profile Settings | Family Archive</title>
 </svelte:head>
 
 <div class='mx-auto px-4 py-8 max-w-3xl'>

@@ -27,7 +27,7 @@
 </script>
 
 <svelte:head>
-  <title>New Message - Hold That Thought</title>
+  <title>New Message - Family Archive</title>
 </svelte:head>
 
 <div class='container mx-auto px-4 py-8'>

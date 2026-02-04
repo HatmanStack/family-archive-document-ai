@@ -1,6 +1,6 @@
 # Migration Guide: Archive Bucket to RAGStack
 
-This documents the migration strategy for existing Hold That Thought deployments transitioning from the archive S3 bucket to RAGStack for media and letter storage.
+This documents the migration strategy for existing Family Archive - Document AI deployments transitioning from the archive S3 bucket to RAGStack for media and letter storage.
 
 ## Background
 

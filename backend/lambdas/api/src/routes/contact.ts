@@ -68,7 +68,7 @@ export async function handle(
         </div>
         <hr style="border: none; border-top: 1px solid #eee; margin: 16px 0;" />
         <p style="color: #888; font-size: 12px;">
-          This message was sent via the Hold That Thought contact form.
+          This message was sent via the Family Archive - Document AI contact form.
         </p>
       </div>
     `
