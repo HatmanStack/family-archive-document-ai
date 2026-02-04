@@ -180,6 +180,9 @@ Conditions:
   ShouldDeployUI: !And
     - !Equals [!Ref DeployUI, 'true']
     - !Not [!Equals [!Ref UISourceBucket, '']]
+  HasInitialAdmin: !And
+    - !Not [!Equals [!Ref RagStackAdminEmail, '']]
+    - !Not [!Equals [!Ref RagStackAdminEmail, 'placeholder@example.com']]
 
 Globals:
   Function:
@@ -241,6 +244,25 @@ Resources:
         RecoveryMechanisms:
           - Name: verified_email
             Priority: 1
+      # Email branding to distinguish from RAGStack emails
+      VerificationMessageTemplate:
+        DefaultEmailOption: CONFIRM_WITH_CODE
+        EmailSubject: 'Family Archive - Verify your email'
+        EmailMessage: 'Your Family Archive verification code is: {####}'
+
+  ApprovedUsersGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: ApprovedUsers
+      UserPoolId: !Ref UserPool
+      Description: Verified family members who can create and edit content
+
+  AdminsGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: Admins
+      UserPoolId: !Ref UserPool
+      Description: Administrators with full access including moderation
 
   UserPoolClient:
     Type: AWS::Cognito::UserPoolClient
@@ -770,6 +792,7 @@ Resources:
   # RAGStack is always deployed as a nested stack for marketplace deployments
   ragstack:
     Type: AWS::CloudFormation::Stack
+    DependsOn: AmplifyApp
     Properties:
       TemplateURL: !Ref RagStackTemplateUrl
       Parameters:
@@ -777,6 +800,7 @@ Resources:
         StackPrefix: !Sub '${AWS::StackName}-rag'
         BuildWebComponent: !Ref RagStackBuildWebComponent
         BuildDashboard: !Ref RagStackBuildDashboard
+        AdditionalCorsOrigins: !Sub 'https://main.${AmplifyApp.AppId}.amplifyapp.com'
 
   # =============================================================================
   # Frontend Build (CodeBuild)
@@ -1103,6 +1127,45 @@ Resources:
       BranchName: main
       SourceBucket: !Sub '${UISourceBucket}-${AWS::AccountId}'
       SourceKey: built-frontend.zip
+
+  # =============================================================================
+  # Admin User Provisioner
+  # =============================================================================
+  AdminProvisionerFunction:
+    Type: AWS::Serverless::Function
+    Condition: HasInitialAdmin
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-admin-provisioner'
+      CodeUri: lambdas/admin-provisioner/
+      Handler: index.lambda_handler
+      Runtime: python3.13
+      Timeout: 60
+      MemorySize: 256
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - cognito-idp:AdminCreateUser
+                - cognito-idp:AdminAddUserToGroup
+              Resource: !GetAtt UserPool.Arn
+            - Effect: Allow
+              Action:
+                - ses:SendEmail
+              Resource: '*'
+
+  AdminProvisioner:
+    Type: Custom::AdminProvisioner
+    Condition: HasInitialAdmin
+    DependsOn:
+      - AmplifyApp
+      - ApprovedUsersGroup
+      - AdminsGroup
+    Properties:
+      ServiceToken: !GetAtt AdminProvisionerFunction.Arn
+      UserPoolId: !Ref UserPool
+      AdminEmail: !Ref RagStackAdminEmail
+      AmplifyUrl: !Sub 'main.${AmplifyApp.AppId}.amplifyapp.com'
+      SesFromEmail: !Ref SesFromEmail
 
 Outputs:
   ApiUrl:
