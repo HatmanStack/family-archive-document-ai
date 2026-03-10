@@ -7,6 +7,7 @@
 
 interface Config {
   geminiApiKey: string
+  geminiModel: string
   tableName: string
   archiveBucket: string
 }
@@ -63,6 +64,7 @@ function validateGeminiApiKey(key: string): void {
  */
 function loadConfig(): Config {
   const geminiApiKey = process.env.GEMINI_API_KEY || ''
+  const geminiModel = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite-preview'
   const tableName = process.env.TABLE_NAME || ''
   const archiveBucket = process.env.ARCHIVE_BUCKET || ''
 
@@ -82,6 +84,7 @@ function loadConfig(): Config {
 
   return {
     geminiApiKey,
+    geminiModel,
     tableName,
     archiveBucket,
   }
@@ -98,4 +101,11 @@ export function getGeminiApiKey(): string {
     throw new Error('Gemini API key is not configured')
   }
   return config.geminiApiKey
+}
+
+/**
+ * Get the Gemini model name
+ */
+export function getGeminiModel(): string {
+  return config.geminiModel
 }

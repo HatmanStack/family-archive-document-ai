@@ -28,6 +28,8 @@ export async function handle(
   const path = event.path
   const normalizedPath = path.replace(/^\/v1/, '')
 
+  log.info('drafts_request', { method, normalizedPath })
+
   // Upload request
   if (normalizedPath.endsWith('/upload-request') && method === 'POST') {
     if (!requesterId) {
@@ -41,7 +43,9 @@ export async function handle(
     if (!requesterId) {
       return errorResponse(401, 'Authentication required')
     }
-    const uploadId = normalizedPath.split('/').pop() || ''
+    // Extract uploadId from /letters/process/{uploadId}
+    const match = normalizedPath.match(/\/letters\/process\/([^/]+)/)
+    const uploadId = match ? match[1] : ''
     return handleProcess(uploadId, requesterId)
   }
 
@@ -52,8 +56,9 @@ export async function handle(
     }
 
     if (normalizedPath.endsWith('/publish') && method === 'POST') {
-      const parts = normalizedPath.split('/')
-      const draftId = parts[parts.length - 2]
+      // Extract draftId from /admin/drafts/{draftId}/publish
+      const match = normalizedPath.match(/\/admin\/drafts\/([^/]+)\/publish/)
+      const draftId = match ? match[1] : ''
       return handlePublish(event, draftId, requesterId || '')
     }
 
@@ -62,17 +67,21 @@ export async function handle(
     }
 
     if (method === 'GET') {
-      const draftId = normalizedPath.split('/').pop() || ''
+      // Extract draftId from /admin/drafts/{draftId}
+      const match = normalizedPath.match(/\/admin\/drafts\/([^/]+)/)
+      const draftId = match ? match[1] : ''
       return handleGetDraft(draftId)
     }
 
     if (method === 'DELETE') {
-      const draftId = normalizedPath.split('/').pop() || ''
+      // Extract draftId from /admin/drafts/{draftId}
+      const match = normalizedPath.match(/\/admin\/drafts\/([^/]+)/)
+      const draftId = match ? match[1] : ''
       return handleDeleteDraft(draftId)
     }
   }
 
-  return errorResponse(404, 'Draft route not found')
+  return errorResponse(404, `Draft route not found: ${method} ${normalizedPath}`)
 }
 
 const MAX_FILE_COUNT = 20

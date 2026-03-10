@@ -16,6 +16,8 @@ Metadata:
         default: "Archive S3 Bucket Name"
       GeminiApiKey:
         default: "Google Gemini API Key"
+      GeminiModel:
+        default: "Google Gemini Model"
       GoogleClientId:
         default: "Google OAuth Client ID"
       GoogleClientSecret:
@@ -44,6 +46,7 @@ Metadata:
           - GoogleClientId
           - GoogleClientSecret
           - GeminiApiKey
+          - GeminiModel
       - Label:
           default: "Email Notifications"
         Parameters:
@@ -120,7 +123,7 @@ Parameters:
   RagStackTemplateUrl:
     Type: String
     Description: S3 URL of the packaged RAGStack CloudFormation template
-    Default: 'https://ragstack-quicklaunch-public-631094035453.s3.us-east-1.amazonaws.com/ragstack-template.yaml'
+    Default: 'https://ragstack-quicklaunch-public.s3.us-east-1.amazonaws.com/ragstack-template.yaml'
 
   RagStackAdminEmail:
     Type: String
@@ -154,6 +157,11 @@ Parameters:
     Description: Google Gemini API Key
     Default: ''
     NoEcho: true
+
+  GeminiModel:
+    Type: String
+    Description: Google Gemini Model to use for letter parsing
+    Default: 'gemini-3.1-flash-lite-preview'
 
   # UI Source for one-click deployments (auto-configured for marketplace)
   UISourceBucket:
@@ -770,13 +778,14 @@ Resources:
       Handler: index.handler
       Description: Letter processor - merges PDFs and parses with Gemini
       Runtime: nodejs24.x
-      Timeout: 60
-      MemorySize: 512
+      Timeout: 180
+      MemorySize: 1024
       Environment:
         Variables:
           TABLE_NAME: !If [HasTableName, !Ref TableName, !Sub '${AWS::StackName}-Table']
           ARCHIVE_BUCKET: !Ref ArchiveBucketResource
           GEMINI_API_KEY: !Ref GeminiApiKey
+          GEMINI_MODEL: !Ref GeminiModel
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref DynamoDBTable
@@ -814,7 +823,7 @@ Resources:
       ServiceRole: !GetAtt FrontendBuildRole.Arn
       Artifacts:
         Type: S3
-        Location: !Sub '${UISourceBucket}-${AWS::AccountId}'
+        Location: !Ref UISourceBucket
         Name: built-frontend.zip
         Packaging: ZIP
       Environment:
@@ -823,7 +832,7 @@ Resources:
         Image: aws/codebuild/standard:7.0
         EnvironmentVariables:
           - Name: SOURCE_BUCKET
-            Value: !Sub '${UISourceBucket}-${AWS::AccountId}'
+            Value: !Ref UISourceBucket
           - Name: SOURCE_KEY
             Value: !Ref UISourceKey
       Source:
@@ -1124,7 +1133,7 @@ Resources:
       ServiceToken: !GetAtt AmplifyDeployerFunction.Arn
       AppId: !GetAtt AmplifyApp.AppId
       BranchName: main
-      SourceBucket: !Sub '${UISourceBucket}-${AWS::AccountId}'
+      SourceBucket: !Ref UISourceBucket
       SourceKey: built-frontend.zip
 
   # =============================================================================
