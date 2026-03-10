@@ -11,7 +11,7 @@ const adapter = {
   node: adapterNode(),
   static: adapterStatic({
     assets: 'build',
-    fallback: undefined,
+    fallback: 'index.html',
     pages: 'build',
     strict: false,
   }),

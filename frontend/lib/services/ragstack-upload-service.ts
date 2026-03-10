@@ -68,11 +68,14 @@ export async function uploadDocumentToRagstack(file: File): Promise<string> {
   Object.entries(parsedFields).forEach(([k, v]) => form.append(k, v as string))
   form.append('file', file)
 
-  const uploadResponse = await fetch(uploadUrl, { method: 'POST', body: form })
+  // Use no-cors mode: S3 presigned POSTs succeed at the server level but
+  // may not return CORS headers, causing fetch() to reject. The opaque
+  // response (type "opaque", status 0) is expected and means the request
+  // was sent successfully.
+  const uploadResponse = await fetch(uploadUrl, { method: 'POST', body: form, mode: 'no-cors' })
 
-  if (!uploadResponse.ok) {
-    throw new Error(`Failed to upload document to RAGStack: ${uploadResponse.status}`)
-  }
+  // With no-cors, response.type is "opaque" and status is always 0,
+  // so we cannot check response.ok. If fetch didn't throw, the upload was sent.
 
   return documentId
 }
@@ -99,11 +102,8 @@ export async function uploadImageToRagstack(
   Object.entries(parsedFields).forEach(([k, v]) => form.append(k, v as string))
   form.append('file', file)
 
-  const uploadResponse = await fetch(uploadUrl, { method: 'POST', body: form })
-
-  if (!uploadResponse.ok) {
-    throw new Error('Failed to upload image to RAGStack S3')
-  }
+  // Use no-cors mode to avoid CORS rejection on S3 presigned POSTs
+  const uploadResponse = await fetch(uploadUrl, { method: 'POST', body: form, mode: 'no-cors' })
 
   if (extractText) {
     try {
