@@ -67,22 +67,8 @@
     error = ''
 
     try {
-      // Upload letter content to RAGStack for search indexing
+      // Upload combined PDF to RAGStack for search indexing and as source document for chat
       let ragstackDocumentId: string | undefined
-      try {
-        const letterContent = `# ${event.detail.title}\n\nDate: ${event.detail.date}\nAuthor: ${event.detail.author || 'Unknown'}\n\n${event.detail.content}`
-        const letterFile = new File(
-          [letterContent],
-          `letter-${event.detail.date}.md`,
-          { type: 'text/markdown' },
-        )
-        await uploadDocumentToRagstack(letterFile)
-      }
-      catch (ragstackErr) {
-        console.warn('RAGStack markdown upload failed:', ragstackErr)
-      }
-
-      // Upload combined PDF to RAGStack so it can be served from the data bucket
       if (pdfUrl) {
         try {
           const pdfResponse = await fetch(pdfUrl)
