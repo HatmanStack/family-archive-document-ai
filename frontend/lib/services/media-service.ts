@@ -222,7 +222,7 @@ async function fetchAllDocuments(): Promise<RagDocument[]> {
 async function fetchDocuments(): Promise<RagDocument[]> {
   const docs = await fetchAllDocuments()
   return docs.filter(d =>
-    !/^(?:letter-)?\d{4}-\d{2}-\d{2}(?:[_\-.].+)?\.(?:md|pdf)$/.test(d.filename),
+    !/^letter-\d{4}-\d{2}-\d{2}(?:[_\-.].+)?\.(?:md|pdf)$/.test(d.filename),
   )
 }
 
