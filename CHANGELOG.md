@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Standardized published PDF filenames with a consistent `letter-` prefix
 - Refined routing regexes and tightened letter filename filtering
 - Resolved linting errors in media-service and gallery components
+- Updated sitemap XML namespaces to use `http` as per official specification
 
 ### Changed
 - Refined build artifact management for the API Lambda to reduce package size
