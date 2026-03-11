@@ -43,11 +43,18 @@
     }
   }
 
-  // Cleanup preview URL on component destroy
+  // Track background refresh timers for cleanup
+  const pendingRefreshTimeouts = new Set<ReturnType<typeof setTimeout>>()
+
+  // Cleanup preview URL and pending timers on component destroy
   onDestroy(() => {
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl)
     }
+    for (const id of pendingRefreshTimeouts) {
+      clearTimeout(id)
+    }
+    pendingRefreshTimeouts.clear()
   })
 
   // Search state
@@ -175,8 +182,14 @@
 
   // Determine which gallery section a file belongs to
   function sectionForFile(file: File): 'pictures' | 'videos' | 'documents' {
-    if (file.type.startsWith('image/')) return 'pictures'
-    if (file.type.startsWith('video/') || /\.(?:mp4|webm|mov|avi|mkv)$/i.test(file.name)) return 'videos'
+    if (file.type.startsWith('image/')) {
+      return 'pictures'
+    }
+
+    if (file.type.startsWith('video/') || /\.(?:mp4|webm|mov|avi|mkv)$/i.test(file.name)) {
+      return 'videos'
+    }
+
     return 'documents'
   }
 
@@ -210,7 +223,8 @@
       // RAGStack processes asynchronously, so the item may not appear immediately
       const delays = [5000, 15000, 30000]
       for (const delay of delays) {
-        setTimeout(async () => {
+        const timerId = setTimeout(async () => {
+          pendingRefreshTimeouts.delete(timerId)
           try {
             invalidateMediaCache()
             await loadMediaItems(selectedSection)
@@ -219,6 +233,7 @@
             console.error('Background refresh failed:', err)
           }
         }, delay)
+        pendingRefreshTimeouts.add(timerId)
       }
 
       // Auto-clear success message after 5 seconds

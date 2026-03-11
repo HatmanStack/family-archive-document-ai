@@ -45,7 +45,10 @@ export async function handle(
     }
     // Extract uploadId from /letters/process/{uploadId}
     const match = normalizedPath.match(/\/letters\/process\/([^/]+)/)
-    const uploadId = match ? match[1] : ''
+    const uploadId = match?.[1]
+    if (!uploadId) {
+      return errorResponse(400, 'Missing or invalid uploadId')
+    }
     return handleProcess(uploadId, requesterId)
   }
 
@@ -58,7 +61,10 @@ export async function handle(
     if (normalizedPath.endsWith('/publish') && method === 'POST') {
       // Extract draftId from /admin/drafts/{draftId}/publish
       const match = normalizedPath.match(/\/admin\/drafts\/([^/]+)\/publish/)
-      const draftId = match ? match[1] : ''
+      const draftId = match?.[1]
+      if (!draftId) {
+        return errorResponse(400, 'Missing or invalid draftId')
+      }
       return handlePublish(event, draftId, requesterId || '')
     }
 
@@ -69,14 +75,20 @@ export async function handle(
     if (method === 'GET') {
       // Extract draftId from /admin/drafts/{draftId}
       const match = normalizedPath.match(/\/admin\/drafts\/([^/]+)/)
-      const draftId = match ? match[1] : ''
+      const draftId = match?.[1]
+      if (!draftId) {
+        return errorResponse(400, 'Missing or invalid draftId')
+      }
       return handleGetDraft(draftId)
     }
 
     if (method === 'DELETE') {
       // Extract draftId from /admin/drafts/{draftId}
       const match = normalizedPath.match(/\/admin\/drafts\/([^/]+)/)
-      const draftId = match ? match[1] : ''
+      const draftId = match?.[1]
+      if (!draftId) {
+        return errorResponse(400, 'Missing or invalid draftId')
+      }
       return handleDeleteDraft(draftId)
     }
   }

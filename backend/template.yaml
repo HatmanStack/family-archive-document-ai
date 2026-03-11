@@ -898,12 +898,12 @@ Resources:
                   - s3:GetObject
                   - s3:PutObject
                 Resource:
-                  - !Sub 'arn:${AWS::Partition}:s3:::${UISourceBucket}-${AWS::AccountId}/*'
+                  - !Sub 'arn:${AWS::Partition}:s3:::${UISourceBucket}/*'
               - Effect: Allow
                 Action:
                   - s3:ListBucket
                 Resource:
-                  - !Sub 'arn:${AWS::Partition}:s3:::${UISourceBucket}-${AWS::AccountId}'
+                  - !Sub 'arn:${AWS::Partition}:s3:::${UISourceBucket}'
 
   FrontendBuilderFunction:
     Type: AWS::Serverless::Function
@@ -1098,7 +1098,7 @@ Resources:
             - Effect: Allow
               Action:
                 - s3:GetObject
-              Resource: !Sub 'arn:${AWS::Partition}:s3:::${UISourceBucket}-${AWS::AccountId}/*'
+              Resource: !Sub 'arn:${AWS::Partition}:s3:::${UISourceBucket}/*'
         - Statement:
             - Effect: Allow
               Action:

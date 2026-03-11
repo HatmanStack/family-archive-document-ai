@@ -18,7 +18,7 @@ const GEMINI_RETRY_CONFIG = {
   initialDelayMs: 1000,
   maxDelayMs: 8000,
   backoffMultiplier: 2,
-  timeoutMs: 60000, // 60 second timeout per attempt
+  timeoutMs: 50000, // 50 second timeout per attempt (3 attempts + backoff fits within 180s Lambda timeout)
   isRetryable: isTransientError,
   onRetry: (attempt: number, error: unknown, delayMs: number) => {
     const errorMsg = error instanceof Error ? error.message : String(error)
@@ -36,7 +36,7 @@ const GEMINI_RETRY_CONFIG = {
  * full transcription, summary, and topic tags.
  *
  * Includes retry logic with exponential backoff for transient failures
- * and a 30-second timeout per attempt.
+ * and a 50-second timeout per attempt.
  */
 export async function parseLetter(pdfBuffer: Buffer): Promise<ParsedLetterData> {
   const apiKey = getGeminiApiKey()

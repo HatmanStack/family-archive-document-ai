@@ -252,5 +252,5 @@ Pricing as of 2026. Check current rates: https://aws.amazon.com/pricing/
 - **Auth:** Cognito
 - **API:** API Gateway (HTTP API)
 - **Email:** SES
-- **AI:** Google Gemini 3.1 Pro Preview (letter transcription)
+- **AI:** Google Gemini 3.1 Flash Lite Preview (letter transcription)
 - **Frontend:** SvelteKit 2, Svelte 4, DaisyUI, TailwindCSS
