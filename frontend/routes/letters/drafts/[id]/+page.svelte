@@ -73,7 +73,7 @@
         try {
           const pdfResponse = await fetch(pdfUrl)
           const pdfBlob = await pdfResponse.blob()
-          const pdfFile = new File([pdfBlob], `${event.detail.date}.pdf`, { type: 'application/pdf' })
+          const pdfFile = new File([pdfBlob], `letter-${event.detail.date}.pdf`, { type: 'application/pdf' })
           ragstackDocumentId = await uploadDocumentToRagstack(pdfFile)
         }
         catch (pdfErr) {
