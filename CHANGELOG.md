@@ -5,6 +5,22 @@ All notable changes to Family Archive - Document AI will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-03-10
+
+### Added
+- Upgraded AI capabilities to Google Gemini 3.1 for enhanced letter processing
+- New changelog-driven release workflow for CI/CD automation
+
+### Fixed
+- Improved SPA stability and resolved routing 404s for better frontend reliability
+- Prevented duplicate markdown uploads to RAGStack during letter publication
+- Standardized published PDF filenames with a consistent `letter-` prefix
+- Refined routing regexes and tightened letter filename filtering
+- Resolved linting errors in media-service and gallery components
+
+### Changed
+- Refined build artifact management for the API Lambda to reduce package size
+
 ## [1.0.2] - 2026-02-04
 
 ### Added
