@@ -96,8 +96,9 @@ export function validateAndNormalizeParsedData(
     author: safeToString(raw.author),
     recipient: safeToString(raw.recipient),
     location: safeToString(raw.location),
-    // Map 'content' from Gemini to 'transcription' in our schema
+    // Map 'content' from Gemini to both 'transcription' (legacy/internal) and 'content' (API/frontend)
     transcription: safeToString(raw.content),
+    content: safeToString(raw.content),
     summary: safeToString(raw.summary),
     tags: toStringArray(raw.tags),
   }

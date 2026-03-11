@@ -203,9 +203,9 @@ async function fetchImages(nextToken: string | null = null): Promise<{ items: Ra
 }
 
 /**
- * Fetch documents from RAGStack (filters to INDEXED status, excludes letter files)
+ * Fetch all indexed documents from RAGStack
  */
-async function fetchDocuments(): Promise<RagDocument[]> {
+async function fetchAllDocuments(): Promise<RagDocument[]> {
   const data = await ragstackQuery(`query {
     listDocuments {
       items { documentId filename type mediaType inputS3Uri previewUrl status createdAt }
@@ -213,9 +213,16 @@ async function fetchDocuments(): Promise<RagDocument[]> {
   }`) as { listDocuments: { items: RagDocument[] } }
 
   const allItems = data.listDocuments.items || []
-  return allItems.filter(d =>
-    d.status === 'INDEXED'
-    && !/^\d{4}-\d{2}-\d{2}(?:[_\-.].+)?\.(?:md|pdf)$/.test(d.filename),
+  return allItems.filter(d => d.status === 'INDEXED')
+}
+
+/**
+ * Fetch documents for gallery display (excludes letter files)
+ */
+async function fetchDocuments(): Promise<RagDocument[]> {
+  const docs = await fetchAllDocuments()
+  return docs.filter(d =>
+    !/^(?:letter-)?\d{4}-\d{2}-\d{2}(?:[_\-.].+)?\.(?:md|pdf)$/.test(d.filename),
   )
 }
 
@@ -371,7 +378,7 @@ export async function resolveSignedUrl(item: MediaItem): Promise<string> {
   if (item.signedUrl)
     return item.signedUrl
 
-  const docs = cache.documents || await fetchDocuments()
+  const docs = cache.documents || await fetchAllDocuments()
   const doc = docs.find(d => d.documentId === item.id)
   if (!doc)
     throw new Error(`Document ${item.id} not found`)

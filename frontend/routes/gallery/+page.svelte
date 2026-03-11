@@ -43,11 +43,18 @@
     }
   }
 
-  // Cleanup preview URL on component destroy
+  // Track background refresh timers for cleanup
+  const pendingRefreshTimeouts = new Set<ReturnType<typeof setTimeout>>()
+
+  // Cleanup preview URL and pending timers on component destroy
   onDestroy(() => {
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl)
     }
+    for (const id of pendingRefreshTimeouts) {
+      clearTimeout(id)
+    }
+    pendingRefreshTimeouts.clear()
   })
 
   // Search state
@@ -173,11 +180,26 @@
     extractText = false
   }
 
+  // Determine which gallery section a file belongs to
+  function sectionForFile(file: File): 'pictures' | 'videos' | 'documents' {
+    if (file.type.startsWith('image/')) {
+      return 'pictures'
+    }
+
+    if (file.type.startsWith('video/') || /\.(?:mp4|webm|mov|avi|mkv)$/i.test(file.name)) {
+      return 'videos'
+    }
+
+    return 'documents'
+  }
+
   // Perform the actual upload
   async function performUpload(file: File, caption?: string, shouldExtractText = false) {
     uploading = true
     uploadError = ''
     uploadSuccess = ''
+
+    const targetSection = sectionForFile(file)
 
     try {
       // Upload to RAGStack (handles indexing and storage)
@@ -186,27 +208,32 @@
       // Show success message immediately
       uploadSuccess = `"${file.name}" uploaded successfully`
 
-      // Clear caches so fresh data is fetched
+      // Switch to the section matching the uploaded file type
+      if (selectedSection !== targetSection) {
+        selectedSection = targetSection
+      }
+
+      // Clear caches and refresh the current section immediately
       mediaItemsLoaded = false
       allMediaItems.clear()
       invalidateMediaCache()
+      await loadMediaItems(targetSection)
 
-      // Poll for the new item - RAGStack processes asynchronously
-      const maxAttempts = 3
-      const pollDelay = 1500
-      for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        if (attempt > 0) {
-          await new Promise(resolve => setTimeout(resolve, pollDelay))
-          // Invalidate again before each retry to force fresh fetch
-          invalidateMediaCache()
-        }
-        try {
-          // Fetch fresh and update UI via onFreshData callback
-          await loadMediaItems(selectedSection)
-        }
-        catch (err) {
-          console.error('Error refreshing media after upload:', err)
-        }
+      // Schedule background refreshes to catch newly indexed items
+      // RAGStack processes asynchronously, so the item may not appear immediately
+      const delays = [5000, 15000, 30000]
+      for (const delay of delays) {
+        const timerId = setTimeout(async () => {
+          pendingRefreshTimeouts.delete(timerId)
+          try {
+            invalidateMediaCache()
+            await loadMediaItems(selectedSection)
+          }
+          catch (err) {
+            console.error('Background refresh failed:', err)
+          }
+        }, delay)
+        pendingRefreshTimeouts.add(timerId)
       }
 
       // Auto-clear success message after 5 seconds

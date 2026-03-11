@@ -60,17 +60,17 @@ package_frontend_source() {
     local s3_key="frontend.zip"
     local zip_file="/tmp/frontend-source.zip"
 
-    echo "Packaging frontend source..."
+    echo "Packaging frontend source..." >&2
 
     # Ship frontend/ directory and amplify.yml - Amplify will install deps and build
     (cd .. && zip -r "$zip_file" frontend amplify.yml \
         -x "frontend/node_modules/*" \
         -x "frontend/.svelte-kit/*" \
         -x "frontend/build/*" \
-        -x "frontend/.env*")
+        -x "frontend/.env*") >&2
 
-    echo "  Uploading to s3://${bucket_name}/${s3_key}..."
-    aws s3 cp "$zip_file" "s3://${bucket_name}/${s3_key}" --region "$region"
+    echo "  Uploading to s3://${bucket_name}/${s3_key}..." >&2
+    aws s3 cp "$zip_file" "s3://${bucket_name}/${s3_key}" --region "$region" >&2
     rm -f "$zip_file"
 
     echo "$s3_key"

@@ -13,6 +13,7 @@ export interface ParsedLetterData {
   recipient: string | null
   location: string | null
   transcription: string | null
+  content: string | null
   summary: string | null
   tags: string[]
 }
