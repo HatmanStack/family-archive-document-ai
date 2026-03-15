@@ -95,7 +95,6 @@
         checkForItemParam()
     }
     catch (err) {
-      console.error(`Error loading ${section}:`, err)
       error = err instanceof Error ? err.message : `Failed to load ${section}`
       if (!loadMore)
         mediaItems = []
@@ -229,8 +228,8 @@
             invalidateMediaCache()
             await loadMediaItems(selectedSection)
           }
-          catch (err) {
-            console.error('Background refresh failed:', err)
+          catch {
+            // Background refresh failed silently — non-critical
           }
         }, delay)
         pendingRefreshTimeouts.add(timerId)
@@ -242,7 +241,6 @@
       }, 5000)
     }
     catch (err) {
-      console.error('Upload error:', err)
       uploadError = err instanceof Error ? err.message : 'Upload failed'
     }
     finally {
@@ -268,8 +266,8 @@
         item.signedUrl = url
         selectedItem = { ...item }
       }
-      catch (err) {
-        console.error('Failed to resolve signed URL:', err)
+      catch {
+        // Signed URL resolution failed — item will show without fresh URL
       }
     }
   }
@@ -297,8 +295,8 @@
         selectedItem = { ...item }
       }
     }
-    catch (err) {
-      console.error('Failed to resolve URL for search result:', err)
+    catch {
+      // URL resolution for search result failed — non-critical
     }
   }
 
@@ -359,8 +357,8 @@
             selectedItem = { ...newItem }
           }
         }
-        catch (err) {
-          console.error('Failed to resolve URL for navigated item:', err)
+        catch {
+          // URL resolution for navigated item failed — non-critical
         }
       }
     }
@@ -434,8 +432,8 @@ return
       }
       mediaItemsLoaded = true
     }
- catch (err) {
-      console.error('Failed to load media items for search:', err)
+ catch {
+      // Media items load for search failed — search will proceed without thumbnails
     }
   }
 
@@ -488,7 +486,6 @@ return
       searchResults = response.results
     }
  catch (err) {
-      console.error('Search error:', err)
       searchError = err instanceof Error ? err.message : 'Search failed'
       searchResults = []
     }
@@ -545,10 +542,8 @@ return
     if (browser) {
       // If Cognito is not configured, show content in development mode
       if (!data.cognitoConfigured) {
-        console.warn('⚠️  Cognito not configured - running in development mode')
         // In development mode, still try to load media but handle auth errors gracefully
-        loadMediaItems(selectedSection).catch((err) => {
-          console.warn('Failed to load media in development mode:', err)
+        loadMediaItems(selectedSection).catch(() => {
           error = 'Gallery requires authentication to be configured'
         })
         return
