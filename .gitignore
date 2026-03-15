@@ -5,10 +5,12 @@ __pycache__/
 
 # build output
 build
+dist/
 static
 .svelte-kit
 .netlify
 .vercel
+*.js.map
 
 # dependencies
 node_modules
@@ -47,6 +49,7 @@ pnpm-debug.log*
 .vscode/
 *.swp
 *.swo
+*~
 
 # Testing
 playwright-report/

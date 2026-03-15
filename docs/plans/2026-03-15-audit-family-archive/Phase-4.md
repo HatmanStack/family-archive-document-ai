@@ -211,9 +211,9 @@ chore(ci): add commitlint for conventional commit enforcement
 3. Do NOT remove any existing patterns — they may be there for a reason.
 
 **Verification Checklist:**
-- [ ] `.gitignore` has Python bytecache patterns
-- [ ] No obvious gaps remain
-- [ ] `git status` does not show newly ignored files that should be tracked
+- [x] `.gitignore` has Python bytecache patterns
+- [x] No obvious gaps remain
+- [x] `git status` does not show newly ignored files that should be tracked
 
 **Testing Instructions:**
 - Run `git status` — should show no unexpected changes.
