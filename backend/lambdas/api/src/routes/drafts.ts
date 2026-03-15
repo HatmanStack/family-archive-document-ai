@@ -6,7 +6,7 @@ import type { RequestContext } from '../types'
 import { PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda'
-import { GetCommand, DeleteCommand, ScanCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
+import { GetCommand, DeleteCommand, QueryCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { v4 as uuidv4 } from 'uuid'
 import { docClient, TABLE_NAME, ARCHIVE_BUCKET, S3_PREFIXES } from '../lib/database'
 import { keys } from '../lib/keys'
@@ -169,10 +169,11 @@ async function handleProcess(
 
 async function handleListDrafts(requestOrigin?: string): Promise<APIGatewayProxyResult> {
   try {
-    const command = new ScanCommand({
+    const command = new QueryCommand({
       TableName: TABLE_NAME,
-      FilterExpression: 'begins_with(PK, :pk)',
-      ExpressionAttributeValues: { ':pk': 'DRAFT#' },
+      IndexName: 'GSI1',
+      KeyConditionExpression: 'GSI1PK = :pk',
+      ExpressionAttributeValues: { ':pk': 'DRAFTS' },
     })
 
     const result = await docClient.send(command)
