@@ -3,7 +3,7 @@
  */
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext } from '../types'
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
+import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { GetCommand, PutCommand, QueryCommand, UpdateCommand, DeleteCommand, BatchGetCommand, type QueryCommandInput } from '@aws-sdk/lib-dynamodb'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { v4 as uuidv4 } from 'uuid'
@@ -11,13 +11,9 @@ import { docClient, TABLE_NAME, ARCHIVE_BUCKET, batchWriteWithRetry } from '../l
 import { keys, PREFIX } from '../lib/keys'
 import { successResponse, errorResponse } from '../lib/responses'
 import { log } from '../lib/logger'
-import { signPhotoUrl } from '../lib/s3-utils'
+import { s3Client, signPhotoUrl } from '../lib/s3-utils'
 import { toError } from '../lib/errors'
 import { validatePaginationKey, parseRequestBody } from '../lib/validation'
-
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'us-west-2',
-})
 
 interface Attachment {
   s3Key?: string

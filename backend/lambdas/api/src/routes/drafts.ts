@@ -3,7 +3,7 @@
  */
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext } from '../types'
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda'
 import { GetCommand, DeleteCommand, ScanCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
@@ -13,9 +13,8 @@ import { keys } from '../lib/keys'
 import { successResponse, errorResponse } from '../lib/responses'
 import { log } from '../lib/logger'
 import { parseRequestBody } from '../lib/validation'
+import { s3Client } from '../lib/s3-utils'
 import { toError } from '../lib/errors'
-
-const s3Client = new S3Client({})
 const lambdaClient = new LambdaClient({})
 
 /**

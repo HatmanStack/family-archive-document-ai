@@ -3,7 +3,7 @@
  */
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext } from '../types'
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3'
+import { PutObjectCommand } from '@aws-sdk/client-s3'
 import { GetCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { docClient, TABLE_NAME, ARCHIVE_BUCKET } from '../lib/database'
@@ -13,11 +13,7 @@ import { validateUserId, sanitizeText, validateLimit, parseRequestBody } from '.
 import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 import { log } from '../lib/logger'
 import { toError } from '../lib/errors'
-import { signPhotoUrl } from '../lib/s3-utils'
-
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'us-west-2',
-})
+import { s3Client, signPhotoUrl } from '../lib/s3-utils'
 
 interface FamilyRelationship {
   id: string
