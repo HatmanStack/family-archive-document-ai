@@ -56,11 +56,11 @@ Remove dead code, build artifacts, and unused files from the repository. This ph
 6. Run `npm run build` to confirm the frontend build is unaffected.
 
 **Verification Checklist:**
-- [ ] All 14 JS files are deleted
-- [ ] `backend/lambdas/api/lib/` directory no longer exists (or is empty)
-- [ ] `backend/lambdas/api/repositories/` directory no longer exists (or is empty)
-- [ ] `npm test` passes
-- [ ] `npm run build` passes
+- [x] All 14 JS files are deleted
+- [x] `backend/lambdas/api/lib/` directory no longer exists (or is empty)
+- [x] `backend/lambdas/api/repositories/` directory no longer exists (or is empty)
+- [x] `npm test` passes
+- [ ] `npm run build` passes (pre-existing failure: missing env vars)
 
 **Testing Instructions:**
 - No new tests needed. This is a deletion task.
@@ -101,9 +101,9 @@ chore(api): remove legacy JavaScript files shadowing TypeScript source
 3. Verify the file is no longer tracked.
 
 **Verification Checklist:**
-- [ ] `.gitignore` contains `__pycache__/` and `*.pyc` patterns
-- [ ] `git status` shows the `__pycache__` removal staged
-- [ ] No `.pyc` files appear in `git ls-files`
+- [x] `.gitignore` contains `__pycache__/` and `*.pyc` patterns
+- [x] `git status` shows the `__pycache__` removal staged
+- [x] No `.pyc` files appear in `git ls-files`
 
 **Testing Instructions:**
 - No tests needed. This is a git hygiene task.
@@ -138,9 +138,9 @@ chore: remove committed __pycache__ and add Python bytecache to .gitignore
 4. Do NOT add a logging framework or new dependencies. This is subtractive only.
 
 **Verification Checklist:**
-- [ ] No `console.error` or `console.warn` calls remain in `frontend/routes/gallery/+page.svelte`
-- [ ] `npm run lint` passes with zero warnings
-- [ ] `npm run build` passes
+- [x] No `console.error` or `console.warn` calls remain in `frontend/routes/gallery/+page.svelte`
+- [x] `npm run lint` passes with zero warnings
+- [ ] `npm run build` passes (pre-existing failure: missing env vars)
 
 **Testing Instructions:**
 - No unit tests (Svelte component, no existing test infrastructure for it).
