@@ -68,10 +68,6 @@ export async function uploadDocumentToRagstack(file: File): Promise<string> {
   Object.entries(parsedFields).forEach(([k, v]) => form.append(k, v as string))
   form.append('file', file)
 
-  // Use no-cors mode: S3 presigned POSTs succeed at the server level but
-  // may not return CORS headers, causing fetch() to reject. The opaque
-  // response (type "opaque", status 0) is expected and means the request
-  // was sent successfully.
   // Use no-cors: S3 presigned POSTs may not return CORS headers.
   // If fetch didn't throw, the upload was sent.
   await fetch(uploadUrl, { method: 'POST', body: form, mode: 'no-cors' })
