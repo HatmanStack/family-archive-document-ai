@@ -302,7 +302,7 @@ refactor: Extract validation utilities
 
 ## CI/CD
 
-GitHub Actions runs on push/PR to main:
+GitHub Actions runs on push/PR to main and develop:
 
 1. **Lint**: ESLint with `--max-warnings 0`
 2. **Type Check**: `svelte-check`

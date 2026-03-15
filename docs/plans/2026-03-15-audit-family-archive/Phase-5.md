@@ -192,7 +192,7 @@ docs: update architecture routing and CLAUDE.md key prefixes
 2. Change "GitHub Actions runs on push/PR to main" to "GitHub Actions runs on push/PR to main and develop".
 
 **Verification Checklist:**
-- [ ] DEVELOPMENT.md correctly states CI triggers on main AND develop
+- [x] DEVELOPMENT.md correctly states CI triggers on main AND develop
 
 **Commit Message Template:**
 ```
