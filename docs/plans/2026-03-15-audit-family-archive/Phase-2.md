@@ -53,10 +53,10 @@ Fix the three CRITICAL operational issues and the HIGH-priority error handling g
 **Reference:** Look at `backend/lambdas/api/src/routes/letters.ts` for the correct pattern — it destructures `requestOrigin` at line 34 and passes it through every helper function.
 
 **Verification Checklist:**
-- [ ] `requestOrigin` is destructured from context in `handle()`
-- [ ] Every `successResponse()` call in the file has `requestOrigin` as its last argument
-- [ ] Every `errorResponse()` call in the file has `requestOrigin` as its last argument
-- [ ] `npm run lint` passes
+- [x] `requestOrigin` is destructured from context in `handle()`
+- [x] Every `successResponse()` call in the file has `requestOrigin` as its last argument
+- [x] Every `errorResponse()` call in the file has `requestOrigin` as its last argument
+- [x] `npm run lint` passes
 
 **Testing Instructions:**
 - No new unit test file yet (route handler tests are added in Phase 3). This is a mechanical fix.
@@ -92,9 +92,9 @@ fix(messages): pass requestOrigin to all CORS response helpers
 **Reference:** Same pattern as `letters.ts`.
 
 **Verification Checklist:**
-- [ ] `requestOrigin` is destructured from context
-- [ ] Every response helper call includes `requestOrigin`
-- [ ] `npm run lint` passes
+- [x] `requestOrigin` is destructured from context
+- [x] Every response helper call includes `requestOrigin`
+- [x] `npm run lint` passes
 
 **Testing Instructions:**
 - Mechanical fix. Verify by text search.
@@ -126,9 +126,9 @@ fix(comments): pass requestOrigin to all CORS response helpers
 3. Thread through internal functions.
 
 **Verification Checklist:**
-- [ ] `requestOrigin` is destructured from context
-- [ ] Every response helper call includes `requestOrigin`
-- [ ] `npm run lint` passes
+- [x] `requestOrigin` is destructured from context
+- [x] Every response helper call includes `requestOrigin`
+- [x] `npm run lint` passes
 
 **Commit Message Template:**
 ```
@@ -154,9 +154,9 @@ fix(reactions): pass requestOrigin to all CORS response helpers
 3. Thread through internal functions (`handleUploadRequest`, `handleProcess`, `handleListDrafts`, `handleGetDraft`, etc.).
 
 **Verification Checklist:**
-- [ ] `requestOrigin` is destructured from context
-- [ ] Every response helper call includes `requestOrigin`
-- [ ] `npm run lint` passes
+- [x] `requestOrigin` is destructured from context
+- [x] Every response helper call includes `requestOrigin`
+- [x] `npm run lint` passes
 
 **Commit Message Template:**
 ```
@@ -216,11 +216,11 @@ For `messages.ts` (line 147-149 in `getMessages()`):
    ```
 
 **Verification Checklist:**
-- [ ] No raw `JSON.parse(Buffer.from(..., 'base64')...)` remains in `letters.ts` for pagination
-- [ ] No raw `JSON.parse(Buffer.from(..., 'base64')...)` remains in `messages.ts` for pagination
-- [ ] Both routes import and use `validatePaginationKey`
-- [ ] Invalid cursors return 400 (not 500)
-- [ ] `npm run lint` passes
+- [x] No raw `JSON.parse(Buffer.from(..., 'base64')...)` remains in `letters.ts` for pagination
+- [x] No raw `JSON.parse(Buffer.from(..., 'base64')...)` remains in `messages.ts` for pagination
+- [x] Both routes import and use `validatePaginationKey`
+- [x] Invalid cursors return 400 (not 500)
+- [x] `npm run lint` passes
 
 **Testing Instructions:**
 - Write a new test file `tests/unit/pagination-validation.test.ts` that tests:
@@ -295,11 +295,11 @@ Apply this pattern to all 6 locations:
 6. `drafts.ts:101` — `handleUploadRequest()`
 
 **Verification Checklist:**
-- [ ] `parseRequestBody` exists in `validation.ts`
-- [ ] All 6 locations use `parseRequestBody` instead of raw `JSON.parse`
-- [ ] Each location returns `errorResponse(400, ...)` with `requestOrigin` on parse failure
-- [ ] No unguarded `JSON.parse(event.body` remains in any route handler
-- [ ] `npm run lint` passes
+- [x] `parseRequestBody` exists in `validation.ts`
+- [x] All 6 locations use `parseRequestBody` instead of raw `JSON.parse`
+- [x] Each location returns `errorResponse(400, ...)` with `requestOrigin` on parse failure
+- [x] No unguarded `JSON.parse(event.body` remains in any route handler
+- [x] `npm run lint` passes
 
 **Testing Instructions:**
 - Add tests to `tests/unit/pagination-validation.test.ts` (or a new `tests/unit/validation.test.ts`):
@@ -350,11 +350,11 @@ fix(api): guard all JSON.parse(event.body) calls with try/catch
 **Alternative for notification-processor:** Since notification-processor is JavaScript and a separate deploy unit, the cleanest short-term fix is to add a comment noting the shared implementation exists in the API Lambda's `validation.ts`. True deduplication requires either a shared npm workspace package or migrating notification-processor to TypeScript (deferred to a future scope).
 
 **Verification Checklist:**
-- [ ] `escapeHtml` is exported from `backend/lambdas/api/src/lib/validation.ts`
-- [ ] `contact.ts` imports from shared location (no local copy)
-- [ ] `notification-processor/index.js` has a comment referencing the canonical implementation
-- [ ] `npm run lint` passes
-- [ ] `npm test` passes
+- [x] `escapeHtml` is exported from `backend/lambdas/api/src/lib/validation.ts`
+- [x] `contact.ts` imports from shared location (no local copy)
+- [x] `notification-processor/index.js` has a comment referencing the canonical implementation
+- [x] `npm run lint` passes
+- [x] `npm test` passes
 
 **Testing Instructions:**
 - Add to `tests/unit/validation.test.ts`:
@@ -395,9 +395,9 @@ refactor(api): extract escapeHtml to shared validation utility
 3. Do NOT change catch blocks that already use `toError()` (e.g., messages.ts lines 192-195 already do this correctly).
 
 **Verification Checklist:**
-- [ ] No `(err as Error)` or `(e as Error)` casts remain in route handler files
-- [ ] All catch blocks use `toError()` for error conversion
-- [ ] `npm run lint` passes
+- [x] No `(err as Error)` or `(e as Error)` casts remain in route handler files
+- [x] All catch blocks use `toError()` for error conversion
+- [x] `npm run lint` passes
 
 **Testing Instructions:**
 - No new tests needed. The `toError()` function already has thorough tests in `tests/unit/errors.test.js`.
@@ -464,10 +464,10 @@ async function batchWriteWithRetry(
    - Line 472-476: Same pattern → `await batchWriteWithRetry(deleteOps, TABLE_NAME)`
 
 **Verification Checklist:**
-- [ ] Both BatchWrite loops in messages.ts use retry logic
-- [ ] UnprocessedItems are detected and retried with backoff
-- [ ] Remaining unprocessed items after max retries are logged (not silently dropped)
-- [ ] `npm run lint` passes
+- [x] Both BatchWrite loops in messages.ts use retry logic
+- [x] UnprocessedItems are detected and retried with backoff
+- [x] Remaining unprocessed items after max retries are logged (not silently dropped)
+- [x] `npm run lint` passes
 
 **Testing Instructions:**
 - Write a test in `tests/unit/batch-write-retry.test.ts`:
