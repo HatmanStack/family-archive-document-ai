@@ -4,21 +4,16 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext } from '../types'
 import { GetCommand, PutCommand, QueryCommand, UpdateCommand, type QueryCommandInput } from '@aws-sdk/lib-dynamodb'
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
+import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { docClient, TABLE_NAME, ARCHIVE_BUCKET } from '../lib/database'
-
-const RAGSTACK_BUCKET = process.env.RAGSTACK_BUCKET || ''
-const RAGSTACK_REGION = process.env.RAGSTACK_REGION || 'us-east-1'
-const ragstackS3Client = new S3Client({ region: RAGSTACK_REGION })
+import { s3Client, ragstackS3Client, RAGSTACK_BUCKET } from '../lib/s3-utils'
 import { PRESIGNED_URL_EXPIRY_SECONDS } from '../lib/constants'
 import { keys } from '../lib/keys'
 import { successResponse, errorResponse } from '../lib/responses'
 import { log } from '../lib/logger'
 import { validatePaginationKey } from '../lib/validation'
 import { toError } from '../lib/errors'
-
-const s3Client = new S3Client({})
 
 function isValidDate(date: string | undefined): boolean {
   if (!date || typeof date !== 'string') return false

@@ -3,18 +3,14 @@
  */
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext } from '../types'
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
+import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { ARCHIVE_BUCKET } from '../lib/database'
+import { s3Client, ragstackS3Client, RAGSTACK_BUCKET } from '../lib/s3-utils'
 import { PRESIGNED_URL_EXPIRY_SECONDS } from '../lib/constants'
 import { successResponse, errorResponse } from '../lib/responses'
 import { log } from '../lib/logger'
 import { toError } from '../lib/errors'
-
-const s3Client = new S3Client({})
-const RAGSTACK_BUCKET = process.env.RAGSTACK_BUCKET || ''
-const RAGSTACK_REGION = process.env.RAGSTACK_REGION || 'us-east-1'
-const ragstackS3Client = new S3Client({ region: RAGSTACK_REGION })
 
 /**
  * Main media route handler
