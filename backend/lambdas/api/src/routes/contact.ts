@@ -6,20 +6,11 @@ import type { RequestContext } from '../types'
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses'
 import { successResponse, errorResponse } from '../lib/responses'
 import { log } from '../lib/logger'
+import { escapeHtml } from '../lib/validation'
 
 const sesClient = new SESClient({})
 const SES_FROM_EMAIL = process.env.SES_FROM_EMAIL || ''
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || ''
-
-function escapeHtml(text: string): string {
-  if (!text) return ''
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
-}
 
 /**
  * Main contact route handler

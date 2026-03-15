@@ -2,7 +2,7 @@
  * Tests for validation utilities
  */
 import { describe, it, expect } from 'vitest'
-import { validatePaginationKey, parseRequestBody } from '../../backend/lambdas/api/src/lib/validation'
+import { validatePaginationKey, parseRequestBody, escapeHtml } from '../../backend/lambdas/api/src/lib/validation'
 
 describe('validatePaginationKey', () => {
   it('returns valid for null/undefined/empty input (no pagination)', () => {
@@ -103,5 +103,30 @@ describe('parseRequestBody', () => {
     const input = '{"data":{"nested":true},"list":[1,2,3]}'
     const result = parseRequestBody(input)
     expect(result).toEqual({ data: { nested: true }, list: [1, 2, 3] })
+  })
+})
+
+describe('escapeHtml', () => {
+  it('escapes < > & " and single quote', () => {
+    expect(escapeHtml('<script>')).toBe('&lt;script&gt;')
+    expect(escapeHtml('a & b')).toBe('a &amp; b')
+    expect(escapeHtml('"hello"')).toBe('&quot;hello&quot;')
+    expect(escapeHtml("it's")).toBe('it&#039;s')
+  })
+
+  it('returns empty string for falsy input', () => {
+    expect(escapeHtml('')).toBe('')
+    expect(escapeHtml(null as unknown as string)).toBe('')
+    expect(escapeHtml(undefined as unknown as string)).toBe('')
+  })
+
+  it('handles string with all special characters', () => {
+    const input = '<div class="test">&amp; it\'s done</div>'
+    const expected = '&lt;div class=&quot;test&quot;&gt;&amp;amp; it&#039;s done&lt;/div&gt;'
+    expect(escapeHtml(input)).toBe(expected)
+  })
+
+  it('returns unmodified string when no special characters', () => {
+    expect(escapeHtml('hello world 123')).toBe('hello world 123')
   })
 })

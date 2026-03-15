@@ -209,6 +209,8 @@ async function processCommentNotification(newImage) {
 
 }
 
+// Canonical implementation: backend/lambdas/api/src/lib/validation.ts#escapeHtml
+// TODO: Deduplicate when notification-processor is migrated to TypeScript or a shared package is created
 function escapeHtml(text) {
   if (!text) return ''
   return text
