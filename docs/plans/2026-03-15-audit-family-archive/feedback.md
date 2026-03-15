@@ -15,3 +15,10 @@
 - **Resolution:** Description of what was done
 - **Resolved in:** Phase-N, Task M (or commit ref)
 -->
+
+### FB-001 [CODE_REVIEW] media.ts and contact.ts still missing requestOrigin in all response calls
+- **Phase/Task:** Phase-2, Tasks 1-4 (CORS fixes)
+- **Severity:** BLOCKING
+- **Detail:** The Phase 2 verification criteria states: "Search all route handler files for `successResponse(` without `requestOrigin` — should find NONE" and "errorResponse(` without `requestOrigin` — should find NONE." However, `media.ts` (15 response calls) and `contact.ts` (8 response calls) were not included in Tasks 1-4 and still have every `successResponse()` and `errorResponse()` call missing the `requestOrigin` parameter. Both files were touched during Phase 2 (media.ts in commit d87af31 for toError, contact.ts in commit 1f6725b for escapeHtml), so the CORS gap should have been noticed and addressed. Should `requestOrigin` not be destructured from context and threaded through these two route handlers the same way it was done for messages, comments, reactions, and drafts?
+- **Resolution:** Destructured `requestOrigin` from `RequestContext` in both `media.ts` and `contact.ts`. Threaded `requestOrigin` through all internal functions and passed it as the last argument to every `successResponse()` and `errorResponse()` call in both files. In `media.ts`: destructured in `handle()`, threaded to `getDownloadUrl()`, applied to all 15 response calls. In `contact.ts`: changed `_context` to `context`, destructured `requestOrigin`, applied to all 8 response calls.
+- **Resolved in:** Phase-2, Tasks 1-4 (CORS fix follow-up)

@@ -23,10 +23,10 @@ export async function handle(
   event: APIGatewayProxyEvent,
   context: RequestContext
 ): Promise<APIGatewayProxyResult> {
-  const { requesterId } = context
+  const { requesterId, requestOrigin } = context
 
   if (!requesterId) {
-    return errorResponse(401, 'Unauthorized: Missing user context')
+    return errorResponse(401, 'Unauthorized: Missing user context', requestOrigin)
   }
 
   const method = event.httpMethod
@@ -34,18 +34,18 @@ export async function handle(
   const normalizedResource = resource.replace(/^\/v1/, '')
 
   if (method === 'GET' && normalizedResource === '/download/presigned-url') {
-    return getDownloadUrl(event)
+    return getDownloadUrl(event, requestOrigin)
   }
 
-  return errorResponse(404, 'Route not found')
+  return errorResponse(404, 'Route not found', requestOrigin)
 }
 
-async function getDownloadUrl(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
+async function getDownloadUrl(event: APIGatewayProxyEvent, requestOrigin?: string): Promise<APIGatewayProxyResult> {
   const rawKey = event.queryStringParameters?.key
   const bucket = event.queryStringParameters?.bucket
 
   if (!rawKey) {
-    return errorResponse(400, 'Missing key parameter')
+    return errorResponse(400, 'Missing key parameter', requestOrigin)
   }
 
   // Decode the key to catch URL-encoded path traversal attempts (e.g., %2e%2e)
@@ -53,30 +53,30 @@ async function getDownloadUrl(event: APIGatewayProxyEvent): Promise<APIGatewayPr
   try {
     key = decodeURIComponent(rawKey)
   } catch {
-    return errorResponse(400, 'Invalid key encoding')
+    return errorResponse(400, 'Invalid key encoding', requestOrigin)
   }
 
   if (key.includes('..')) {
-    return errorResponse(400, 'Invalid key')
+    return errorResponse(400, 'Invalid key', requestOrigin)
   }
 
   // Determine which bucket to use
   let targetBucket: string
   if (bucket === 'ragstack') {
     if (!RAGSTACK_BUCKET) {
-      return errorResponse(500, 'RAGStack storage is not configured')
+      return errorResponse(500, 'RAGStack storage is not configured', requestOrigin)
     }
     // RAGStack bucket: allow input/ and content/ prefixes
     const allowedPrefixes = ['input/', 'content/']
     if (!allowedPrefixes.some(prefix => key.startsWith(prefix))) {
-      return errorResponse(403, 'Access denied to this resource')
+      return errorResponse(403, 'Access denied to this resource', requestOrigin)
     }
     targetBucket = RAGSTACK_BUCKET
   } else {
     // Archive bucket: allow media/, letters/, temp/ prefixes
     const allowedPrefixes = ['media/', 'letters/', 'temp/']
     if (!allowedPrefixes.some(prefix => key.startsWith(prefix))) {
-      return errorResponse(403, 'Access denied to this resource')
+      return errorResponse(403, 'Access denied to this resource', requestOrigin)
     }
     targetBucket = ARCHIVE_BUCKET
   }
@@ -92,9 +92,9 @@ async function getDownloadUrl(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     return successResponse({
       downloadUrl,
       filename: key.split('/').pop(),
-    })
+    }, 200, requestOrigin)
   } catch (error) {
     log.error('download_url_error', { error: toError(error).message })
-    return errorResponse(500, 'Failed to generate download URL')
+    return errorResponse(500, 'Failed to generate download URL', requestOrigin)
   }
 }
