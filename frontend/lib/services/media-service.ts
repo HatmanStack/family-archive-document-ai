@@ -62,24 +62,32 @@ async function ragstackQuery(query: string, variables: Record<string, unknown> =
     throw new Error('RAGStack not configured')
   }
 
-  const response = await fetch(PUBLIC_RAGSTACK_GRAPHQL_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': PUBLIC_RAGSTACK_API_KEY,
-    },
-    body: JSON.stringify({ query, variables }),
-  })
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
 
-  if (!response.ok) {
-    throw new Error(`RAGStack request failed: ${response.status}`)
-  }
+  try {
+    const response = await fetch(PUBLIC_RAGSTACK_GRAPHQL_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': PUBLIC_RAGSTACK_API_KEY,
+      },
+      body: JSON.stringify({ query, variables }),
+      signal: controller.signal,
+    })
 
-  const json = await response.json()
-  if (json.errors) {
-    throw new Error(json.errors[0]?.message || 'GraphQL error')
+    if (!response.ok) {
+      throw new Error(`RAGStack request failed: ${response.status}`)
+    }
+
+    const json = await response.json()
+    if (json.errors) {
+      throw new Error(json.errors[0]?.message || 'GraphQL error')
+    }
+    return json.data
+  } finally {
+    clearTimeout(timeoutId)
   }
-  return json.data
 }
 
 /**
