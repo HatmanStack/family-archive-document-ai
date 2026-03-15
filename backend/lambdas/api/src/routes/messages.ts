@@ -4,10 +4,10 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext } from '../types'
 import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
-import { GetCommand, PutCommand, QueryCommand, UpdateCommand, DeleteCommand, BatchWriteCommand, BatchGetCommand, type QueryCommandInput } from '@aws-sdk/lib-dynamodb'
+import { GetCommand, PutCommand, QueryCommand, UpdateCommand, DeleteCommand, BatchGetCommand, type QueryCommandInput } from '@aws-sdk/lib-dynamodb'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { v4 as uuidv4 } from 'uuid'
-import { docClient, TABLE_NAME, ARCHIVE_BUCKET } from '../lib/database'
+import { docClient, TABLE_NAME, ARCHIVE_BUCKET, batchWriteWithRetry } from '../lib/database'
 import { keys, PREFIX } from '../lib/keys'
 import { successResponse, errorResponse } from '../lib/responses'
 import { log } from '../lib/logger'
@@ -259,11 +259,7 @@ async function createConversation(event: APIGatewayProxyEvent, userId: string, r
       },
     })
 
-    for (let i = 0; i < memberRecords.length; i += 25) {
-      await docClient.send(new BatchWriteCommand({
-        RequestItems: { [TABLE_NAME]: memberRecords.slice(i, i + 25) },
-      }))
-    }
+    await batchWriteWithRetry(memberRecords, TABLE_NAME)
 
     let message = null
     if (messageText) {
@@ -485,11 +481,7 @@ async function deleteConversation(event: APIGatewayProxyEvent, userId: string, r
     )
 
     // Batch delete DynamoDB records
-    for (let i = 0; i < deleteOps.length; i += 25) {
-      await docClient.send(new BatchWriteCommand({
-        RequestItems: { [TABLE_NAME]: deleteOps.slice(i, i + 25) },
-      }))
-    }
+    await batchWriteWithRetry(deleteOps, TABLE_NAME)
 
     return successResponse({ message: 'Conversation deleted' }, 200, requestOrigin)
   } catch (err) {
