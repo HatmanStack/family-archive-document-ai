@@ -67,7 +67,10 @@ backend/
 │   │   └── lib/               # Shared utilities
 │   ├── activity-aggregator/   # DynamoDB stream processor for user stats
 │   ├── letter-processor/      # PDF merge + Gemini AI parsing
-│   └── notification-processor/# Email notifications via SES
+│   ├── notification-processor/# Email notifications via SES
+│   ├── admin-provisioner/     # Python: initial admin user creation (CloudFormation custom resource)
+│   ├── amplify-deployer/      # Python: one-click Amplify deployment (CloudFormation custom resource)
+│   └── frontend-builder/      # Python: CodeBuild trigger for frontend builds (CloudFormation custom resource)
 └── scripts/                   # Deployment and utility scripts
 ```
 

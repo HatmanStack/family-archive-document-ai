@@ -330,13 +330,28 @@ SvelteKit uses file-based routing:
 |------|------|-------------|
 | `/` | `routes/+page.svelte` | Homepage |
 | `/auth/login` | `routes/auth/login/+page.svelte` | Login |
+| `/auth/callback` | `routes/auth/callback/+page.svelte` | OAuth callback |
+| `/auth/forgot-password` | `routes/auth/forgot-password/+page.svelte` | Forgot password |
+| `/auth/reset-password` | `routes/auth/reset-password/+page.svelte` | Reset password |
+| `/auth/logout` | `routes/auth/logout/+page.svelte` | Logout |
+| `/auth/pending-approval` | `routes/auth/pending-approval/+page.svelte` | Pending approval |
+| `/auth-status` | `routes/auth-status/+page.svelte` | Auth status check |
+| `/dashboard` | `routes/dashboard/+page.svelte` | Dashboard |
+| `/family` | `routes/family/+page.svelte` | Family page |
 | `/gallery` | `routes/gallery/+page.svelte` | Media gallery |
 | `/letters` | `routes/letters/+page.svelte` | Letter list |
-| `/letters/2024-01-15` | `routes/letters/[date]/+page.svelte` | Single letter |
+| `/letters/:date` | `routes/letters/[date]/+page.svelte` | Single letter |
+| `/letters/:date/edit` | `routes/letters/[date]/edit/+page.svelte` | Edit letter |
+| `/letters/upload` | `routes/letters/upload/+page.svelte` | Letter upload |
+| `/letters/drafts` | `routes/letters/drafts/+page.svelte` | Draft listing |
+| `/letters/drafts/:id` | `routes/letters/drafts/[id]/+page.svelte` | Draft detail |
 | `/messages` | `routes/messages/+page.svelte` | Conversations |
-| `/messages/abc123` | `routes/messages/[id]/+page.svelte` | Conversation |
-| `/profile/user-id` | `routes/profile/[userId]/+page.svelte` | View profile |
+| `/messages/new` | `routes/messages/new/+page.svelte` | New message |
+| `/messages/:conversationId` | `routes/messages/[conversationId]/+page.svelte` | Conversation |
+| `/profile/:userId` | `routes/profile/[userId]/+page.svelte` | View profile |
 | `/profile/settings` | `routes/profile/settings/+page.svelte` | Edit profile |
+| `/admin` | `routes/admin/+page.svelte` | Admin panel |
+| `/about` | `routes/about/+page.svelte` | About page |
 
 ## Styling
 

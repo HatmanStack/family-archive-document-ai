@@ -242,9 +242,9 @@ docs(development): fix CI trigger branch description
 3. In `CLAUDE.md`, add the Python Lambdas to the backend structure if not already listed.
 
 **Verification Checklist:**
-- [ ] All 3 Python Lambdas appear in architecture docs
-- [ ] All missing frontend routes are documented in FRONTEND.md
-- [ ] CLAUDE.md backend structure includes utility Lambdas
+- [x] All 3 Python Lambdas appear in architecture docs
+- [x] All missing frontend routes are documented in FRONTEND.md
+- [x] CLAUDE.md backend structure includes utility Lambdas
 
 **Commit Message Template:**
 ```
