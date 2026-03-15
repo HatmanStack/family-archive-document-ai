@@ -99,11 +99,11 @@ chore: add root .nvmrc pinning Node 24
 7. Test by making a small change and running `git commit` — the hook should fire.
 
 **Verification Checklist:**
-- [ ] `husky` and `lint-staged` are in root `package.json` devDependencies
-- [ ] `prepare` script exists in root `package.json`
-- [ ] `.husky/pre-commit` exists and is executable
-- [ ] lint-staged config exists
-- [ ] Running `git commit` triggers the pre-commit hook
+- [x] `husky` and `lint-staged` are in root `package.json` devDependencies
+- [x] `prepare` script exists in root `package.json`
+- [x] `.husky/pre-commit` exists and is executable
+- [x] lint-staged config exists
+- [x] Running `git commit` triggers the pre-commit hook
 
 **Testing Instructions:**
 - Stage a file with a lint error, attempt `git commit` — should fail.

@@ -32,6 +32,11 @@
     "test:load": "artillery run tests/load/comments-load.yml && artillery run tests/load/messages-load.yml && artillery run tests/load/profile-load.yml",
     "prepare": "husky"
   },
+  "lint-staged": {
+    "frontend/**/*.{ts,svelte}": [
+      "bash -c 'cd frontend && npx eslint --flag unstable_ts_config --max-warnings 0'"
+    ]
+  },
   "devDependencies": {
     "@aws-sdk/client-ses": "^3.953.0",
     "@playwright/test": "^1.56.1",
