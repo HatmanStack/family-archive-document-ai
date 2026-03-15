@@ -9,17 +9,19 @@
 - **Detail:** ...
 -->
 
-### FB-002 [CODE_REVIEW] ESLint brace-style violation in media-service.ts ragstackQuery
-- **Phase/Task:** Phase-3, Task 3
-- **Severity:** BLOCKING
-- **Detail:** `frontend/lib/services/media-service.ts` line 88 has `} finally {` on the same line, violating the `style/brace-style` ESLint rule. The project's ESLint config requires the closing brace and subsequent block keyword to be on separate lines (as correctly done in `getImageById` at lines 409-410 with `}\n  catch`). This causes `npm run lint` to fail with 1 error, which is a Phase 3 success criterion violation. Fix: change line 88 from `} finally {` to `}\n  finally {` to match the project's brace style convention.
-
 ## Resolved Feedback
 
 <!-- Moved here after resolution. Add:
 - **Resolution:** Description of what was done
 - **Resolved in:** Phase-N, Task M (or commit ref)
 -->
+
+### FB-002 [CODE_REVIEW] ESLint brace-style violation in media-service.ts ragstackQuery
+- **Phase/Task:** Phase-3, Task 3
+- **Severity:** BLOCKING
+- **Detail:** `frontend/lib/services/media-service.ts` line 88 has `} finally {` on the same line, violating the `style/brace-style` ESLint rule. The project's ESLint config requires the closing brace and subsequent block keyword to be on separate lines (as correctly done in `getImageById` at lines 409-410 with `}\n  catch`). This causes `npm run lint` to fail with 1 error, which is a Phase 3 success criterion violation. Fix: change line 88 from `} finally {` to `}\n  finally {` to match the project's brace style convention.
+- **Resolution:** Split `} finally {` onto separate lines in `ragstackQuery()` at line 88 of `media-service.ts`, placing `finally {` on its own line to match the project's brace-style convention. ESLint now passes with zero errors and zero warnings.
+- **Resolved in:** Phase-3, Task 3
 
 ### FB-001 [CODE_REVIEW] media.ts and contact.ts still missing requestOrigin in all response calls
 - **Phase/Task:** Phase-2, Tasks 1-4 (CORS fixes)

@@ -85,7 +85,8 @@ async function ragstackQuery(query: string, variables: Record<string, unknown> =
       throw new Error(json.errors[0]?.message || 'GraphQL error')
     }
     return json.data
-  } finally {
+  }
+  finally {
     clearTimeout(timeoutId)
   }
 }
