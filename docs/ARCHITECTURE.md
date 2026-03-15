@@ -108,10 +108,15 @@ handler(event) {
   /comments/*     → comments.handle()
   /messages/*     → messages.handle()
   /profile/*      → profile.handle()
+  /users/*        → profile.handle()
   /reactions/*    → reactions.handle()
   /media/*        → media.handle()
+  /pdf/*          → media.handle()
+  /download/*     → media.handle()
+  /upload/*       → media.handle()
   /letters/*      → letters.handle()
   /admin/drafts/* → drafts.handle()
+  /admin/comments/* → comments.handle()
   /contact        → contact.handle()
 }
 ```

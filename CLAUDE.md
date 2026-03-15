@@ -91,7 +91,7 @@ backend/
 
 ### DynamoDB Single-Table Design
 
-Key prefixes: `USER#`, `COMMENT#`, `CONV#`, `MSG#`, `REACTION#`, `LETTER#`, `DRAFT#`
+Key prefixes: `USER#`, `COMMENT#`, `CONV#`, `MSG#`, `REACTION#`, `LETTER#`, `DRAFT#`, `RATE#`, `VERSION#`
 
 Common access patterns:
 - User profile: `PK=USER#{userId}, SK=PROFILE`

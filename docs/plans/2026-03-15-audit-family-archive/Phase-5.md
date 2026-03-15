@@ -58,10 +58,10 @@ Fix these specific contradictions:
 **General approach:** The Key Patterns table at the top of the file is the source of truth (it matches code). Make the Entity Schema section consistent with it. If in doubt, verify against `backend/lambdas/api/src/lib/keys.ts`.
 
 **Verification Checklist:**
-- [ ] No contradictions between Key Patterns table and Entity Schema section
-- [ ] Letter SK is `CURRENT` everywhere
-- [ ] Comment GSI1 keys match Key Patterns table
-- [ ] Reaction PK/SK match Key Patterns table
+- [x] No contradictions between Key Patterns table and Entity Schema section
+- [x] Letter SK is `CURRENT` everywhere
+- [x] Comment GSI1 keys match Key Patterns table
+- [x] Reaction PK/SK match Key Patterns table
 
 **Commit Message Template:**
 ```
@@ -116,12 +116,12 @@ Fix each drift item by checking the corresponding route handler code:
 7. **Drift #14 (lines 588-603):** GET /admin/drafts auth. Change `Auth: Admins only` to `Auth: ApprovedUsers or Admins` (matching `index.ts:118-121`).
 
 **Verification Checklist:**
-- [ ] GET /comments response uses `"comments"` key (not `"items"`)
-- [ ] Comment entity uses `"authorId"` (not `"userId"`)
-- [ ] DELETE responses show `{ "success": true }`
-- [ ] POST body only documents `content` field
-- [ ] Admin drafts auth is correctly documented
-- [ ] Comment length limit matches actual code enforcement
+- [x] GET /comments response uses `"comments"` key (not `"items"`)
+- [x] Comment entity uses `"authorId"` (not `"userId"`)
+- [x] DELETE responses show `{ "success": true }`
+- [x] POST body only documents `content` field
+- [x] Admin drafts auth is correctly documented
+- [x] Comment length limit matches actual code enforcement
 
 **Commit Message Template:**
 ```
@@ -163,8 +163,8 @@ docs(api-reference): fix response format and field name drift
    ```
 
 **Verification Checklist:**
-- [ ] ARCHITECTURE.md shows all 4 media route paths
-- [ ] CLAUDE.md lists all 9 key prefixes
+- [x] ARCHITECTURE.md shows all 4 media route paths
+- [x] CLAUDE.md lists all 9 key prefixes
 
 **Commit Message Template:**
 ```
