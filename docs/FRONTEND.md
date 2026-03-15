@@ -105,7 +105,7 @@ const users = await getAllUsers()
 import { getComments, createComment, updateComment, deleteComment } from '$lib/services/comment-service'
 
 // Get comments on an item
-const { items, lastEvaluatedKey } = await getComments(itemId, limit)
+const { success, data, lastEvaluatedKey, error } = await getComments(itemId, limit)
 
 // Create comment
 await createComment(itemId, text, itemType, itemTitle)

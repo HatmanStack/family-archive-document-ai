@@ -98,6 +98,25 @@ Required variables (set in `.env` or hosting platform):
 | `PUBLIC_COGNITO_HOSTED_UI_URL` | Cognito Hosted UI URL (for OAuth) |
 | `PUBLIC_COGNITO_HOSTED_UI_DOMAIN` | Cognito domain prefix |
 
+### Backend Lambda Environment Variables
+
+Backend environment variables are configured via `backend/template.yaml` SAM parameters — they are **not** set in `.env`. The following variables are injected into Lambda functions at deploy time:
+
+| Variable | Lambda(s) | Description |
+|----------|-----------|-------------|
+| `TABLE_NAME` | API, activity-aggregator | DynamoDB table name |
+| `ARCHIVE_BUCKET` | API | S3 bucket for letters, media, profile photos |
+| `USER_PROFILES_TABLE` | activity-aggregator | DynamoDB profiles table (legacy) |
+| `SES_FROM_EMAIL` | notification-processor, contact | SES sender email |
+| `ADMIN_EMAIL` | contact | Admin notification email |
+| `BASE_URL` | notification-processor | App base URL for email links |
+| `LOG_LEVEL` | API | Logging level (default: info) |
+| `LETTER_PROCESSOR_FUNCTION_NAME` | API (drafts) | Lambda function name for letter processing |
+| `RAGSTACK_BUCKET` | API (media, letters) | RAGStack S3 bucket |
+| `RAGSTACK_REGION` | API (media, letters) | RAGStack S3 region |
+| `GEMINI_MODEL` | letter-processor | Gemini model name (default: gemini-3.1-flash-lite-preview) |
+| `ALLOWED_ORIGINS` | API | CORS allowed origins (comma-separated) |
+
 ## Infrastructure Components
 
 ### Created by SAM Deploy

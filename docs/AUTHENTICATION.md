@@ -147,66 +147,76 @@ Cognito JWTs include these claims:
 
 ### Login
 
+The login flow uses `AuthService` (which wraps `CognitoAuthClient` from `lib/auth/cognito-client.ts`):
+
 ```typescript
-// lib/auth/client.ts
-import { CognitoIdentityProviderClient, InitiateAuthCommand } from '@aws-sdk/client-cognito-identity-provider'
+// lib/auth/auth-service.ts
+import { authService } from '$lib/auth/auth-service'
 
-async function login(email: string, password: string) {
-  const response = await client.send(new InitiateAuthCommand({
-    AuthFlow: 'USER_PASSWORD_AUTH',
-    ClientId: PUBLIC_COGNITO_USER_POOL_CLIENT_ID,
-    AuthParameters: {
-      USERNAME: email,
-      PASSWORD: password
-    }
-  }))
+const result = await authService.signIn(email, password)
 
-  // Store tokens
-  authStore.set({
-    accessToken: response.AuthenticationResult.AccessToken,
-    refreshToken: response.AuthenticationResult.RefreshToken,
-    idToken: response.AuthenticationResult.IdToken
-  })
+if (result.success) {
+  // Tokens are stored in authStore automatically
+  const { user, tokens } = result
 }
+else if (result.challengeName === 'NEW_PASSWORD_REQUIRED') {
+  // First login with temporary password — prompt user for new password
+  await authService.completeNewPasswordChallenge(email, newPassword, result.session)
+}
+```
+
+Under the hood, `CognitoAuthClient` uses the AWS SDK `InitiateAuthCommand` with `USER_PASSWORD_AUTH` flow:
+
+```typescript
+// lib/auth/cognito-client.ts (simplified)
+const command = new InitiateAuthCommand({
+  ClientId: cognitoConfig.userPoolWebClientId,
+  AuthFlow: 'USER_PASSWORD_AUTH',
+  AuthParameters: { USERNAME: email, PASSWORD: password },
+})
+const response = await client.send(command)
 ```
 
 ### Token Refresh
 
-```typescript
-async function refreshSession() {
-  const response = await client.send(new InitiateAuthCommand({
-    AuthFlow: 'REFRESH_TOKEN_AUTH',
-    ClientId: PUBLIC_COGNITO_USER_POOL_CLIENT_ID,
-    AuthParameters: {
-      REFRESH_TOKEN: currentRefreshToken
-    }
-  }))
+Token refresh is handled automatically by `AuthService`, which schedules a refresh 5 minutes before expiry:
 
-  // Update access token
-  authStore.update(state => ({
-    ...state,
-    accessToken: response.AuthenticationResult.AccessToken
-  }))
-}
+```typescript
+// lib/auth/auth-service.ts
+const newTokens = await authService.refreshTokens()
+// authStore is updated automatically
 ```
+
+Under the hood, this uses `CognitoAuthClient.refreshToken()` with `REFRESH_TOKEN_AUTH` flow.
 
 ### API Requests
 
-```typescript
-// lib/services/api.ts
-async function apiRequest(endpoint: string, options = {}) {
-  const token = get(authStore).accessToken
+There are two patterns for authenticated API requests:
 
-  return fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      ...options.headers
-    }
-  })
-}
+**1. ApiClient (lib/auth/api-client.ts)** — a class-based client with convenience methods:
+
+```typescript
+// lib/auth/api-client.ts
+import { apiClient } from '$lib/auth/api-client'
+
+// GET request
+const data = await apiClient.get('/comments/some-item-id')
+
+// POST request
+const result = await apiClient.post('/comments/some-item-id', { content: 'Hello' })
 ```
+
+**2. authenticatedFetch (lib/auth/client.ts)** — a lower-level wrapper around `fetch`:
+
+```typescript
+// lib/auth/client.ts
+import { authenticatedFetch } from '$lib/auth/client'
+
+const response = await authenticatedFetch(`${API_URL}/comments/some-item-id`)
+const data = await response.json()
+```
+
+Individual service files (e.g., `comment-service.ts`, `profile-service.ts`, `media-service.ts`) build on these patterns to provide domain-specific API functions.
 
 ## Backend Auth Handling
 
