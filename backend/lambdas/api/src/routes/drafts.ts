@@ -23,7 +23,7 @@ export async function handle(
   event: APIGatewayProxyEvent,
   context: RequestContext
 ): Promise<APIGatewayProxyResult> {
-  const { requesterId, isAdmin, isApprovedUser } = context
+  const { requesterId, isAdmin, isApprovedUser, requestOrigin } = context
   const method = event.httpMethod
   const path = event.path
   const normalizedPath = path.replace(/^\/v1/, '')
@@ -33,70 +33,71 @@ export async function handle(
   // Upload request
   if (normalizedPath.endsWith('/upload-request') && method === 'POST') {
     if (!requesterId) {
-      return errorResponse(401, 'Authentication required')
+      return errorResponse(401, 'Authentication required', requestOrigin)
     }
-    return handleUploadRequest(event, requesterId)
+    return handleUploadRequest(event, requesterId, requestOrigin)
   }
 
   // Process uploaded files
   if (normalizedPath.includes('/letters/process/') && method === 'POST') {
     if (!requesterId) {
-      return errorResponse(401, 'Authentication required')
+      return errorResponse(401, 'Authentication required', requestOrigin)
     }
     const match = normalizedPath.match(/\/letters\/process\/([^/]+)$/)
     const uploadId = match?.[1]
     if (!uploadId) {
-      return errorResponse(400, 'Missing or invalid uploadId')
+      return errorResponse(400, 'Missing or invalid uploadId', requestOrigin)
     }
-    return handleProcess(uploadId, requesterId)
+    return handleProcess(uploadId, requesterId, requestOrigin)
   }
 
   // Draft management - require ApprovedUsers or Admins
   if (normalizedPath.includes('/admin/drafts')) {
     if (!isApprovedUser && !isAdmin) {
-      return errorResponse(403, 'Unauthorized')
+      return errorResponse(403, 'Unauthorized', requestOrigin)
     }
 
     if (normalizedPath.endsWith('/publish') && method === 'POST') {
       const match = normalizedPath.match(/\/admin\/drafts\/([^/]+)\/publish$/)
       const draftId = match?.[1]
       if (!draftId) {
-        return errorResponse(400, 'Missing or invalid draftId')
+        return errorResponse(400, 'Missing or invalid draftId', requestOrigin)
       }
-      return handlePublish(event, draftId, requesterId || '')
+      return handlePublish(event, draftId, requesterId || '', requestOrigin)
     }
 
     if (normalizedPath.endsWith('/drafts') && method === 'GET') {
-      return handleListDrafts()
+      return handleListDrafts(requestOrigin)
     }
 
     if (method === 'GET') {
       const match = normalizedPath.match(/\/admin\/drafts\/([^/]+)$/)
       const draftId = match?.[1]
       if (!draftId) {
-        return errorResponse(400, 'Missing or invalid draftId')
+        return errorResponse(400, 'Missing or invalid draftId', requestOrigin)
       }
-      return handleGetDraft(draftId)
+      return handleGetDraft(draftId, requestOrigin)
     }
 
     if (method === 'DELETE') {
       const match = normalizedPath.match(/\/admin\/drafts\/([^/]+)$/)
       const draftId = match?.[1]
       if (!draftId) {
-        return errorResponse(400, 'Missing or invalid draftId')
+        return errorResponse(400, 'Missing or invalid draftId', requestOrigin)
       }
-      return handleDeleteDraft(draftId)
+      return handleDeleteDraft(draftId, requestOrigin)
     }
   }
 
-  return errorResponse(404, `Draft route not found: ${method} ${normalizedPath}`)
+  return errorResponse(404, `Draft route not found: ${method} ${normalizedPath}`, requestOrigin)
 }
 
 const MAX_FILE_COUNT = 20
 
 async function handleUploadRequest(
   event: APIGatewayProxyEvent,
-  _requesterId: string
+  _requesterId: string,
+  requestOrigin?: string
 ): Promise<APIGatewayProxyResult> {
   const body = JSON.parse(event.body || '{}')
   const { fileCount: rawFileCount = 1, fileTypes = [] } = body
@@ -104,10 +105,10 @@ async function handleUploadRequest(
   // Validate and bound fileCount to prevent resource exhaustion
   const fileCount = Math.min(Math.max(0, Math.floor(Number(rawFileCount) || 0)), MAX_FILE_COUNT)
   if (fileCount <= 0) {
-    return errorResponse(400, 'fileCount must be a positive integer')
+    return errorResponse(400, 'fileCount must be a positive integer', requestOrigin)
   }
   if (rawFileCount > MAX_FILE_COUNT) {
-    return errorResponse(400, `fileCount cannot exceed ${MAX_FILE_COUNT}`)
+    return errorResponse(400, `fileCount cannot exceed ${MAX_FILE_COUNT}`, requestOrigin)
   }
 
   const uploadId = uuidv4()
@@ -131,18 +132,19 @@ async function handleUploadRequest(
     urls.push({ url, key, index: i })
   }
 
-  return successResponse({ uploadId, urls })
+  return successResponse({ uploadId, urls }, 200, requestOrigin)
 }
 
 async function handleProcess(
   uploadId: string,
-  requesterId: string
+  requesterId: string,
+  requestOrigin?: string
 ): Promise<APIGatewayProxyResult> {
   const functionName = process.env.LETTER_PROCESSOR_FUNCTION_NAME
 
   if (!functionName) {
     log.error('config_error', { reason: 'LETTER_PROCESSOR_FUNCTION_NAME not set' })
-    return errorResponse(500, 'Configuration error')
+    return errorResponse(500, 'Configuration error', requestOrigin)
   }
 
   try {
@@ -154,14 +156,14 @@ async function handleProcess(
     })
 
     await lambdaClient.send(command)
-    return successResponse({ message: 'Processing started' }, 202)
+    return successResponse({ message: 'Processing started' }, 202, requestOrigin)
   } catch (err) {
     log.error('process_error', { uploadId, error: (err as Error).message })
-    return errorResponse(500, 'Failed to start processing')
+    return errorResponse(500, 'Failed to start processing', requestOrigin)
   }
 }
 
-async function handleListDrafts(): Promise<APIGatewayProxyResult> {
+async function handleListDrafts(requestOrigin?: string): Promise<APIGatewayProxyResult> {
   try {
     const command = new ScanCommand({
       TableName: TABLE_NAME,
@@ -170,14 +172,14 @@ async function handleListDrafts(): Promise<APIGatewayProxyResult> {
     })
 
     const result = await docClient.send(command)
-    return successResponse({ drafts: result.Items || [] })
+    return successResponse({ drafts: result.Items || [] }, 200, requestOrigin)
   } catch (err) {
     log.error('list_drafts_error', { error: (err as Error).message })
-    return errorResponse(500, 'Failed to list drafts')
+    return errorResponse(500, 'Failed to list drafts', requestOrigin)
   }
 }
 
-async function handleGetDraft(draftId: string): Promise<APIGatewayProxyResult> {
+async function handleGetDraft(draftId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
   try {
     const result = await docClient.send(new GetCommand({
       TableName: TABLE_NAME,
@@ -185,27 +187,27 @@ async function handleGetDraft(draftId: string): Promise<APIGatewayProxyResult> {
     }))
 
     if (!result.Item) {
-      return errorResponse(404, 'Draft not found')
+      return errorResponse(404, 'Draft not found', requestOrigin)
     }
 
-    return successResponse(result.Item)
+    return successResponse(result.Item, 200, requestOrigin)
   } catch (err) {
     log.error('get_draft_error', { draftId, error: (err as Error).message })
-    return errorResponse(500, 'Failed to get draft')
+    return errorResponse(500, 'Failed to get draft', requestOrigin)
   }
 }
 
-async function handleDeleteDraft(draftId: string): Promise<APIGatewayProxyResult> {
+async function handleDeleteDraft(draftId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
   try {
     await docClient.send(new DeleteCommand({
       TableName: TABLE_NAME,
       Key: keys.draft(draftId),
     }))
 
-    return successResponse({ message: 'Draft deleted' })
+    return successResponse({ message: 'Draft deleted' }, 200, requestOrigin)
   } catch (err) {
     log.error('delete_draft_error', { draftId, error: (err as Error).message })
-    return errorResponse(500, 'Failed to delete draft')
+    return errorResponse(500, 'Failed to delete draft', requestOrigin)
   }
 }
 
@@ -223,18 +225,19 @@ interface PublishData {
 async function handlePublish(
   event: APIGatewayProxyEvent,
   draftId: string,
-  requesterId: string
+  requesterId: string,
+  requestOrigin?: string
 ): Promise<APIGatewayProxyResult> {
   let body: PublishData
   try {
     body = JSON.parse(event.body || '{}')
   } catch {
-    return errorResponse(400, 'Invalid JSON body')
+    return errorResponse(400, 'Invalid JSON body', requestOrigin)
   }
 
   const { finalData } = body
   if (!finalData || !finalData.date || !finalData.title || !finalData.content) {
-    return errorResponse(400, 'Missing required fields: date, title, content')
+    return errorResponse(400, 'Missing required fields: date, title, content', requestOrigin)
   }
 
   try {
@@ -246,7 +249,7 @@ async function handlePublish(
 
     const draft = draftRes.Item
     if (!draft) {
-      return errorResponse(404, 'Draft not found')
+      return errorResponse(404, 'Draft not found', requestOrigin)
     }
 
     // Create Letter in DynamoDB
@@ -278,9 +281,9 @@ async function handlePublish(
       Key: keys.draft(draftId),
     }))
 
-    return successResponse({ message: 'Letter published', path: `/letters/${finalData.date}` })
+    return successResponse({ message: 'Letter published', path: `/letters/${finalData.date}` }, 200, requestOrigin)
   } catch (err) {
     log.error('publish_error', { draftId, error: (err as Error).message })
-    return errorResponse(500, 'Failed to publish letter')
+    return errorResponse(500, 'Failed to publish letter', requestOrigin)
   }
 }
