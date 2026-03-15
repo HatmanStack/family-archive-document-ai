@@ -65,11 +65,11 @@ Address architectural debt and performance issues: consolidate duplicated S3 cli
 4. Verify no other files create `new S3Client`. The `drafts.ts` creates `const s3Client = new S3Client({})` at line 16 — include this in the consolidation.
 
 **Verification Checklist:**
-- [ ] Only `s3-utils.ts` creates `new S3Client(...)` — grep confirms no other instantiations
-- [ ] `letters.ts` and `media.ts` share the same `ragstackS3Client` instance
-- [ ] `RAGSTACK_BUCKET` and `RAGSTACK_REGION` are defined in one place
-- [ ] `npm run lint` passes
-- [ ] `npm test` passes
+- [x] Only `s3-utils.ts` creates `new S3Client(...)` — grep confirms no other instantiations
+- [x] `letters.ts` and `media.ts` share the same `ragstackS3Client` instance
+- [x] `RAGSTACK_BUCKET` and `RAGSTACK_REGION` are defined in one place
+- [x] `npm run lint` passes
+- [x] `npm test` passes
 
 **Testing Instructions:**
 - No new tests needed — this is a refactor with identical runtime behavior.
@@ -119,10 +119,10 @@ refactor(api): consolidate S3 client instantiations to s3-utils
 5. Replace the `ScanCommand` import with `QueryCommand` if not already imported.
 
 **Verification Checklist:**
-- [ ] `handleListDrafts()` uses `QueryCommand` instead of `ScanCommand`
-- [ ] No `ScanCommand` import remains in `drafts.ts` (unless used elsewhere in the file)
-- [ ] Draft creation includes GSI1PK/GSI1SK if they weren't already present
-- [ ] `npm run lint` passes
+- [x] `handleListDrafts()` uses `QueryCommand` instead of `ScanCommand`
+- [x] No `ScanCommand` import remains in `drafts.ts` (unless used elsewhere in the file)
+- [x] Draft creation includes GSI1PK/GSI1SK if they weren't already present
+- [x] `npm run lint` passes
 
 **Testing Instructions:**
 - Write a test in `tests/unit/drafts-handler.test.ts`:
@@ -191,10 +191,10 @@ perf(drafts): replace DynamoDB Scan with GSI query for draft listing
 3. Note: The existing `cancellable-fetch.ts` utility in `frontend/lib/utils/` could potentially be used here, but the `AbortController` approach is simpler and more explicit for this single function. Do not add new dependencies.
 
 **Verification Checklist:**
-- [ ] `ragstackQuery()` uses `AbortController` with a timeout
-- [ ] `clearTimeout` is called in `finally` block to prevent leaks
-- [ ] `npm run lint` passes
-- [ ] `npm run build` passes
+- [x] `ragstackQuery()` uses `AbortController` with a timeout
+- [x] `clearTimeout` is called in `finally` block to prevent leaks
+- [x] `npm run lint` passes
+- [x] `npm run build` passes
 
 **Testing Instructions:**
 - No unit test for this (frontend service with `fetch` — would require a fetch mock setup not currently in place). Verify by code review.
@@ -242,10 +242,10 @@ fix(gallery): add 15s timeout to RAGStack GraphQL fetch calls
 4. If there is no existing pattern for auth error detection, check how other functions in the file handle auth — look for `auth.isAuthenticated` checks or token refresh patterns.
 
 **Verification Checklist:**
-- [ ] `getImageById()` does not swallow auth/token errors
-- [ ] Network errors still return null (graceful degradation)
-- [ ] `npm run lint` passes
-- [ ] `npm run build` passes
+- [x] `getImageById()` does not swallow auth/token errors
+- [x] Network errors still return null (graceful degradation)
+- [x] `npm run lint` passes
+- [x] `npm run build` passes
 
 **Testing Instructions:**
 - No unit test (frontend service). Verify by code review.
@@ -350,12 +350,12 @@ The route handlers are exported as `handle(event, context)` functions. To test t
    - `Access-Control-Allow-Origin` header is present (CORS fix verification)
 
 **Verification Checklist:**
-- [ ] `tests/unit/comments-handler.test.ts` exists with at least 4 test cases
-- [ ] `tests/unit/messages-handler.test.ts` exists with at least 5 test cases
-- [ ] `tests/unit/profile-handler.test.ts` exists with at least 4 test cases
-- [ ] All tests pass: `npm test`
-- [ ] Tests verify CORS headers are present in responses
-- [ ] Tests use `aws-sdk-client-mock` (no real AWS calls)
+- [x] `tests/unit/comments-handler.test.ts` exists with at least 4 test cases
+- [x] `tests/unit/messages-handler.test.ts` exists with at least 5 test cases
+- [x] `tests/unit/profile-handler.test.ts` exists with at least 4 test cases
+- [x] All tests pass: `npm test`
+- [x] Tests verify CORS headers are present in responses
+- [x] Tests use `aws-sdk-client-mock` (no real AWS calls)
 
 **Testing Instructions:**
 - Run `npm test -- tests/unit/comments-handler.test.ts`
