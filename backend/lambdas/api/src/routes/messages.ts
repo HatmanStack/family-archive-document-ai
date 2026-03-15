@@ -32,10 +32,10 @@ export async function handle(
   event: APIGatewayProxyEvent,
   context: RequestContext
 ): Promise<APIGatewayProxyResult> {
-  const { requesterId } = context
+  const { requesterId, requestOrigin } = context
 
   if (!requesterId) {
-    return errorResponse(401, 'Unauthorized: Missing user context')
+    return errorResponse(401, 'Unauthorized: Missing user context', requestOrigin)
   }
 
   const method = event.httpMethod
@@ -45,42 +45,42 @@ export async function handle(
   log.info('messages_request', { method, resource: normalizedResource, requesterId })
 
   if (method === 'GET' && normalizedResource === '/messages/conversations') {
-    return listConversations(requesterId)
+    return listConversations(requesterId, requestOrigin)
   }
 
   if (method === 'GET' && normalizedResource === '/messages/{conversationId}') {
-    return getMessages(event, requesterId)
+    return getMessages(event, requesterId, requestOrigin)
   }
 
   if (method === 'POST' && normalizedResource === '/messages/conversations') {
-    return createConversation(event, requesterId)
+    return createConversation(event, requesterId, requestOrigin)
   }
 
   if (method === 'POST' && normalizedResource === '/messages/{conversationId}') {
-    return sendMessage(event, requesterId)
+    return sendMessage(event, requesterId, requestOrigin)
   }
 
   if (method === 'POST' && (normalizedResource === '/messages/{conversationId}/upload-url' ||
       normalizedResource === '/messages/attachments/upload-url')) {
-    return generateUploadUrl(event, requesterId)
+    return generateUploadUrl(event, requesterId, requestOrigin)
   }
 
   if (method === 'PUT' && normalizedResource === '/messages/{conversationId}/read') {
-    return markAsRead(event, requesterId)
+    return markAsRead(event, requesterId, requestOrigin)
   }
 
   if (method === 'DELETE' && normalizedResource === '/messages/{conversationId}') {
-    return deleteConversation(event, requesterId)
+    return deleteConversation(event, requesterId, requestOrigin)
   }
 
   if (method === 'DELETE' && normalizedResource === '/messages/{conversationId}/{messageId}') {
-    return deleteMessage(event, requesterId)
+    return deleteMessage(event, requesterId, requestOrigin)
   }
 
-  return errorResponse(404, 'Route not found')
+  return errorResponse(404, 'Route not found', requestOrigin)
 }
 
-async function listConversations(userId: string): Promise<APIGatewayProxyResult> {
+async function listConversations(userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
   try {
     const result = await docClient.send(new QueryCommand({
       TableName: TABLE_NAME,
@@ -106,7 +106,7 @@ async function listConversations(userId: string): Promise<APIGatewayProxyResult>
         creatorId: item.creatorId,
       }))
 
-    return successResponse({ conversations })
+    return successResponse({ conversations }, 200, requestOrigin)
   } catch (err) {
     const error = toError(err)
     log.error('list_conversations_error', { userId, error: error.message })
@@ -114,13 +114,13 @@ async function listConversations(userId: string): Promise<APIGatewayProxyResult>
   }
 }
 
-async function getMessages(event: APIGatewayProxyEvent, userId: string): Promise<APIGatewayProxyResult> {
+async function getMessages(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
   const conversationId = event.pathParameters?.conversationId
   const limit = parseInt(event.queryStringParameters?.limit || '50', 10)
   const lastEvaluatedKey = event.queryStringParameters?.lastEvaluatedKey
 
   if (!conversationId) {
-    return errorResponse(400, 'Missing conversationId parameter')
+    return errorResponse(400, 'Missing conversationId parameter', requestOrigin)
   }
 
   try {
@@ -130,7 +130,7 @@ async function getMessages(event: APIGatewayProxyEvent, userId: string): Promise
     }))
 
     if (!memberCheck.Item) {
-      return errorResponse(403, 'You are not a participant in this conversation')
+      return errorResponse(403, 'You are not a participant in this conversation', requestOrigin)
     }
 
     const queryParams: QueryCommandInput = {
@@ -188,7 +188,7 @@ async function getMessages(event: APIGatewayProxyEvent, userId: string): Promise
       lastEvaluatedKey: result.LastEvaluatedKey
         ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
         : null,
-    })
+    }, 200, requestOrigin)
   } catch (err) {
     const error = toError(err)
     log.error('get_messages_error', { conversationId, userId, error: error.message })
@@ -196,7 +196,7 @@ async function getMessages(event: APIGatewayProxyEvent, userId: string): Promise
   }
 }
 
-async function createConversation(event: APIGatewayProxyEvent, userId: string): Promise<APIGatewayProxyResult> {
+async function createConversation(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
   const body = JSON.parse(event.body || '{}')
   const participantIds: string[] = body.participantIds || []
   const { messageText, conversationTitle } = body
