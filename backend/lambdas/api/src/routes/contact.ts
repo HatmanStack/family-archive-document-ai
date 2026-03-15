@@ -7,6 +7,7 @@ import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses'
 import { successResponse, errorResponse } from '../lib/responses'
 import { log } from '../lib/logger'
 import { escapeHtml } from '../lib/validation'
+import { toError } from '../lib/errors'
 
 const sesClient = new SESClient({})
 const SES_FROM_EMAIL = process.env.SES_FROM_EMAIL || ''
@@ -82,7 +83,7 @@ export async function handle(
     log.info('contact_sent', { from: email })
     return successResponse({ message: 'Message sent successfully' })
   } catch (err) {
-    log.error('contact_error', { error: (err as Error).message })
+    log.error('contact_error', { error: toError(err).message })
     return errorResponse(500, 'Failed to send message')
   }
 }

@@ -479,7 +479,7 @@ async function deleteConversation(event: APIGatewayProxyEvent, userId: string, r
           }))
         } catch (e) {
           // Log but don't fail - orphaned S3 objects are cleaned up by lifecycle policies
-          log.warn('attachment_delete_failed', { s3Key, error: (e as Error).message })
+          log.warn('attachment_delete_failed', { s3Key, error: toError(e).message })
         }
       })
     )
@@ -536,7 +536,7 @@ async function deleteMessage(event: APIGatewayProxyEvent, userId: string, reques
                 Key: attachment.s3Key,
               }))
             } catch (e) {
-              log.warn('attachment_delete_failed', { s3Key: attachment.s3Key, error: (e as Error).message })
+              log.warn('attachment_delete_failed', { s3Key: attachment.s3Key, error: toError(e).message })
             }
           }
         })

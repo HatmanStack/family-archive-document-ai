@@ -12,6 +12,7 @@ import { successResponse, errorResponse, rateLimitResponse } from '../lib/respon
 import { validateUserId, sanitizeText, validateLimit, parseRequestBody } from '../lib/validation'
 import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 import { log } from '../lib/logger'
+import { toError } from '../lib/errors'
 import { signPhotoUrl } from '../lib/s3-utils'
 
 const s3Client = new S3Client({
@@ -121,7 +122,7 @@ async function getProfile(
       familyRelationships: profile.familyRelationships || [],
     }, 200, requestOrigin)
   } catch (error) {
-    log.error('get_profile_error', { userId, error: (error as Error).message })
+    log.error('get_profile_error', { userId, error: toError(error).message })
     return errorResponse(500, 'Failed to get profile', requestOrigin)
   }
 }
@@ -253,7 +254,7 @@ async function updateProfile(
 
     return successResponse({ message: 'Profile updated successfully' }, 200, requestOrigin)
   } catch (error) {
-    log.error('update_profile_error', { requesterId, error: (error as Error).message })
+    log.error('update_profile_error', { requesterId, error: toError(error).message })
     return errorResponse(500, 'Failed to update profile', requestOrigin)
   }
 }
@@ -303,7 +304,7 @@ async function getUserComments(
 
     return successResponse({ comments }, 200, requestOrigin)
   } catch (error) {
-    log.error('get_user_comments_error', { userId, error: (error as Error).message })
+    log.error('get_user_comments_error', { userId, error: toError(error).message })
     return errorResponse(500, 'Failed to get user comments', requestOrigin)
   }
 }
@@ -343,7 +344,7 @@ async function getPhotoUploadUrl(
 
     return successResponse({ uploadUrl, photoUrl }, 200, requestOrigin)
   } catch (error) {
-    log.error('get_photo_upload_url_error', { requesterId, error: (error as Error).message })
+    log.error('get_photo_upload_url_error', { requesterId, error: toError(error).message })
     return errorResponse(500, 'Failed to get photo upload URL', requestOrigin)
   }
 }
@@ -370,7 +371,7 @@ async function listUsers(_requesterId: string, requestOrigin?: string): Promise<
 
     return successResponse({ users }, 200, requestOrigin)
   } catch (error) {
-    log.error('list_users_error', { error: (error as Error).message })
+    log.error('list_users_error', { error: toError(error).message })
     return errorResponse(500, 'Failed to list users', requestOrigin)
   }
 }

@@ -8,6 +8,7 @@ import { successResponse, errorResponse, rateLimitResponse } from '../lib/respon
 import { sanitizeText, validateContentLength } from '../lib/validation'
 import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 import { log } from '../lib/logger'
+import { toError } from '../lib/errors'
 
 /**
  * Decode base64url itemId from URL path
@@ -94,7 +95,7 @@ async function listComments(
       count: result.count,
     }, 200, requestOrigin)
   } catch (error) {
-    log.error('list_comments_error', { itemId, error: (error as Error).message })
+    log.error('list_comments_error', { itemId, error: toError(error).message })
     return errorResponse(500, 'Failed to fetch comments', requestOrigin)
   }
 }
@@ -149,7 +150,7 @@ async function createComment(
 
     return successResponse(comment, 201, requestOrigin)
   } catch (error) {
-    log.error('create_comment_error', { itemId, error: (error as Error).message })
+    log.error('create_comment_error', { itemId, error: toError(error).message })
     return errorResponse(500, 'Failed to create comment', requestOrigin)
   }
 }
@@ -207,7 +208,7 @@ async function editComment(
 
     return successResponse(updated, 200, requestOrigin)
   } catch (error) {
-    log.error('edit_comment_error', { itemId, commentId, error: (error as Error).message })
+    log.error('edit_comment_error', { itemId, commentId, error: toError(error).message })
     return errorResponse(500, 'Failed to edit comment', requestOrigin)
   }
 }
@@ -248,7 +249,7 @@ async function deleteComment(
 
     return successResponse({ success: true }, 200, requestOrigin)
   } catch (error) {
-    log.error('delete_comment_error', { itemId, commentId, error: (error as Error).message })
+    log.error('delete_comment_error', { itemId, commentId, error: toError(error).message })
     return errorResponse(500, 'Failed to delete comment', requestOrigin)
   }
 }
@@ -292,7 +293,7 @@ async function adminDeleteComment(
 
     return successResponse({ success: true }, 200, requestOrigin)
   } catch (error) {
-    log.error('admin_delete_comment_error', { commentId, error: (error as Error).message })
+    log.error('admin_delete_comment_error', { commentId, error: toError(error).message })
     return errorResponse(500, 'Failed to delete comment', requestOrigin)
   }
 }

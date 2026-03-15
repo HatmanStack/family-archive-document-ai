@@ -13,6 +13,7 @@ import { keys } from '../lib/keys'
 import { successResponse, errorResponse } from '../lib/responses'
 import { log } from '../lib/logger'
 import { parseRequestBody } from '../lib/validation'
+import { toError } from '../lib/errors'
 
 const s3Client = new S3Client({})
 const lambdaClient = new LambdaClient({})
@@ -162,7 +163,7 @@ async function handleProcess(
     await lambdaClient.send(command)
     return successResponse({ message: 'Processing started' }, 202, requestOrigin)
   } catch (err) {
-    log.error('process_error', { uploadId, error: (err as Error).message })
+    log.error('process_error', { uploadId, error: toError(err).message })
     return errorResponse(500, 'Failed to start processing', requestOrigin)
   }
 }
@@ -178,7 +179,7 @@ async function handleListDrafts(requestOrigin?: string): Promise<APIGatewayProxy
     const result = await docClient.send(command)
     return successResponse({ drafts: result.Items || [] }, 200, requestOrigin)
   } catch (err) {
-    log.error('list_drafts_error', { error: (err as Error).message })
+    log.error('list_drafts_error', { error: toError(err).message })
     return errorResponse(500, 'Failed to list drafts', requestOrigin)
   }
 }
@@ -196,7 +197,7 @@ async function handleGetDraft(draftId: string, requestOrigin?: string): Promise<
 
     return successResponse(result.Item, 200, requestOrigin)
   } catch (err) {
-    log.error('get_draft_error', { draftId, error: (err as Error).message })
+    log.error('get_draft_error', { draftId, error: toError(err).message })
     return errorResponse(500, 'Failed to get draft', requestOrigin)
   }
 }
@@ -210,7 +211,7 @@ async function handleDeleteDraft(draftId: string, requestOrigin?: string): Promi
 
     return successResponse({ message: 'Draft deleted' }, 200, requestOrigin)
   } catch (err) {
-    log.error('delete_draft_error', { draftId, error: (err as Error).message })
+    log.error('delete_draft_error', { draftId, error: toError(err).message })
     return errorResponse(500, 'Failed to delete draft', requestOrigin)
   }
 }
@@ -287,7 +288,7 @@ async function handlePublish(
 
     return successResponse({ message: 'Letter published', path: `/letters/${finalData.date}` }, 200, requestOrigin)
   } catch (err) {
-    log.error('publish_error', { draftId, error: (err as Error).message })
+    log.error('publish_error', { draftId, error: toError(err).message })
     return errorResponse(500, 'Failed to publish letter', requestOrigin)
   }
 }

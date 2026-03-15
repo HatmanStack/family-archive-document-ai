@@ -9,6 +9,7 @@ import { ARCHIVE_BUCKET } from '../lib/database'
 import { PRESIGNED_URL_EXPIRY_SECONDS } from '../lib/constants'
 import { successResponse, errorResponse } from '../lib/responses'
 import { log } from '../lib/logger'
+import { toError } from '../lib/errors'
 
 const s3Client = new S3Client({})
 const RAGSTACK_BUCKET = process.env.RAGSTACK_BUCKET || ''
@@ -93,7 +94,7 @@ async function getDownloadUrl(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       filename: key.split('/').pop(),
     })
   } catch (error) {
-    log.error('download_url_error', { error: (error as Error).message })
+    log.error('download_url_error', { error: toError(error).message })
     return errorResponse(500, 'Failed to generate download URL')
   }
 }

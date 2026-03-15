@@ -8,6 +8,7 @@ import { docClient, TABLE_NAME } from '../lib/database'
 import { keys, PREFIX } from '../lib/keys'
 import { successResponse, errorResponse } from '../lib/responses'
 import { log } from '../lib/logger'
+import { toError } from '../lib/errors'
 
 /**
  * Main reactions route handler
@@ -133,7 +134,7 @@ async function toggleReaction(
           ],
         }))
       } catch (error) {
-        if ((error as Error).name === 'TransactionCanceledException') {
+        if (toError(error).name === 'TransactionCanceledException') {
           await docClient.send(new DeleteCommand({
             TableName: TABLE_NAME,
             Key: reactionKey,
@@ -179,7 +180,7 @@ async function toggleReaction(
           ],
         }))
       } catch (error) {
-        if ((error as Error).name === 'TransactionCanceledException') {
+        if (toError(error).name === 'TransactionCanceledException') {
           return errorResponse(404, 'Comment not found', requestOrigin)
         }
         throw error
@@ -188,7 +189,7 @@ async function toggleReaction(
       return successResponse({ liked: true, message: 'Reaction added' }, 200, requestOrigin)
     }
   } catch (error) {
-    log.error('toggle_reaction_error', { commentId, userId, error: (error as Error).message })
+    log.error('toggle_reaction_error', { commentId, userId, error: toError(error).message })
     return errorResponse(500, 'Failed to toggle reaction', requestOrigin)
   }
 }
@@ -230,7 +231,7 @@ async function getReactions(event: APIGatewayProxyEvent, requestOrigin?: string)
       reactions,
     }, 200, requestOrigin)
   } catch (error) {
-    log.error('get_reactions_error', { commentId, itemId, error: (error as Error).message })
+    log.error('get_reactions_error', { commentId, itemId, error: toError(error).message })
     return errorResponse(500, 'Failed to get reactions', requestOrigin)
   }
 }

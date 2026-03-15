@@ -5,6 +5,7 @@ import { GetCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { docClient, TABLE_NAME } from './database'
 import { keys } from './keys'
 import type { UserProfile } from '../types'
+import { toError } from './errors'
 
 /**
  * Backfill GSI1 attributes for a profile if missing (read-repair).
@@ -33,11 +34,11 @@ async function backfillGSI1IfMissing(profile: UserProfile): Promise<UserProfile>
       return { ...profile, ...gsi1Keys }
     } catch (err) {
       // Condition failed means another request already added GSI1 - that's fine
-      if ((err as Error).name === 'ConditionalCheckFailedException') {
+      if (toError(err).name === 'ConditionalCheckFailedException') {
         return { ...profile, ...gsi1Keys }
       }
       // Log but don't fail - GSI1 is for listing, not critical path
-      console.warn('GSI1 backfill failed:', (err as Error).message)
+      console.warn('GSI1 backfill failed:', toError(err).message)
     }
   }
 
@@ -91,7 +92,7 @@ export async function ensureProfile(
     )
   } catch (err) {
     // Profile created by concurrent request, fetch it
-    if ((err as Error).name === 'ConditionalCheckFailedException') {
+    if (toError(err).name === 'ConditionalCheckFailedException') {
       const existing = await docClient.send(
         new GetCommand({
           TableName: TABLE_NAME,

@@ -16,6 +16,7 @@ import { keys } from '../lib/keys'
 import { successResponse, errorResponse } from '../lib/responses'
 import { log } from '../lib/logger'
 import { validatePaginationKey } from '../lib/validation'
+import { toError } from '../lib/errors'
 
 const s3Client = new S3Client({})
 
@@ -109,7 +110,7 @@ async function listLetters(event: APIGatewayProxyEvent, requestOrigin?: string):
         : null,
     }, 200, requestOrigin)
   } catch (error) {
-    log.error('list_letters_error', { error: (error as Error).message })
+    log.error('list_letters_error', { error: toError(error).message })
     throw error
   }
 }
@@ -146,7 +147,7 @@ async function getLetter(event: APIGatewayProxyEvent, requestOrigin?: string): P
       versionCount: result.Item.versionCount || 0,
     }, 200, requestOrigin)
   } catch (error) {
-    log.error('get_letter_error', { date, error: (error as Error).message })
+    log.error('get_letter_error', { date, error: toError(error).message })
     throw error
   }
 }
@@ -228,7 +229,7 @@ async function updateLetter(
       versionCount: versionNumber,
     }, 200, requestOrigin)
   } catch (error) {
-    log.error('update_letter_error', { date, error: (error as Error).message })
+    log.error('update_letter_error', { date, error: toError(error).message })
     throw error
   }
 }
@@ -260,7 +261,7 @@ async function getVersions(event: APIGatewayProxyEvent, requestOrigin?: string):
 
     return successResponse({ versions }, 200, requestOrigin)
   } catch (error) {
-    log.error('get_versions_error', { date, error: (error as Error).message })
+    log.error('get_versions_error', { date, error: toError(error).message })
     throw error
   }
 }
@@ -346,7 +347,7 @@ async function revertToVersion(
 
     return successResponse({ message: 'Reverted to version', timestamp }, 200, requestOrigin)
   } catch (error) {
-    log.error('revert_version_error', { date, timestamp, error: (error as Error).message })
+    log.error('revert_version_error', { date, timestamp, error: toError(error).message })
     throw error
   }
 }
@@ -391,7 +392,7 @@ async function getPdfUrl(event: APIGatewayProxyEvent, requestOrigin?: string): P
 
     return successResponse({ downloadUrl }, 200, requestOrigin)
   } catch (error) {
-    log.error('get_pdf_url_error', { date, error: (error as Error).message })
+    log.error('get_pdf_url_error', { date, error: toError(error).message })
     throw error
   }
 }

@@ -4,6 +4,7 @@
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { log } from './logger'
+import { toError } from './errors'
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION || 'us-west-2',
@@ -34,7 +35,7 @@ export async function signPhotoUrl(
     const command = new GetObjectCommand({ Bucket: bucket, Key: key })
     return getSignedUrl(s3Client, command, { expiresIn })
   } catch (error) {
-    log.error('sign_photo_url_failed', { bucket, key, error: (error as Error).message })
+    log.error('sign_photo_url_failed', { bucket, key, error: toError(error).message })
     return photoUrl
   }
 }
