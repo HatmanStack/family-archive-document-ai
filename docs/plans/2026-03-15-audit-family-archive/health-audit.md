@@ -1,7 +1,7 @@
 ---
 type: repo-health
-plan_id: 2026-03-15-audit-family-archive
 date: 2026-03-15
+repo: family-archive-document-ai
 goal: General health check
 scope: Full repo
 existing_tooling: Linters, CI, pre-commit hooks
@@ -77,28 +77,28 @@ constraints: None
     - **The Risk:** Configuration drift between the two files; wasted connections/resources from duplicate S3 client instances.
 
 14. **[Architectural Debt]** `backend/lambdas/api/src/routes/messages.ts:17-19`, `backend/lambdas/api/src/routes/profile.ts:17-19`, `backend/lambdas/api/src/lib/s3-utils.ts:8-10`
-    - **The Debt:** Five separate `new S3Client(...)` instantiations across route handlers and utils in the same Lambda.
-    - **The Risk:** Each consumes memory and connection resources. Inconsistent region configuration.
+    - **The Debt:** Five separate S3 client instances in the same Lambda with inconsistent region configuration.
+    - **The Risk:** Memory/connection waste and region configuration drift.
 
 15. **[Code Hygiene Debt]** `backend/lambdas/letter-processor/src/gemini.ts:25,97,105,115`, `backend/lambdas/letter-processor/src/index.ts:195,215`
-    - **The Debt:** The letter-processor Lambda uses raw `console.error`/`console.warn` calls instead of a structured logger.
-    - **The Risk:** Letter processing errors lack structured metadata, making production debugging harder.
+    - **The Debt:** The letter-processor Lambda uses raw `console.error`/`console.warn` instead of the structured logger available in the main API Lambda.
+    - **The Risk:** Letter processing errors lack structured metadata for production debugging.
 
 16. **[Operational Debt]** `frontend/lib/services/media-service.ts:65-72`
-    - **The Debt:** The `ragstackQuery()` function makes `fetch()` calls to an external GraphQL endpoint with no timeout.
+    - **The Debt:** `ragstackQuery()` makes `fetch()` calls to an external GraphQL endpoint with no timeout.
     - **The Risk:** If RAGStack becomes slow or unresponsive, gallery page fetches hang indefinitely.
 
 17. **[Code Hygiene Debt]** Multiple frontend service files
-    - **The Debt:** None of the frontend service files use the `withRetry` utility from `frontend/lib/utils/retry.ts` or the `cancellableFetch` from `frontend/lib/utils/cancellable-fetch.ts`. These utilities exist but appear unused in production code.
+    - **The Debt:** None of the frontend service files use the `withRetry` or `cancellableFetch` utilities that exist in the codebase.
     - **The Risk:** API calls from the frontend have no retry logic for transient network failures despite the infrastructure being available.
 
 18. **[Operational Debt]** `backend/lambdas/api/src/routes/profile.ts:343`
-    - **The Debt:** `listUsers()` function signature accepts `requesterId` and `requestOrigin` parameters but drops the `requestOrigin` parameter. The call site passes both but the second argument is silently ignored.
+    - **The Debt:** `listUsers()` function drops the `requestOrigin` parameter -- the second argument is silently ignored.
     - **The Risk:** CORS headers missing from `listUsers` responses.
 
 19. **[Code Hygiene Debt]** Test coverage gaps
-    - **The Debt:** No unit tests exist for any route handler, the `validation.ts` module, the `rate-limit.ts` module, or the `responses.ts` module.
-    - **The Risk:** Core API business logic has no unit test coverage.
+    - **The Debt:** No unit tests exist for any route handler, the `validation.ts` module, the `rate-limit.ts` module, or the `responses.ts` module. Core API business logic has no unit test coverage.
+    - **The Risk:** Route handlers contain validation, authorization, and data transformation logic that is only tested through integration/E2E tests (if at all).
 
 #### LOW
 
@@ -116,25 +116,23 @@ constraints: None
 
 23. **[Code Hygiene Debt]** npm audit: 23 vulnerabilities
     - **The Debt:** 23 vulnerabilities (5 low, 11 moderate, 7 high) in frontend dependencies including Svelte SSR XSS vulnerabilities.
-    - **The Risk:** SSR-related XSS vulnerabilities could be exploitable if user content is rendered server-side.
+    - **The Risk:** SSR-related XSS vulnerabilities could be exploitable if the application renders user content server-side.
 
 24. **[Structural Debt]** `backend/lambdas/api/src/routes/profile.ts:334`
-    - **The Debt:** Hardcoded S3 URL construction for profile photos using public URL pattern, but bucket likely uses private ACLs.
-    - **The Risk:** Non-functional URL stored as profile photo reference, requiring re-sign on every access.
+    - **The Debt:** Hardcoded S3 URL construction for profile photos that won't work with private buckets.
+    - **The Risk:** Non-functional URL stored as profile photo reference, requiring re-parsing and signing every time.
 
 25. **[Code Hygiene Debt]** `backend/lambdas/letter-processor/src/lib/config.ts:21`
-    - **The Debt:** Config validation rejects API keys matching `/^TODO/i` -- minor code smell.
+    - **The Debt:** Config validation pattern is minor code smell.
     - **The Risk:** Minimal.
 
 ### QUICK WINS
-
-1. `backend/lambdas/api/src/routes/messages.ts:34` -- Destructure `requestOrigin` from context and pass it to all `successResponse()` / `errorResponse()` calls (same for `comments.ts`, `reactions.ts`, `drafts.ts`). Estimated effort: < 1 hour.
+1. `backend/lambdas/api/src/routes/messages.ts:34` -- Destructure `requestOrigin` from context and pass it to all response calls (same for `comments.ts`, `reactions.ts`, `drafts.ts`). Estimated effort: < 1 hour.
 2. `.gitignore` -- Add `__pycache__/` and `*.pyc` entries, then `git rm --cached backend/lambdas/amplify-deployer/__pycache__/`. Estimated effort: < 15 minutes.
 3. `backend/lambdas/api/src/routes/messages.ts:148` and `backend/lambdas/api/src/routes/letters.ts:87` -- Replace raw `JSON.parse(Buffer.from(...))` with the existing `validatePaginationKey()` utility. Estimated effort: < 30 minutes.
 
 ### AUTOMATED SCAN RESULTS
-
-- **Dead code tool:** `npx knip` failed to run due to missing dependency. The presence of 14 JS files alongside their TS equivalents in `backend/lambdas/api/` strongly suggests dead code.
-- **Vulnerability scan:** `npm audit` reports 23 vulnerabilities in `frontend/`: 7 high (Svelte SSR XSS, serialize-javascript), 11 moderate, 5 low. Fix requires Svelte 5.x breaking change.
+- **Dead code:** `npx knip` failed to run due to missing dependency. The presence of 14 JS files alongside their TS equivalents in `backend/lambdas/api/` strongly suggests dead code.
+- **Vulnerability scan:** `npm audit` reports 23 vulnerabilities in `frontend/`: 7 high (Svelte SSR XSS), 11 moderate, 5 low. Fix available via `npm audit fix --force` (requires Svelte 5.x breaking change).
 - **Secrets scan:** No hardcoded secrets detected. API keys use environment variables. Test files use clearly labeled fake keys. `.env` and `.env.local` are in `.gitignore`.
 - **Git hygiene:** One committed build artifact (`__pycache__/index.cpython-313.pyc`). Commit history is clean with conventional commit messages. `.gitignore` missing Python bytecode patterns.
