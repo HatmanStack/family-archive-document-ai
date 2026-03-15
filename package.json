@@ -29,7 +29,8 @@
     "build": "cd frontend && npm run build",
     "preview": "cd frontend && npm run preview",
     "test:e2e": "playwright test",
-    "test:load": "artillery run tests/load/comments-load.yml && artillery run tests/load/messages-load.yml && artillery run tests/load/profile-load.yml"
+    "test:load": "artillery run tests/load/comments-load.yml && artillery run tests/load/messages-load.yml && artillery run tests/load/profile-load.yml",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@aws-sdk/client-ses": "^3.953.0",
@@ -38,6 +39,8 @@
     "artillery": "^2.0.26",
     "aws-sdk-client-mock": "^4.1.0",
     "esbuild": "^0.27.3",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "vitest": "^2.1.0",
     "workbox-build": "^7.0.0",
     "workbox-window": "^7.0.0"

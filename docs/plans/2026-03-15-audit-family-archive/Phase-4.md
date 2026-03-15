@@ -39,8 +39,8 @@ Add pre-commit hooks, enforce commit conventions, harden `.gitignore`, and add a
 2. This matches `ci.yml` env `NODE_VERSION: '24'` and `frontend/.nvmrc`.
 
 **Verification Checklist:**
-- [ ] `.nvmrc` exists at repo root
-- [ ] Contains `v24` (matching CI config)
+- [x] `.nvmrc` exists at repo root
+- [x] Contains `v24` (matching CI config)
 
 **Testing Instructions:**
 - Run `nvm use` from repo root (if nvm is installed) — should pick up v24.
