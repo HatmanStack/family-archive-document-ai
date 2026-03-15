@@ -9,7 +9,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { docClient, TABLE_NAME, ARCHIVE_BUCKET } from '../lib/database'
 import { keys, PREFIX } from '../lib/keys'
 import { successResponse, errorResponse, rateLimitResponse } from '../lib/responses'
-import { validateUserId, sanitizeText, validateLimit } from '../lib/validation'
+import { validateUserId, sanitizeText, validateLimit, parseRequestBody } from '../lib/validation'
 import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 import { log } from '../lib/logger'
 import { signPhotoUrl } from '../lib/s3-utils'
@@ -137,7 +137,10 @@ async function updateProfile(
     return rateLimitResponse(getRetryAfter(rateLimit.resetAt), 'Rate limit exceeded', requestOrigin)
   }
 
-  const body = JSON.parse(event.body || '{}')
+  const body = parseRequestBody(event.body)
+  if (!body) {
+    return errorResponse(400, 'Invalid JSON in request body', requestOrigin)
+  }
 
   // Sanitize inputs
   if (body.bio) body.bio = sanitizeText(body.bio)
@@ -248,32 +251,33 @@ async function updateProfile(
       }))
     }
 
-    return successResponse({ message: 'Profile updated successfully' })
+    return successResponse({ message: 'Profile updated successfully' }, 200, requestOrigin)
   } catch (error) {
     log.error('update_profile_error', { requesterId, error: (error as Error).message })
-    return errorResponse(500, 'Failed to update profile')
+    return errorResponse(500, 'Failed to update profile', requestOrigin)
   }
 }
 
 async function getUserComments(
   event: APIGatewayProxyEvent,
   requesterId: string,
-  isAdmin: boolean
+  isAdmin: boolean,
+  requestOrigin?: string
 ): Promise<APIGatewayProxyResult> {
   const userId = event.pathParameters?.userId
   const limit = validateLimit(event.queryStringParameters?.limit)
 
   if (!userId) {
-    return errorResponse(400, 'Missing userId parameter')
+    return errorResponse(400, 'Missing userId parameter', requestOrigin)
   }
 
   if (!validateUserId(userId)) {
-    return errorResponse(400, 'Invalid userId format')
+    return errorResponse(400, 'Invalid userId format', requestOrigin)
   }
 
   // Only allow viewing own comments or if admin
   if (userId !== requesterId && !isAdmin) {
-    return errorResponse(403, 'You can only view your own comments')
+    return errorResponse(403, 'You can only view your own comments', requestOrigin)
   }
 
   try {
@@ -297,27 +301,31 @@ async function getUserComments(
       isEdited: item.isEdited,
     }))
 
-    return successResponse({ comments })
+    return successResponse({ comments }, 200, requestOrigin)
   } catch (error) {
     log.error('get_user_comments_error', { userId, error: (error as Error).message })
-    return errorResponse(500, 'Failed to get user comments')
+    return errorResponse(500, 'Failed to get user comments', requestOrigin)
   }
 }
 
 async function getPhotoUploadUrl(
   event: APIGatewayProxyEvent,
-  requesterId: string
+  requesterId: string,
+  requestOrigin?: string
 ): Promise<APIGatewayProxyResult> {
-  const body = JSON.parse(event.body || '{}')
-  const { filename, contentType } = body
+  const body = parseRequestBody(event.body)
+  if (!body) {
+    return errorResponse(400, 'Invalid JSON in request body', requestOrigin)
+  }
+  const { filename, contentType } = body as { filename?: string; contentType?: string }
 
   if (!filename) {
-    return errorResponse(400, 'Missing filename')
+    return errorResponse(400, 'Missing filename', requestOrigin)
   }
 
   const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
   if (!allowedTypes.includes(contentType)) {
-    return errorResponse(400, 'Invalid content type')
+    return errorResponse(400, 'Invalid content type', requestOrigin)
   }
 
   try {
@@ -333,14 +341,14 @@ async function getPhotoUploadUrl(
     const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 900 })
     const photoUrl = `https://${ARCHIVE_BUCKET}.s3.${process.env.AWS_REGION || 'us-west-2'}.amazonaws.com/${key}`
 
-    return successResponse({ uploadUrl, photoUrl })
+    return successResponse({ uploadUrl, photoUrl }, 200, requestOrigin)
   } catch (error) {
     log.error('get_photo_upload_url_error', { requesterId, error: (error as Error).message })
-    return errorResponse(500, 'Failed to get photo upload URL')
+    return errorResponse(500, 'Failed to get photo upload URL', requestOrigin)
   }
 }
 
-async function listUsers(_requesterId: string): Promise<APIGatewayProxyResult> {
+async function listUsers(_requesterId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
   try {
     // Use GSI1 Query instead of Scan for better scalability
     const result = await docClient.send(new QueryCommand({
@@ -360,9 +368,9 @@ async function listUsers(_requesterId: string): Promise<APIGatewayProxyResult> {
       }))
     )
 
-    return successResponse({ users })
+    return successResponse({ users }, 200, requestOrigin)
   } catch (error) {
     log.error('list_users_error', { error: (error as Error).message })
-    return errorResponse(500, 'Failed to list users')
+    return errorResponse(500, 'Failed to list users', requestOrigin)
   }
 }

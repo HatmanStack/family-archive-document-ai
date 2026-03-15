@@ -12,6 +12,7 @@ import { docClient, TABLE_NAME, ARCHIVE_BUCKET, S3_PREFIXES } from '../lib/datab
 import { keys } from '../lib/keys'
 import { successResponse, errorResponse } from '../lib/responses'
 import { log } from '../lib/logger'
+import { parseRequestBody } from '../lib/validation'
 
 const s3Client = new S3Client({})
 const lambdaClient = new LambdaClient({})
@@ -99,7 +100,10 @@ async function handleUploadRequest(
   _requesterId: string,
   requestOrigin?: string
 ): Promise<APIGatewayProxyResult> {
-  const body = JSON.parse(event.body || '{}')
+  const body = parseRequestBody(event.body)
+  if (!body) {
+    return errorResponse(400, 'Invalid JSON in request body', requestOrigin)
+  }
   const { fileCount: rawFileCount = 1, fileTypes = [] } = body
 
   // Validate and bound fileCount to prevent resource exhaustion

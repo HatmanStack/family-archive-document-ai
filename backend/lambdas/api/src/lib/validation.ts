@@ -107,6 +107,18 @@ export function validateContentLength(
 }
 
 /**
+ * Safely parse JSON request body.
+ * Returns parsed object or null if body is malformed.
+ */
+export function parseRequestBody(body: string | null): Record<string, unknown> | null {
+  try {
+    return JSON.parse(body || '{}')
+  } catch {
+    return null
+  }
+}
+
+/**
  * Result of pagination key validation
  */
 export interface PaginationKeyValidation {

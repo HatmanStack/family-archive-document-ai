@@ -13,7 +13,7 @@ import { successResponse, errorResponse } from '../lib/responses'
 import { log } from '../lib/logger'
 import { signPhotoUrl } from '../lib/s3-utils'
 import { toError } from '../lib/errors'
-import { validatePaginationKey } from '../lib/validation'
+import { validatePaginationKey, parseRequestBody } from '../lib/validation'
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION || 'us-west-2',
@@ -204,8 +204,11 @@ async function getMessages(event: APIGatewayProxyEvent, userId: string, requestO
 }
 
 async function createConversation(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
-  const body = JSON.parse(event.body || '{}')
-  const participantIds: string[] = body.participantIds || []
+  const body = parseRequestBody(event.body)
+  if (!body) {
+    return errorResponse(400, 'Invalid JSON in request body', requestOrigin)
+  }
+  const participantIds: string[] = (body.participantIds as string[]) || []
   const { messageText, conversationTitle } = body
 
   if (!Array.isArray(participantIds) || participantIds.length === 0) {
@@ -277,7 +280,10 @@ async function createConversation(event: APIGatewayProxyEvent, userId: string, r
 
 async function sendMessage(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
   const conversationId = event.pathParameters?.conversationId
-  const body = JSON.parse(event.body || '{}')
+  const body = parseRequestBody(event.body)
+  if (!body) {
+    return errorResponse(400, 'Invalid JSON in request body', requestOrigin)
+  }
   const { messageText = '', attachments = [] } = body
 
   if (!conversationId) {
@@ -321,7 +327,10 @@ async function sendMessage(event: APIGatewayProxyEvent, userId: string, requestO
 }
 
 async function generateUploadUrl(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
-  const body = JSON.parse(event.body || '{}')
+  const body = parseRequestBody(event.body)
+  if (!body) {
+    return errorResponse(400, 'Invalid JSON in request body', requestOrigin)
+  }
   const fileName = body.fileName || body.filename
   const contentType = body.contentType || 'application/octet-stream'
 

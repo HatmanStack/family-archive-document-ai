@@ -2,7 +2,7 @@
  * Tests for validation utilities
  */
 import { describe, it, expect } from 'vitest'
-import { validatePaginationKey } from '../../backend/lambdas/api/src/lib/validation'
+import { validatePaginationKey, parseRequestBody } from '../../backend/lambdas/api/src/lib/validation'
 
 describe('validatePaginationKey', () => {
   it('returns valid for null/undefined/empty input (no pagination)', () => {
@@ -79,5 +79,29 @@ describe('validatePaginationKey', () => {
     const result = validatePaginationKey(encoded)
     expect(result.valid).toBe(true)
     expect(result.key).toEqual(cursor)
+  })
+})
+
+describe('parseRequestBody', () => {
+  it('returns parsed object for valid JSON', () => {
+    const result = parseRequestBody('{"name":"test","value":42}')
+    expect(result).toEqual({ name: 'test', value: 42 })
+  })
+
+  it('returns null for malformed JSON', () => {
+    expect(parseRequestBody('{invalid json}')).toBeNull()
+    expect(parseRequestBody('not json at all')).toBeNull()
+    expect(parseRequestBody('{missing: quotes}')).toBeNull()
+  })
+
+  it('returns empty object for null/empty body', () => {
+    expect(parseRequestBody(null)).toEqual({})
+    expect(parseRequestBody('')).toEqual({})
+  })
+
+  it('returns parsed object for nested JSON', () => {
+    const input = '{"data":{"nested":true},"list":[1,2,3]}'
+    const result = parseRequestBody(input)
+    expect(result).toEqual({ data: { nested: true }, list: [1, 2, 3] })
   })
 })
