@@ -407,7 +407,12 @@ export async function getImageById(imageId: string): Promise<RagImage | null> {
     }`, { imageId }) as { getImage: RagImage | null }
     return data.getImage
   }
-  catch {
+  catch (error) {
+    // Re-throw auth errors so callers can redirect to login
+    if (error instanceof Error && error.message.includes('not authenticated')) {
+      throw error
+    }
+    // For network/other errors, return null (graceful degradation)
     return null
   }
 }
