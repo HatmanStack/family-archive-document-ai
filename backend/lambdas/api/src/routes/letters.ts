@@ -15,6 +15,7 @@ import { PRESIGNED_URL_EXPIRY_SECONDS } from '../lib/constants'
 import { keys } from '../lib/keys'
 import { successResponse, errorResponse } from '../lib/responses'
 import { log } from '../lib/logger'
+import { validatePaginationKey } from '../lib/validation'
 
 const s3Client = new S3Client({})
 
@@ -84,7 +85,13 @@ async function listLetters(event: APIGatewayProxyEvent, requestOrigin?: string):
     }
 
     if (cursor) {
-      params.ExclusiveStartKey = JSON.parse(Buffer.from(cursor, 'base64').toString())
+      const paginationResult = validatePaginationKey(cursor)
+      if (!paginationResult.valid) {
+        return errorResponse(400, paginationResult.error || 'Invalid pagination key', requestOrigin)
+      }
+      if (paginationResult.key) {
+        params.ExclusiveStartKey = paginationResult.key
+      }
     }
 
     const result = await docClient.send(new QueryCommand(params))

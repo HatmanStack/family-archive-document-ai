@@ -13,6 +13,7 @@ import { successResponse, errorResponse } from '../lib/responses'
 import { log } from '../lib/logger'
 import { signPhotoUrl } from '../lib/s3-utils'
 import { toError } from '../lib/errors'
+import { validatePaginationKey } from '../lib/validation'
 
 const s3Client = new S3Client({
   region: process.env.AWS_REGION || 'us-west-2',
@@ -145,7 +146,13 @@ async function getMessages(event: APIGatewayProxyEvent, userId: string, requestO
     }
 
     if (lastEvaluatedKey) {
-      queryParams.ExclusiveStartKey = JSON.parse(Buffer.from(lastEvaluatedKey, 'base64').toString())
+      const paginationResult = validatePaginationKey(lastEvaluatedKey, PREFIX.CONV)
+      if (!paginationResult.valid) {
+        return errorResponse(400, paginationResult.error || 'Invalid pagination key', requestOrigin)
+      }
+      if (paginationResult.key) {
+        queryParams.ExclusiveStartKey = paginationResult.key
+      }
     }
 
     const result = await docClient.send(new QueryCommand(queryParams))
