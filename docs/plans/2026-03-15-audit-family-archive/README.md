@@ -10,7 +10,7 @@ The plan consolidates overlapping findings across the three audits into single t
 
 ## Prerequisites
 
-- Node.js (version used by project -- check `package.json` engines or CI config)
+- Node.js v24 (see `.nvmrc` and CI config)
 - npm (workspaces support required)
 - AWS SDK mock library (`aws-sdk-client-mock` -- already in devDependencies)
 - Vitest (already in devDependencies)
@@ -21,9 +21,9 @@ The plan consolidates overlapping findings across the three audits into single t
 | Phase | Tag | Goal | Token Estimate |
 |-------|-----|------|----------------|
 | 0 | -- | Foundation: ADRs, testing strategy, conventions | ~5,000 |
-| 1 | [HYGIENIST] | Dead code removal, file cleanup, dependency pruning | ~12,000 |
+| 1 | [HYGIENIST] | Dead code removal, file cleanup, console.log removal | ~8,000 |
 | 2 | [IMPLEMENTER] | Critical fixes: CORS, pagination validation, JSON parsing, error handling | ~25,000 |
-| 3 | [IMPLEMENTER] | Architecture improvements: repository extraction, S3 client consolidation, performance | ~30,000 |
+| 3 | [IMPLEMENTER] | Architecture improvements: S3 client consolidation, performance, route handler tests | ~30,000 |
 | 4 | [FORTIFIER] | Guardrails: pre-commit hooks, gitignore hardening, lint rules | ~10,000 |
 | 5 | [DOC-ENGINEER] | Documentation repairs: drift fixes, gap fills, stale removal, config docs | ~15,000 |
 
