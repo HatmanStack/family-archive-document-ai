@@ -22,10 +22,11 @@ frontend/
 │   ├── +page.svelte        # Homepage
 │   ├── auth/               # Authentication pages
 │   │   ├── login/
-│   │   ├── signup/
 │   │   ├── callback/
 │   │   ├── forgot-password/
-│   │   └── reset-password/
+│   │   ├── reset-password/
+│   │   ├── logout/
+│   │   └── pending-approval/
 │   ├── gallery/            # Media gallery
 │   ├── letters/            # Letter viewing and editing
 │   │   ├── [date]/        # Individual letter
