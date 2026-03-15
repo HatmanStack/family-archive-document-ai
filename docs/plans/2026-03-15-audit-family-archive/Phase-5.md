@@ -283,9 +283,9 @@ docs: document Python utility Lambdas and missing frontend routes
 3. **Stale #3:** In `docs/TROUBLESHOOTING.md` (around line 297), remove the reference to `SKIP_VALIDATION=true` environment variable. No such variable exists in the codebase.
 
 **Verification Checklist:**
-- [ ] `auth/signup/` is removed or annotated in FRONTEND.md
-- [ ] Repository listing in CLAUDE.md is accurate
-- [ ] SKIP_VALIDATION reference is removed from TROUBLESHOOTING.md
+- [x] `auth/signup/` is removed or annotated in FRONTEND.md
+- [x] Repository listing in CLAUDE.md is accurate
+- [x] SKIP_VALIDATION reference is removed from TROUBLESHOOTING.md
 
 **Commit Message Template:**
 ```
@@ -324,10 +324,10 @@ docs: remove stale references and clarify repository status
    - Remove claim that "GEMINI_API_KEY must start with 'AIza'" — no such prefix check exists
 
 **Verification Checklist:**
-- [ ] AUTHENTICATION.md login example matches actual auth flow
-- [ ] AUTHENTICATION.md API example references correct service file paths
-- [ ] FRONTEND.md comment component example matches actual props
-- [ ] TROUBLESHOOTING.md config validation description matches code
+- [x] AUTHENTICATION.md login example matches actual auth flow
+- [x] AUTHENTICATION.md API example references correct service file paths
+- [x] FRONTEND.md comment component example matches actual props
+- [x] TROUBLESHOOTING.md config validation description matches code
 
 **Commit Message Template:**
 ```
@@ -387,9 +387,9 @@ docs: update stale code examples to match current implementation
    Check which approach CI uses — `ci.yml:32` does `cp .env.example frontend/.env`, so update README to match.
 
 **Verification Checklist:**
-- [ ] `.env.example` has comment block about backend vars
-- [ ] Backend env var table exists in deployment/development docs
-- [ ] README setup instructions match CI setup (`cp .env.example frontend/.env`)
+- [x] `.env.example` has comment block about backend vars
+- [x] Backend env var table exists in deployment/development docs
+- [x] README setup instructions match CI setup (`cp .env.example frontend/.env`)
 
 **Commit Message Template:**
 ```
