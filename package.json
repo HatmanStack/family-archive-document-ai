@@ -39,6 +39,8 @@
   },
   "devDependencies": {
     "@aws-sdk/client-ses": "^3.953.0",
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
     "@playwright/test": "^1.56.1",
     "@vitest/coverage-v8": "^2.1.0",
     "artillery": "^2.0.26",

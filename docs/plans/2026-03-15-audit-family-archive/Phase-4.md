@@ -159,10 +159,10 @@ chore(ci): add pre-commit hooks with husky and lint-staged
 4. Test with a non-conventional commit message — should reject.
 
 **Verification Checklist:**
-- [ ] `@commitlint/cli` and `@commitlint/config-conventional` are in devDependencies
-- [ ] `.commitlintrc.json` exists at repo root
-- [ ] `.husky/commit-msg` exists and is executable
-- [ ] Non-conventional commit messages are rejected
+- [x] `@commitlint/cli` and `@commitlint/config-conventional` are in devDependencies
+- [x] `.commitlintrc.json` exists at repo root
+- [x] `.husky/commit-msg` exists and is executable
+- [x] Non-conventional commit messages are rejected
 
 **Testing Instructions:**
 - Run `echo "bad message" | npx commitlint` — should fail.
