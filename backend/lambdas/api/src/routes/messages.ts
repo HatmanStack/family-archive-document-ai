@@ -1,6 +1,7 @@
 /**
  * Messages route handler
  */
+import path from 'node:path'
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext } from '../types'
 import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
@@ -356,7 +357,8 @@ async function generateUploadUrl(event: APIGatewayProxyEvent, userId: string, re
   }
 
   try {
-    const key = `messages/attachments/${userId}/${uuidv4()}_${fileName}`
+    const safeName = path.basename(String(fileName)).replace(/[^a-zA-Z0-9._-]/g, '_')
+    const key = `messages/attachments/${userId}/${uuidv4()}_${safeName}`
 
     const command = new PutObjectCommand({
       Bucket: ARCHIVE_BUCKET,

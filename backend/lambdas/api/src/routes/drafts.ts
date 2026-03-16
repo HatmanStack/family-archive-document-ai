@@ -6,7 +6,7 @@ import type { RequestContext } from '../types'
 import { PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda'
-import { GetCommand, DeleteCommand, QueryCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
+import { GetCommand, DeleteCommand, QueryCommand, PutCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb'
 import { v4 as uuidv4 } from 'uuid'
 import { docClient, TABLE_NAME, ARCHIVE_BUCKET, S3_PREFIXES } from '../lib/database'
 import { keys } from '../lib/keys'
@@ -124,7 +124,7 @@ async function handleUploadRequest(
   if (fileCount <= 0) {
     return errorResponse(400, 'fileCount must be a positive integer', requestOrigin)
   }
-  if (rawFileCount > MAX_FILE_COUNT) {
+  if (Number(rawFileCount) > MAX_FILE_COUNT) {
     return errorResponse(400, `fileCount cannot exceed ${MAX_FILE_COUNT}`, requestOrigin)
   }
 
@@ -280,33 +280,39 @@ async function handlePublish(
       return errorResponse(404, 'Draft not found', requestOrigin)
     }
 
-    // Create Letter in DynamoDB
+    // Atomically create letter and delete draft to prevent duplicate publishes
     const now = new Date().toISOString()
     const pdfFilename = `${finalData.date}.pdf`
-    await docClient.send(new PutCommand({
-      TableName: TABLE_NAME,
-      Item: {
-        ...keys.letter(finalData.date),
-        entityType: 'LETTER',
-        title: finalData.title,
-        content: finalData.content,
-        author: finalData.author || null,
-        description: finalData.description || null,
-        ragstackDocumentId: finalData.ragstackDocumentId || null,
-        pdfFilename,
-        createdAt: now,
-        updatedAt: now,
-        lastEditedBy: requesterId,
-        versionCount: 0,
-        GSI1PK: 'LETTERS',
-        GSI1SK: finalData.date,
-      },
-    }))
-
-    // Delete draft
-    await docClient.send(new DeleteCommand({
-      TableName: TABLE_NAME,
-      Key: keys.draft(draftId),
+    await docClient.send(new TransactWriteCommand({
+      TransactItems: [
+        {
+          Put: {
+            TableName: TABLE_NAME,
+            Item: {
+              ...keys.letter(finalData.date),
+              entityType: 'LETTER',
+              title: finalData.title,
+              content: finalData.content,
+              author: finalData.author || null,
+              description: finalData.description || null,
+              ragstackDocumentId: finalData.ragstackDocumentId || null,
+              pdfFilename,
+              createdAt: now,
+              updatedAt: now,
+              lastEditedBy: requesterId,
+              versionCount: 0,
+              GSI1PK: 'LETTERS',
+              GSI1SK: finalData.date,
+            },
+          },
+        },
+        {
+          Delete: {
+            TableName: TABLE_NAME,
+            Key: keys.draft(draftId),
+          },
+        },
+      ],
     }))
 
     return successResponse({ message: 'Letter published', path: `/letters/${finalData.date}` }, 200, requestOrigin)

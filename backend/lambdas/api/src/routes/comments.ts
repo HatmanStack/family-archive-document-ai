@@ -5,7 +5,7 @@ import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext } from '../types'
 import { commentRepository } from '../repositories'
 import { successResponse, errorResponse, rateLimitResponse } from '../lib/responses'
-import { sanitizeText, validateContentLength } from '../lib/validation'
+import { sanitizeText, validateContentLength, parseRequestBody } from '../lib/validation'
 import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 import { log } from '../lib/logger'
 import { toError } from '../lib/errors'
@@ -126,14 +126,12 @@ async function createComment(
 
   const itemId = decodeItemId(rawItemId)
 
-  let body: { content?: string }
-  try {
-    body = JSON.parse(event.body || '{}')
-  } catch {
+  const body = parseRequestBody(event.body)
+  if (!body) {
     return errorResponse(400, 'Invalid JSON body', requestOrigin)
   }
 
-  const content = sanitizeText(body.content)
+  const content = sanitizeText(body.content as string)
   if (!validateContentLength(content, 1, 10000)) {
     return errorResponse(400, 'Comment content must be between 1 and 10000 characters', requestOrigin)
   }
@@ -173,14 +171,12 @@ async function editComment(
 
   const itemId = decodeItemId(rawItemId)
 
-  let body: { content?: string }
-  try {
-    body = JSON.parse(event.body || '{}')
-  } catch {
+  const body = parseRequestBody(event.body)
+  if (!body) {
     return errorResponse(400, 'Invalid JSON body', requestOrigin)
   }
 
-  const content = sanitizeText(body.content)
+  const content = sanitizeText(body.content as string)
   if (!validateContentLength(content, 1, 10000)) {
     return errorResponse(400, 'Comment content must be between 1 and 10000 characters', requestOrigin)
   }
@@ -273,10 +269,8 @@ async function adminDeleteComment(
 
   // For admin delete, we need to find the comment first
   // This requires knowing the itemId, which should be passed in the request
-  let body: { itemId?: string }
-  try {
-    body = JSON.parse(event.body || '{}')
-  } catch {
+  const body = parseRequestBody(event.body)
+  if (!body) {
     return errorResponse(400, 'Invalid JSON body', requestOrigin)
   }
 
@@ -284,7 +278,7 @@ async function adminDeleteComment(
     return errorResponse(400, 'Missing itemId in request body', requestOrigin)
   }
 
-  const itemId = body.itemId
+  const itemId = body.itemId as string
 
   try {
     await commentRepository.hardDelete(itemId, commentId)
