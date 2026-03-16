@@ -89,11 +89,11 @@ cd frontend && npm install && cd ..
 npm run deploy  # Interactive prompts for AWS configuration
 
 # Configure frontend (uses outputs from deploy)
-cd frontend
-cp .env.example .env
+cp .env.example frontend/.env
 # .env is auto-populated by deploy script
 
 # Start development server
+cd frontend
 npm run dev
 ```
 

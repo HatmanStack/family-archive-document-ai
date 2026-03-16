@@ -8,6 +8,7 @@ import { docClient, TABLE_NAME } from '../lib/database'
 import { keys, PREFIX } from '../lib/keys'
 import { successResponse, errorResponse } from '../lib/responses'
 import { log } from '../lib/logger'
+import { toError } from '../lib/errors'
 
 /**
  * Main reactions route handler
@@ -16,10 +17,10 @@ export async function handle(
   event: APIGatewayProxyEvent,
   context: RequestContext
 ): Promise<APIGatewayProxyResult> {
-  const { requesterId } = context
+  const { requesterId, requestOrigin } = context
 
   if (!requesterId) {
-    return errorResponse(401, 'Unauthorized: Missing user context')
+    return errorResponse(401, 'Unauthorized: Missing user context', requestOrigin)
   }
 
   const method = event.httpMethod
@@ -27,54 +28,55 @@ export async function handle(
   const normalizedResource = resource.replace(/^\/v1/, '')
 
   if (method === 'POST' && normalizedResource === '/reactions/{commentId}') {
-    return toggleReaction(event, requesterId)
+    return toggleReaction(event, requesterId, requestOrigin)
   }
 
   if (method === 'GET' && normalizedResource === '/reactions/{commentId}') {
-    return getReactions(event)
+    return getReactions(event, requestOrigin)
   }
 
   if (method === 'DELETE' && normalizedResource === '/reactions/{commentId}') {
-    return toggleReaction(event, requesterId)
+    return toggleReaction(event, requesterId, requestOrigin)
   }
 
-  return errorResponse(404, 'Route not found')
+  return errorResponse(404, 'Route not found', requestOrigin)
 }
 
 async function toggleReaction(
   event: APIGatewayProxyEvent,
-  userId: string
+  userId: string,
+  requestOrigin?: string
 ): Promise<APIGatewayProxyResult> {
   const rawCommentId = event.pathParameters?.commentId
   if (!rawCommentId) {
-    return errorResponse(400, 'Missing commentId parameter')
+    return errorResponse(400, 'Missing commentId parameter', requestOrigin)
   }
 
   let commentId: string
   try {
     commentId = decodeURIComponent(rawCommentId)
   } catch {
-    return errorResponse(400, 'Invalid commentId encoding')
+    return errorResponse(400, 'Invalid commentId encoding', requestOrigin)
   }
 
   let body: Record<string, unknown>
   try {
     body = JSON.parse(event.body || '{}')
   } catch {
-    return errorResponse(400, 'Invalid JSON body')
+    return errorResponse(400, 'Invalid JSON body', requestOrigin)
   }
 
   const { itemId: rawItemId, reactionType = 'like' } = body
 
   if (!rawItemId || typeof rawItemId !== 'string') {
-    return errorResponse(400, 'Missing itemId in request body')
+    return errorResponse(400, 'Missing itemId in request body', requestOrigin)
   }
 
   let itemId: string
   try {
     itemId = decodeURIComponent(rawItemId)
   } catch {
-    return errorResponse(400, 'Invalid itemId encoding')
+    return errorResponse(400, 'Invalid itemId encoding', requestOrigin)
   }
   const itemIdVariants = [itemId, encodeURIComponent(itemId)]
 
@@ -97,7 +99,7 @@ async function toggleReaction(
     }
 
     if (!foundComment || !foundCommentKey) {
-      return errorResponse(404, 'Comment not found')
+      return errorResponse(404, 'Comment not found', requestOrigin)
     }
 
     const actualItemId = (foundComment.itemId as string) || foundCommentKey.PK.replace(PREFIX.COMMENT, '')
@@ -132,7 +134,7 @@ async function toggleReaction(
           ],
         }))
       } catch (error) {
-        if ((error as Error).name === 'TransactionCanceledException') {
+        if (toError(error).name === 'TransactionCanceledException') {
           await docClient.send(new DeleteCommand({
             TableName: TABLE_NAME,
             Key: reactionKey,
@@ -142,7 +144,7 @@ async function toggleReaction(
         }
       }
 
-      return successResponse({ liked: false, message: 'Reaction removed' })
+      return successResponse({ liked: false, message: 'Reaction removed' }, 200, requestOrigin)
     } else {
       // Add reaction
       const now = new Date().toISOString()
@@ -178,30 +180,30 @@ async function toggleReaction(
           ],
         }))
       } catch (error) {
-        if ((error as Error).name === 'TransactionCanceledException') {
-          return errorResponse(404, 'Comment not found')
+        if (toError(error).name === 'TransactionCanceledException') {
+          return errorResponse(404, 'Comment not found', requestOrigin)
         }
         throw error
       }
 
-      return successResponse({ liked: true, message: 'Reaction added' })
+      return successResponse({ liked: true, message: 'Reaction added' }, 200, requestOrigin)
     }
   } catch (error) {
-    log.error('toggle_reaction_error', { commentId, userId, error: (error as Error).message })
-    return errorResponse(500, 'Failed to toggle reaction')
+    log.error('toggle_reaction_error', { commentId, userId, error: toError(error).message })
+    return errorResponse(500, 'Failed to toggle reaction', requestOrigin)
   }
 }
 
-async function getReactions(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
+async function getReactions(event: APIGatewayProxyEvent, requestOrigin?: string): Promise<APIGatewayProxyResult> {
   const commentId = event.pathParameters?.commentId
   const itemId = event.queryStringParameters?.itemId
 
   if (!commentId) {
-    return errorResponse(400, 'Missing commentId parameter')
+    return errorResponse(400, 'Missing commentId parameter', requestOrigin)
   }
 
   if (!itemId) {
-    return errorResponse(400, 'Missing itemId query parameter')
+    return errorResponse(400, 'Missing itemId query parameter', requestOrigin)
   }
 
   try {
@@ -227,9 +229,9 @@ async function getReactions(event: APIGatewayProxyEvent): Promise<APIGatewayProx
       itemId,
       count: reactions.length,
       reactions,
-    })
+    }, 200, requestOrigin)
   } catch (error) {
-    log.error('get_reactions_error', { commentId, itemId, error: (error as Error).message })
-    return errorResponse(500, 'Failed to get reactions')
+    log.error('get_reactions_error', { commentId, itemId, error: toError(error).message })
+    return errorResponse(500, 'Failed to get reactions', requestOrigin)
   }
 }

@@ -1,0 +1,10 @@
+{
+  "extends": ["@commitlint/config-conventional"],
+  "rules": {
+    "scope-enum": [1, "always", [
+      "api", "frontend", "gallery", "messages", "comments", "letters",
+      "media", "profile", "reactions", "drafts", "ci", "deps", "docs"
+    ]],
+    "subject-max-length": [2, "always", 100]
+  }
+}

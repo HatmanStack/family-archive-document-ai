@@ -4,7 +4,8 @@
 import { PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { docClient, TABLE_NAME } from './database'
 import { keys } from './keys'
-import { hasErrorName } from './errors'
+import { hasErrorName, toError } from './errors'
+import { log } from './logger'
 
 interface RateLimitConfig {
   maxRequests: number
@@ -177,7 +178,7 @@ export async function checkRateLimit(
     }
 
     // Fail open for availability
-    console.error('Rate limit check failed:', error)
+    log.error('rate_limit_check_failed', { error: toError(error).message })
     return {
       allowed: true,
       remaining: config.maxRequests,

@@ -1,22 +1,21 @@
 /**
  * Messages route handler
  */
+import path from 'node:path'
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext } from '../types'
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
-import { GetCommand, PutCommand, QueryCommand, UpdateCommand, DeleteCommand, BatchWriteCommand, BatchGetCommand, type QueryCommandInput } from '@aws-sdk/lib-dynamodb'
+import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
+import { GetCommand, PutCommand, QueryCommand, UpdateCommand, DeleteCommand, BatchGetCommand, type QueryCommandInput } from '@aws-sdk/lib-dynamodb'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { v4 as uuidv4 } from 'uuid'
-import { docClient, TABLE_NAME, ARCHIVE_BUCKET } from '../lib/database'
+import { docClient, TABLE_NAME, ARCHIVE_BUCKET, batchWriteWithRetry } from '../lib/database'
 import { keys, PREFIX } from '../lib/keys'
-import { successResponse, errorResponse } from '../lib/responses'
+import { successResponse, errorResponse, rateLimitResponse } from '../lib/responses'
 import { log } from '../lib/logger'
-import { signPhotoUrl } from '../lib/s3-utils'
+import { s3Client, signPhotoUrl } from '../lib/s3-utils'
 import { toError } from '../lib/errors'
-
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION || 'us-west-2',
-})
+import { validatePaginationKey, parseRequestBody } from '../lib/validation'
+import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 
 interface Attachment {
   s3Key?: string
@@ -32,10 +31,10 @@ export async function handle(
   event: APIGatewayProxyEvent,
   context: RequestContext
 ): Promise<APIGatewayProxyResult> {
-  const { requesterId } = context
+  const { requesterId, requestOrigin } = context
 
   if (!requesterId) {
-    return errorResponse(401, 'Unauthorized: Missing user context')
+    return errorResponse(401, 'Unauthorized: Missing user context', requestOrigin)
   }
 
   const method = event.httpMethod
@@ -45,44 +44,94 @@ export async function handle(
   log.info('messages_request', { method, resource: normalizedResource, requesterId })
 
   if (method === 'GET' && normalizedResource === '/messages/conversations') {
-    return listConversations(requesterId)
+    return listConversations(event, requesterId, requestOrigin)
   }
 
   if (method === 'GET' && normalizedResource === '/messages/{conversationId}') {
-    return getMessages(event, requesterId)
+    return getMessages(event, requesterId, requestOrigin)
   }
 
   if (method === 'POST' && normalizedResource === '/messages/conversations') {
-    return createConversation(event, requesterId)
+    const rateLimit = await checkRateLimit(requesterId, 'message')
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(
+        getRetryAfter(rateLimit.resetAt),
+        'Rate limit exceeded. Please try again later.',
+        requestOrigin
+      )
+    }
+    return createConversation(event, requesterId, requestOrigin)
   }
 
   if (method === 'POST' && normalizedResource === '/messages/{conversationId}') {
-    return sendMessage(event, requesterId)
+    const rateLimit = await checkRateLimit(requesterId, 'message')
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(
+        getRetryAfter(rateLimit.resetAt),
+        'Rate limit exceeded. Please try again later.',
+        requestOrigin
+      )
+    }
+    return sendMessage(event, requesterId, requestOrigin)
   }
 
   if (method === 'POST' && (normalizedResource === '/messages/{conversationId}/upload-url' ||
       normalizedResource === '/messages/attachments/upload-url')) {
-    return generateUploadUrl(event, requesterId)
+    const rateLimit = await checkRateLimit(requesterId, 'upload')
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(
+        getRetryAfter(rateLimit.resetAt),
+        'Rate limit exceeded. Please try again later.',
+        requestOrigin
+      )
+    }
+    return generateUploadUrl(event, requesterId, requestOrigin)
   }
 
   if (method === 'PUT' && normalizedResource === '/messages/{conversationId}/read') {
-    return markAsRead(event, requesterId)
+    const rateLimit = await checkRateLimit(requesterId, 'message')
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(
+        getRetryAfter(rateLimit.resetAt),
+        'Rate limit exceeded. Please try again later.',
+        requestOrigin
+      )
+    }
+    return markAsRead(event, requesterId, requestOrigin)
   }
 
   if (method === 'DELETE' && normalizedResource === '/messages/{conversationId}') {
-    return deleteConversation(event, requesterId)
+    const rateLimit = await checkRateLimit(requesterId, 'message')
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(
+        getRetryAfter(rateLimit.resetAt),
+        'Rate limit exceeded. Please try again later.',
+        requestOrigin
+      )
+    }
+    return deleteConversation(event, requesterId, requestOrigin)
   }
 
   if (method === 'DELETE' && normalizedResource === '/messages/{conversationId}/{messageId}') {
-    return deleteMessage(event, requesterId)
+    const rateLimit = await checkRateLimit(requesterId, 'message')
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(
+        getRetryAfter(rateLimit.resetAt),
+        'Rate limit exceeded. Please try again later.',
+        requestOrigin
+      )
+    }
+    return deleteMessage(event, requesterId, requestOrigin)
   }
 
-  return errorResponse(404, 'Route not found')
+  return errorResponse(404, 'Route not found', requestOrigin)
 }
 
-async function listConversations(userId: string): Promise<APIGatewayProxyResult> {
+async function listConversations(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
+  const lastEvaluatedKey = event.queryStringParameters?.lastEvaluatedKey
+
   try {
-    const result = await docClient.send(new QueryCommand({
+    const queryParams: QueryCommandInput = {
       TableName: TABLE_NAME,
       KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
       ExpressionAttributeValues: {
@@ -91,7 +140,19 @@ async function listConversations(userId: string): Promise<APIGatewayProxyResult>
       },
       ScanIndexForward: false,
       Limit: 50,
-    }))
+    }
+
+    if (lastEvaluatedKey) {
+      const paginationResult = validatePaginationKey(lastEvaluatedKey, `${PREFIX.USER}${userId}`)
+      if (!paginationResult.valid) {
+        return errorResponse(400, paginationResult.error || 'Invalid pagination key', requestOrigin)
+      }
+      if (paginationResult.key) {
+        queryParams.ExclusiveStartKey = paginationResult.key
+      }
+    }
+
+    const result = await docClient.send(new QueryCommand(queryParams))
 
     const conversations = (result.Items || [])
       .filter(item => item.entityType === 'CONVERSATION_MEMBER')
@@ -106,21 +167,26 @@ async function listConversations(userId: string): Promise<APIGatewayProxyResult>
         creatorId: item.creatorId,
       }))
 
-    return successResponse({ conversations })
+    return successResponse({
+      conversations,
+      lastEvaluatedKey: result.LastEvaluatedKey
+        ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
+        : null,
+    }, 200, requestOrigin)
   } catch (err) {
     const error = toError(err)
     log.error('list_conversations_error', { userId, error: error.message })
-    throw error
+    return errorResponse(500, 'Failed to list conversations', requestOrigin)
   }
 }
 
-async function getMessages(event: APIGatewayProxyEvent, userId: string): Promise<APIGatewayProxyResult> {
+async function getMessages(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
   const conversationId = event.pathParameters?.conversationId
   const limit = parseInt(event.queryStringParameters?.limit || '50', 10)
   const lastEvaluatedKey = event.queryStringParameters?.lastEvaluatedKey
 
   if (!conversationId) {
-    return errorResponse(400, 'Missing conversationId parameter')
+    return errorResponse(400, 'Missing conversationId parameter', requestOrigin)
   }
 
   try {
@@ -130,7 +196,7 @@ async function getMessages(event: APIGatewayProxyEvent, userId: string): Promise
     }))
 
     if (!memberCheck.Item) {
-      return errorResponse(403, 'You are not a participant in this conversation')
+      return errorResponse(403, 'You are not a participant in this conversation', requestOrigin)
     }
 
     const queryParams: QueryCommandInput = {
@@ -145,7 +211,13 @@ async function getMessages(event: APIGatewayProxyEvent, userId: string): Promise
     }
 
     if (lastEvaluatedKey) {
-      queryParams.ExclusiveStartKey = JSON.parse(Buffer.from(lastEvaluatedKey, 'base64').toString())
+      const paginationResult = validatePaginationKey(lastEvaluatedKey, `${PREFIX.CONV}${conversationId}`)
+      if (!paginationResult.valid) {
+        return errorResponse(400, paginationResult.error || 'Invalid pagination key', requestOrigin)
+      }
+      if (paginationResult.key) {
+        queryParams.ExclusiveStartKey = paginationResult.key
+      }
     }
 
     const result = await docClient.send(new QueryCommand(queryParams))
@@ -188,21 +260,38 @@ async function getMessages(event: APIGatewayProxyEvent, userId: string): Promise
       lastEvaluatedKey: result.LastEvaluatedKey
         ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
         : null,
-    })
+    }, 200, requestOrigin)
   } catch (err) {
     const error = toError(err)
     log.error('get_messages_error', { conversationId, userId, error: error.message })
-    throw error
+    return errorResponse(500, 'Failed to get messages', requestOrigin)
   }
 }
 
-async function createConversation(event: APIGatewayProxyEvent, userId: string): Promise<APIGatewayProxyResult> {
-  const body = JSON.parse(event.body || '{}')
-  const participantIds: string[] = body.participantIds || []
+async function createConversation(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
+  const body = parseRequestBody(event.body)
+  if (!body) {
+    return errorResponse(400, 'Invalid JSON in request body', requestOrigin)
+  }
+  const rawParticipantIds = body.participantIds
   const { messageText, conversationTitle } = body
 
-  if (!Array.isArray(participantIds) || participantIds.length === 0) {
-    return errorResponse(400, 'participantIds must be a non-empty array')
+  if (!Array.isArray(rawParticipantIds) || rawParticipantIds.length === 0) {
+    return errorResponse(400, 'participantIds must be a non-empty array', requestOrigin)
+  }
+
+  // Validate, normalize, and deduplicate participant IDs
+  const seen = new Set<string>()
+  const participantIds: string[] = []
+  for (const id of rawParticipantIds) {
+    if (typeof id !== 'string' || id.trim().length === 0) {
+      return errorResponse(400, 'Each participantId must be a non-empty string', requestOrigin)
+    }
+    const trimmed = id.trim()
+    if (!seen.has(trimmed)) {
+      seen.add(trimmed)
+      participantIds.push(trimmed)
+    }
   }
 
   if (!participantIds.includes(userId)) {
@@ -249,43 +338,42 @@ async function createConversation(event: APIGatewayProxyEvent, userId: string): 
       },
     })
 
-    for (let i = 0; i < memberRecords.length; i += 25) {
-      await docClient.send(new BatchWriteCommand({
-        RequestItems: { [TABLE_NAME]: memberRecords.slice(i, i + 25) },
-      }))
-    }
+    await batchWriteWithRetry(memberRecords, TABLE_NAME)
 
     let message = null
     if (messageText) {
       message = await createMessageInternal(conversationId, userId, messageText, participantIds, conversationType)
     }
 
-    return successResponse({ conversationId, conversationType, participantIds, message }, 201)
+    return successResponse({ conversationId, conversationType, participantIds, message }, 201, requestOrigin)
   } catch (err) {
     const error = toError(err)
     log.error('create_conversation_error', { userId, participantIds, error: error.message })
-    throw error
+    return errorResponse(500, 'Failed to create conversation', requestOrigin)
   }
 }
 
-async function sendMessage(event: APIGatewayProxyEvent, userId: string): Promise<APIGatewayProxyResult> {
+async function sendMessage(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
   const conversationId = event.pathParameters?.conversationId
-  const body = JSON.parse(event.body || '{}')
+  const body = parseRequestBody(event.body)
+  if (!body) {
+    return errorResponse(400, 'Invalid JSON in request body', requestOrigin)
+  }
   const { messageText = '', attachments = [] } = body
 
   if (!conversationId) {
-    return errorResponse(400, 'Missing conversationId parameter')
+    return errorResponse(400, 'Missing conversationId parameter', requestOrigin)
   }
 
   const hasText = messageText && typeof messageText === 'string' && messageText.trim().length > 0
   const hasAttachments = Array.isArray(attachments) && attachments.length > 0
 
   if (!hasText && !hasAttachments) {
-    return errorResponse(400, 'Message must have text or attachments')
+    return errorResponse(400, 'Message must have text or attachments', requestOrigin)
   }
 
   if (messageText && messageText.length > 5000) {
-    return errorResponse(400, 'Message text must be 5000 characters or less')
+    return errorResponse(400, 'Message text must be 5000 characters or less', requestOrigin)
   }
 
   try {
@@ -295,7 +383,7 @@ async function sendMessage(event: APIGatewayProxyEvent, userId: string): Promise
     }))
 
     if (!memberCheck.Item) {
-      return errorResponse(403, 'You are not a participant in this conversation')
+      return errorResponse(403, 'You are not a participant in this conversation', requestOrigin)
     }
 
     const conversation = memberCheck.Item
@@ -305,25 +393,37 @@ async function sendMessage(event: APIGatewayProxyEvent, userId: string): Promise
     const message = await createMessageInternal(conversationId, userId, messageText, participantIds, conversationType, attachments)
     await updateConversationMembers(conversationId, userId, participantIds)
 
-    return successResponse(message, 201)
+    return successResponse(message, 201, requestOrigin)
   } catch (err) {
     const error = toError(err)
     log.error('send_message_error', { conversationId, userId, error: error.message })
-    throw error
+    return errorResponse(500, 'Failed to send message', requestOrigin)
   }
 }
 
-async function generateUploadUrl(event: APIGatewayProxyEvent, userId: string): Promise<APIGatewayProxyResult> {
-  const body = JSON.parse(event.body || '{}')
+const ALLOWED_ATTACHMENT_TYPES = new Set([
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+  'application/pdf', 'application/octet-stream',
+  'video/mp4', 'video/quicktime',
+  'audio/mpeg', 'audio/mp4',
+])
+
+async function generateUploadUrl(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
+  const body = parseRequestBody(event.body)
+  if (!body) {
+    return errorResponse(400, 'Invalid JSON in request body', requestOrigin)
+  }
   const fileName = body.fileName || body.filename
-  const contentType = body.contentType || 'application/octet-stream'
+  const requestedType = (body.contentType as string) || 'application/octet-stream'
+  const contentType = ALLOWED_ATTACHMENT_TYPES.has(requestedType) ? requestedType : 'application/octet-stream'
 
   if (!fileName) {
-    return errorResponse(400, 'Missing fileName')
+    return errorResponse(400, 'Missing fileName', requestOrigin)
   }
 
   try {
-    const key = `messages/attachments/${userId}/${uuidv4()}_${fileName}`
+    const safeName = path.basename(String(fileName)).replace(/[^a-zA-Z0-9._-]/g, '_')
+    const key = `messages/attachments/${userId}/${uuidv4()}_${safeName}`
 
     const command = new PutObjectCommand({
       Bucket: ARCHIVE_BUCKET,
@@ -333,19 +433,19 @@ async function generateUploadUrl(event: APIGatewayProxyEvent, userId: string): P
 
     const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn: 900 })
 
-    return successResponse({ uploadUrl: presignedUrl, s3Key: key, fileName, contentType })
+    return successResponse({ uploadUrl: presignedUrl, s3Key: key, fileName, contentType }, 200, requestOrigin)
   } catch (err) {
     const error = toError(err)
     log.error('generate_upload_url_error', { userId, fileName, error: error.message })
-    throw error
+    return errorResponse(500, 'Failed to generate upload URL', requestOrigin)
   }
 }
 
-async function markAsRead(event: APIGatewayProxyEvent, userId: string): Promise<APIGatewayProxyResult> {
+async function markAsRead(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
   const conversationId = event.pathParameters?.conversationId
 
   if (!conversationId) {
-    return errorResponse(400, 'Missing conversationId parameter')
+    return errorResponse(400, 'Missing conversationId parameter', requestOrigin)
   }
 
   try {
@@ -357,22 +457,27 @@ async function markAsRead(event: APIGatewayProxyEvent, userId: string): Promise<
       ExpressionAttributeValues: { ':zero': 0 },
     }))
 
-    return successResponse({ message: 'Conversation marked as read' })
+    return successResponse({ message: 'Conversation marked as read' }, 200, requestOrigin)
   } catch (err) {
     const error = toError(err)
     if (error.name === 'ConditionalCheckFailedException') {
-      return errorResponse(403, 'You are not a member of this conversation')
+      return errorResponse(403, 'You are not a member of this conversation', requestOrigin)
     }
     log.error('mark_as_read_error', { conversationId, userId, error: error.message })
-    throw error
+    return errorResponse(500, 'Failed to mark as read', requestOrigin)
   }
 }
 
-async function deleteConversation(event: APIGatewayProxyEvent, userId: string): Promise<APIGatewayProxyResult> {
-  const conversationId = decodeURIComponent(event.pathParameters?.conversationId || '')
+async function deleteConversation(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
+  let conversationId: string
+  try {
+    conversationId = decodeURIComponent(event.pathParameters?.conversationId || '')
+  } catch {
+    return errorResponse(400, 'Malformed conversationId parameter', requestOrigin)
+  }
 
   if (!conversationId) {
-    return errorResponse(400, 'Missing conversationId parameter')
+    return errorResponse(400, 'Missing conversationId parameter', requestOrigin)
   }
 
   try {
@@ -386,7 +491,7 @@ async function deleteConversation(event: APIGatewayProxyEvent, userId: string): 
 
     if (metaResult.Item) {
       if (metaResult.Item.creatorId !== userId) {
-        return errorResponse(403, 'Only the conversation creator can delete it')
+        return errorResponse(403, 'Only the conversation creator can delete it', requestOrigin)
       }
       participantIds = Array.from((metaResult.Item.participantIds as Set<string>) || [])
     } else {
@@ -396,11 +501,11 @@ async function deleteConversation(event: APIGatewayProxyEvent, userId: string): 
       }))
 
       if (!memberResult.Item) {
-        return errorResponse(404, 'Conversation not found')
+        return errorResponse(404, 'Conversation not found', requestOrigin)
       }
 
       if (memberResult.Item.creatorId !== userId) {
-        return errorResponse(403, 'Cannot delete legacy conversation or not the creator')
+        return errorResponse(403, 'Cannot delete legacy conversation or not the creator', requestOrigin)
       }
       participantIds = Array.from((memberResult.Item.participantIds as Set<string>) || [])
     }
@@ -463,32 +568,34 @@ async function deleteConversation(event: APIGatewayProxyEvent, userId: string): 
           }))
         } catch (e) {
           // Log but don't fail - orphaned S3 objects are cleaned up by lifecycle policies
-          log.warn('attachment_delete_failed', { s3Key, error: (e as Error).message })
+          log.warn('attachment_delete_failed', { s3Key, error: toError(e).message })
         }
       })
     )
 
     // Batch delete DynamoDB records
-    for (let i = 0; i < deleteOps.length; i += 25) {
-      await docClient.send(new BatchWriteCommand({
-        RequestItems: { [TABLE_NAME]: deleteOps.slice(i, i + 25) },
-      }))
-    }
+    await batchWriteWithRetry(deleteOps, TABLE_NAME)
 
-    return successResponse({ message: 'Conversation deleted' })
+    return successResponse({ message: 'Conversation deleted' }, 200, requestOrigin)
   } catch (err) {
     const error = toError(err)
     log.error('delete_conversation_error', { conversationId, userId, error: error.message })
-    throw error
+    return errorResponse(500, 'Failed to delete conversation', requestOrigin)
   }
 }
 
-async function deleteMessage(event: APIGatewayProxyEvent, userId: string): Promise<APIGatewayProxyResult> {
-  const conversationId = decodeURIComponent(event.pathParameters?.conversationId || '')
-  const messageId = decodeURIComponent(event.pathParameters?.messageId || '')
+async function deleteMessage(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
+  let conversationId: string
+  let messageId: string
+  try {
+    conversationId = decodeURIComponent(event.pathParameters?.conversationId || '')
+    messageId = decodeURIComponent(event.pathParameters?.messageId || '')
+  } catch {
+    return errorResponse(400, 'Malformed conversationId or messageId parameter', requestOrigin)
+  }
 
   if (!conversationId || !messageId) {
-    return errorResponse(400, 'Missing conversationId or messageId parameter')
+    return errorResponse(400, 'Missing conversationId or messageId parameter', requestOrigin)
   }
 
   try {
@@ -499,13 +606,13 @@ async function deleteMessage(event: APIGatewayProxyEvent, userId: string): Promi
     }))
 
     if (!messageResult.Item) {
-      return errorResponse(404, 'Message not found')
+      return errorResponse(404, 'Message not found', requestOrigin)
     }
 
     const message = messageResult.Item
 
     if (message.senderId !== userId) {
-      return errorResponse(403, 'You can only delete your own messages')
+      return errorResponse(403, 'You can only delete your own messages', requestOrigin)
     }
 
     // Delete attachments
@@ -520,7 +627,7 @@ async function deleteMessage(event: APIGatewayProxyEvent, userId: string): Promi
                 Key: attachment.s3Key,
               }))
             } catch (e) {
-              log.warn('attachment_delete_failed', { s3Key: attachment.s3Key, error: (e as Error).message })
+              log.warn('attachment_delete_failed', { s3Key: attachment.s3Key, error: toError(e).message })
             }
           }
         })
@@ -532,11 +639,11 @@ async function deleteMessage(event: APIGatewayProxyEvent, userId: string): Promi
       Key: messageKey,
     }))
 
-    return successResponse({ message: 'Message deleted' })
+    return successResponse({ message: 'Message deleted' }, 200, requestOrigin)
   } catch (err) {
     const error = toError(err)
     log.error('delete_message_error', { conversationId, messageId, userId, error: error.message })
-    throw error
+    return errorResponse(500, 'Failed to delete message', requestOrigin)
   }
 }
 

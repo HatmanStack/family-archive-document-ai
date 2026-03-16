@@ -23,6 +23,9 @@ User Request → API Gateway → Lambda (consolidated) → DynamoDB / S3
 | **Letter Processor Lambda** | PDF merge + Gemini AI transcription |
 | **Activity Aggregator Lambda** | DynamoDB Streams processor for user stats |
 | **Notification Processor Lambda** | Email notifications via SES |
+| **Admin Provisioner Lambda** | Python CloudFormation custom resource for initial admin user creation |
+| **Amplify Deployer Lambda** | Python CloudFormation custom resource for one-click Amplify deployments |
+| **Frontend Builder Lambda** | Python CloudFormation custom resource to trigger CodeBuild for frontend builds |
 | **API Gateway** | HTTP routing with Cognito authorizer |
 | **DynamoDB** | Single-table design for all entities |
 | **S3** | File storage (letters, media, profile photos) |
@@ -108,10 +111,15 @@ handler(event) {
   /comments/*     → comments.handle()
   /messages/*     → messages.handle()
   /profile/*      → profile.handle()
+  /users/*        → profile.handle()
   /reactions/*    → reactions.handle()
   /media/*        → media.handle()
+  /pdf/*          → media.handle()
+  /download/*     → media.handle()
+  /upload/*       → media.handle()
   /letters/*      → letters.handle()
   /admin/drafts/* → drafts.handle()
+  /admin/comments/* → comments.handle()
   /contact        → contact.handle()
 }
 ```

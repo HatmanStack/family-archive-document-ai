@@ -180,6 +180,8 @@ export async function handler(event: ProcessorEvent): Promise<ProcessorResult> {
         Item: {
           PK: `DRAFT#${uploadId}`,
           SK: 'METADATA',
+          GSI1PK: 'DRAFTS',
+          GSI1SK: `DRAFT#${uploadId}`,
           entityType: 'DRAFT_LETTER',
           status: 'REVIEW',
           createdAt: new Date().toISOString(),
@@ -202,6 +204,8 @@ export async function handler(event: ProcessorEvent): Promise<ProcessorResult> {
           Item: {
             PK: `DRAFT#${uploadId}`,
             SK: 'METADATA',
+            GSI1PK: 'DRAFTS',
+            GSI1SK: `DRAFT#${uploadId}`,
             entityType: 'DRAFT_LETTER',
             status: 'ERROR',
             error: (error as Error).message,

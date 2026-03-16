@@ -88,6 +88,15 @@ export class InternalError extends AppError {
 }
 
 /**
+ * 500 Database Error - DynamoDB operation failed
+ */
+export class DatabaseError extends AppError {
+  constructor(message: string) {
+    super(message, 500, false)
+  }
+}
+
+/**
  * Safely convert an unknown thrown value to an Error object.
  *
  * JavaScript allows throwing any value (string, null, object, etc.),

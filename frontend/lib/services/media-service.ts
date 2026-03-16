@@ -62,24 +62,33 @@ async function ragstackQuery(query: string, variables: Record<string, unknown> =
     throw new Error('RAGStack not configured')
   }
 
-  const response = await fetch(PUBLIC_RAGSTACK_GRAPHQL_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': PUBLIC_RAGSTACK_API_KEY,
-    },
-    body: JSON.stringify({ query, variables }),
-  })
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
 
-  if (!response.ok) {
-    throw new Error(`RAGStack request failed: ${response.status}`)
-  }
+  try {
+    const response = await fetch(PUBLIC_RAGSTACK_GRAPHQL_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': PUBLIC_RAGSTACK_API_KEY,
+      },
+      body: JSON.stringify({ query, variables }),
+      signal: controller.signal,
+    })
 
-  const json = await response.json()
-  if (json.errors) {
-    throw new Error(json.errors[0]?.message || 'GraphQL error')
+    if (!response.ok) {
+      throw new Error(`RAGStack request failed: ${response.status}`)
+    }
+
+    const json = await response.json()
+    if (json.errors) {
+      throw new Error(json.errors[0]?.message || 'GraphQL error')
+    }
+    return json.data
   }
-  return json.data
+  finally {
+    clearTimeout(timeoutId)
+  }
 }
 
 /**
@@ -399,7 +408,21 @@ export async function getImageById(imageId: string): Promise<RagImage | null> {
     }`, { imageId }) as { getImage: RagImage | null }
     return data.getImage
   }
-  catch {
+  catch (error) {
+    // Re-throw auth errors so callers can redirect to login
+    if (error instanceof Error && (
+      error.message.includes('not authenticated')
+      || error.message.includes('401')
+      || error.message.includes('403')
+    )) {
+      throw error
+    }
+    const rawStatusCode = (error as Record<string, unknown>)?.status ?? (error as Record<string, unknown>)?.statusCode
+    const statusCode = Number(rawStatusCode)
+    if (statusCode === 401 || statusCode === 403) {
+      throw error
+    }
+    // For network/other errors, return null (graceful degradation)
     return null
   }
 }

@@ -95,6 +95,12 @@ export const keys = {
     PK: `${PREFIX.DRAFT}${draftId}`,
     SK: 'METADATA',
   }),
+
+  // Draft GSI1 keys (for listing all drafts)
+  draftGSI1: (draftId: string): { GSI1PK: string; GSI1SK: string } => ({
+    GSI1PK: 'DRAFTS',
+    GSI1SK: `${PREFIX.DRAFT}${draftId}`,
+  }),
 }
 
 // Re-export PREFIX for convenience

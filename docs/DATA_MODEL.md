@@ -107,8 +107,8 @@
 {
   PK: string           // COMMENT#{itemId}
   SK: string           // {timestamp}#{commentId}
-  GSI1PK: string       // USER#{userId}#COMMENT#{itemId}
-  GSI1SK: string       // {timestamp}#{commentId}
+  GSI1PK: string       // USER#{userId}
+  GSI1SK: string       // COMMENT#{timestamp}
   entityType: 'COMMENT'
   itemId: string
   commentId: string
@@ -128,8 +128,8 @@
 ### Reaction
 ```typescript
 {
-  PK: string           // REACTION#{commentId}
-  SK: string           // {userId}
+  PK: string           // COMMENT#{itemId}
+  SK: string           // REACTION#{commentId}#{userId}
   GSI1PK: string       // USER#{userId}
   GSI1SK: string       // REACTION#{timestamp}
   entityType: 'REACTION'
@@ -197,7 +197,7 @@
 ```typescript
 {
   PK: string           // LETTER#{date}
-  SK: 'METADATA'
+  SK: 'CURRENT'
   GSI1PK: 'LETTERS'
   GSI1SK: string       // date (YYYY-MM-DD)
   entityType: 'LETTER'

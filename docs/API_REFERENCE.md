@@ -24,17 +24,18 @@ List comments on an item.
 **Response:**
 ```json
 {
-  "items": [{
+  "comments": [{
     "itemId": "string",
     "commentId": "string",
-    "userId": "string",
-    "userName": "string",
-    "userPhotoUrl": "string",
+    "authorId": "string",
+    "authorEmail": "string",
     "content": "string",
-    "createdAt": "ISO8601",
-    "reactionCount": "number"
+    "isEdited": "boolean",
+    "isDeleted": "boolean",
+    "createdAt": "ISO8601"
   }],
-  "lastEvaluatedKey": "string|null"
+  "lastEvaluatedKey": "string|null",
+  "count": "number"
 }
 ```
 
@@ -51,20 +52,16 @@ Create comment.
 |-----------|------|----------|-------------|
 | itemId | string | Yes | Path param (base64url or plain) |
 | content | string | Yes | Body, 1-10000 chars |
-| itemType | string | No | Content type identifier |
-| itemTitle | string | No | Content title |
 
 **Response:** 201
 ```json
 {
   "itemId": "string",
   "commentId": "string",
-  "userId": "string",
-  "userName": "string",
-  "userPhotoUrl": "string",
+  "authorId": "string",
+  "authorEmail": "string",
   "content": "string",
-  "createdAt": "ISO8601",
-  "reactionCount": 0
+  "createdAt": "ISO8601"
 }
 ```
 
@@ -89,7 +86,7 @@ Delete own comment.
 
 **Signature:** `DELETE /comments/{itemId}/{commentId}`
 **Auth:** Comment owner only
-**Response:** 200 `{ "message": "Comment deleted" }`
+**Response:** 200 `{ "success": true }`
 
 ---
 
@@ -103,7 +100,7 @@ Admin delete any comment.
 |-----------|------|----------|
 | itemId | string | Yes (body) |
 
-**Response:** 200 `{ "message": "Comment deleted" }`
+**Response:** 200 `{ "success": true }`
 
 ---
 
@@ -589,7 +586,7 @@ Process uploaded draft.
 List all drafts.
 
 **Signature:** `GET /admin/drafts`
-**Auth:** Admins only
+**Auth:** ApprovedUsers or Admins
 
 **Response:**
 ```json

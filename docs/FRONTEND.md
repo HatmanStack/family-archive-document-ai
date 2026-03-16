@@ -20,19 +20,28 @@ frontend/
 ├── routes/                  # SvelteKit file-based routing
 │   ├── +layout.svelte      # Root layout with nav
 │   ├── +page.svelte        # Homepage
+│   ├── admin/              # Admin panel
 │   ├── auth/               # Authentication pages
 │   │   ├── login/
-│   │   ├── signup/
 │   │   ├── callback/
 │   │   ├── forgot-password/
-│   │   └── reset-password/
+│   │   ├── reset-password/
+│   │   ├── logout/
+│   │   └── pending-approval/
+│   ├── auth-status/        # Auth status page
+│   ├── dashboard/          # Dashboard
+│   ├── family/             # Family page
 │   ├── gallery/            # Media gallery
 │   ├── letters/            # Letter viewing and editing
 │   │   ├── [date]/        # Individual letter
-│   │   └── drafts/        # Draft management
+│   │   │   └── edit/      # Edit letter
+│   │   ├── drafts/        # Draft management
+│   │   │   └── [id]/      # Draft detail
+│   │   └── upload/        # Letter upload
 │   ├── messages/           # Direct messaging
 │   │   ├── +page.svelte   # Conversation list
-│   │   └── [id]/          # Conversation view
+│   │   ├── new/           # New message
+│   │   └── [conversationId]/ # Conversation view
 │   ├── profile/            # User profiles
 │   │   ├── [userId]/      # View profile
 │   │   └── settings/      # Edit profile
@@ -104,7 +113,7 @@ const users = await getAllUsers()
 import { getComments, createComment, updateComment, deleteComment } from '$lib/services/comment-service'
 
 // Get comments on an item
-const { items, lastEvaluatedKey } = await getComments(itemId, limit)
+const { success, data, lastEvaluatedKey, error } = await getComments(itemId, limit)
 
 // Create comment
 await createComment(itemId, text, itemType, itemTitle)
@@ -330,13 +339,28 @@ SvelteKit uses file-based routing:
 |------|------|-------------|
 | `/` | `routes/+page.svelte` | Homepage |
 | `/auth/login` | `routes/auth/login/+page.svelte` | Login |
+| `/auth/callback` | `routes/auth/callback/+page.svelte` | OAuth callback |
+| `/auth/forgot-password` | `routes/auth/forgot-password/+page.svelte` | Forgot password |
+| `/auth/reset-password` | `routes/auth/reset-password/+page.svelte` | Reset password |
+| `/auth/logout` | `routes/auth/logout/+page.svelte` | Logout |
+| `/auth/pending-approval` | `routes/auth/pending-approval/+page.svelte` | Pending approval |
+| `/auth-status` | `routes/auth-status/+page.svelte` | Auth status check |
+| `/dashboard` | `routes/dashboard/+page.svelte` | Dashboard |
+| `/family` | `routes/family/+page.svelte` | Family page |
 | `/gallery` | `routes/gallery/+page.svelte` | Media gallery |
 | `/letters` | `routes/letters/+page.svelte` | Letter list |
-| `/letters/2024-01-15` | `routes/letters/[date]/+page.svelte` | Single letter |
+| `/letters/:date` | `routes/letters/[date]/+page.svelte` | Single letter |
+| `/letters/:date/edit` | `routes/letters/[date]/edit/+page.svelte` | Edit letter |
+| `/letters/upload` | `routes/letters/upload/+page.svelte` | Letter upload |
+| `/letters/drafts` | `routes/letters/drafts/+page.svelte` | Draft listing |
+| `/letters/drafts/:id` | `routes/letters/drafts/[id]/+page.svelte` | Draft detail |
 | `/messages` | `routes/messages/+page.svelte` | Conversations |
-| `/messages/abc123` | `routes/messages/[id]/+page.svelte` | Conversation |
-| `/profile/user-id` | `routes/profile/[userId]/+page.svelte` | View profile |
+| `/messages/new` | `routes/messages/new/+page.svelte` | New message |
+| `/messages/:conversationId` | `routes/messages/[conversationId]/+page.svelte` | Conversation |
+| `/profile/:userId` | `routes/profile/[userId]/+page.svelte` | View profile |
 | `/profile/settings` | `routes/profile/settings/+page.svelte` | Edit profile |
+| `/admin` | `routes/admin/+page.svelte` | Admin panel |
+| `/about` | `routes/about/+page.svelte` | About page |
 
 ## Styling
 

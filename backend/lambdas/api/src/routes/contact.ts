@@ -6,53 +6,46 @@ import type { RequestContext } from '../types'
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses'
 import { successResponse, errorResponse } from '../lib/responses'
 import { log } from '../lib/logger'
+import { escapeHtml } from '../lib/validation'
+import { toError } from '../lib/errors'
 
 const sesClient = new SESClient({})
 const SES_FROM_EMAIL = process.env.SES_FROM_EMAIL || ''
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || ''
-
-function escapeHtml(text: string): string {
-  if (!text) return ''
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
-}
 
 /**
  * Main contact route handler
  */
 export async function handle(
   event: APIGatewayProxyEvent,
-  _context: RequestContext
+  context: RequestContext
 ): Promise<APIGatewayProxyResult> {
+  const { requestOrigin } = context
   const { httpMethod } = event
 
   if (httpMethod !== 'POST') {
-    return errorResponse(405, 'Method not allowed')
+    return errorResponse(405, 'Method not allowed', requestOrigin)
   }
 
   let body: { email?: string; message?: string }
   try {
     body = JSON.parse(event.body || '{}')
   } catch {
-    return errorResponse(400, 'Invalid JSON body')
+    return errorResponse(400, 'Invalid JSON body', requestOrigin)
   }
 
   const { email, message } = body
 
   if (!email || !message) {
-    return errorResponse(400, 'Email and message are required')
+    return errorResponse(400, 'Email and message are required', requestOrigin)
   }
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return errorResponse(400, 'Invalid email format')
+    return errorResponse(400, 'Invalid email format', requestOrigin)
   }
 
   if (message.length > 5000) {
-    return errorResponse(400, 'Message too long (max 5000 characters)')
+    return errorResponse(400, 'Message too long (max 5000 characters)', requestOrigin)
   }
 
   try {
@@ -75,7 +68,7 @@ export async function handle(
 
     if (!ADMIN_EMAIL) {
       log.error('contact_not_configured', { reason: 'ADMIN_EMAIL not set' })
-      return errorResponse(500, 'Contact form not configured')
+      return errorResponse(500, 'Contact form not configured', requestOrigin)
     }
 
     await sesClient.send(new SendEmailCommand({
@@ -89,9 +82,9 @@ export async function handle(
     }))
 
     log.info('contact_sent', { from: email })
-    return successResponse({ message: 'Message sent successfully' })
+    return successResponse({ message: 'Message sent successfully' }, 200, requestOrigin)
   } catch (err) {
-    log.error('contact_error', { error: (err as Error).message })
-    return errorResponse(500, 'Failed to send message')
+    log.error('contact_error', { error: toError(err).message })
+    return errorResponse(500, 'Failed to send message', requestOrigin)
   }
 }

@@ -180,7 +180,7 @@ Environment:
 
 2. **API key is placeholder**
    - Replace `your-api-key` with actual key
-   - Key should start with `AIza`
+   - Key should be ~39 characters (see config.ts validation)
 
 3. **Rate limited by Gemini**
    - Retry logic handles transient errors
@@ -257,11 +257,11 @@ Environment:
 
 ### Backend Validation
 
-Letter processor Lambda validates env vars at startup (backend/lambdas/letter-processor/src/lib/config.ts:15-40):
+Letter processor Lambda validates env vars at startup (backend/lambdas/letter-processor/src/lib/config.ts:36-58):
 
-**Gemini API Key format:**
-- Must start with "AIza"
-- Error: `Invalid configuration: GEMINI_API_KEY must start with 'AIza'`
+**Gemini API Key validation:**
+- Recommended: avoid placeholder values (e.g., `your-api-key`, `TODO`, `REPLACE`) — config.ts warns if detected
+- Recommended: at least 20 characters (real keys are typically ~39 characters) — config.ts warns if shorter
 - Get key: https://aistudio.google.com/app/apikey
 
 **Required variables:**
@@ -292,9 +292,6 @@ Look for "Invalid configuration" errors on cold start.
      --query 'Environment.Variables'
    ```
 
-### Development Override
-
-Set `SKIP_VALIDATION=true` in Lambda environment to bypass checks. **Never use in production.**
 
 ## Deployment Issues
 
