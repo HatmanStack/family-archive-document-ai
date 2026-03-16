@@ -432,7 +432,7 @@ return
       }
       mediaItemsLoaded = true
     }
- catch {
+    catch {
       // Media items load for search failed — search will proceed without thumbnails
     }
   }

@@ -67,6 +67,9 @@ export async function batchWriteWithRetry(
         count: unprocessed.length,
         retries: maxRetries,
       })
+      throw new Error(
+        `batchWriteWithRetry failed: ${unprocessed.length} unprocessed items after ${maxRetries} retries`
+      )
     }
   }
 }

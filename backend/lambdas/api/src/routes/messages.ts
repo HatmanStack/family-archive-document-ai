@@ -107,7 +107,7 @@ async function listConversations(userId: string, requestOrigin?: string): Promis
   } catch (err) {
     const error = toError(err)
     log.error('list_conversations_error', { userId, error: error.message })
-    throw error
+    return errorResponse(500, 'Failed to list conversations', requestOrigin)
   }
 }
 
@@ -195,7 +195,7 @@ async function getMessages(event: APIGatewayProxyEvent, userId: string, requestO
   } catch (err) {
     const error = toError(err)
     log.error('get_messages_error', { conversationId, userId, error: error.message })
-    throw error
+    return errorResponse(500, 'Failed to get messages', requestOrigin)
   }
 }
 
@@ -266,7 +266,7 @@ async function createConversation(event: APIGatewayProxyEvent, userId: string, r
   } catch (err) {
     const error = toError(err)
     log.error('create_conversation_error', { userId, participantIds, error: error.message })
-    throw error
+    return errorResponse(500, 'Failed to create conversation', requestOrigin)
   }
 }
 
@@ -314,7 +314,7 @@ async function sendMessage(event: APIGatewayProxyEvent, userId: string, requestO
   } catch (err) {
     const error = toError(err)
     log.error('send_message_error', { conversationId, userId, error: error.message })
-    throw error
+    return errorResponse(500, 'Failed to send message', requestOrigin)
   }
 }
 
@@ -345,7 +345,7 @@ async function generateUploadUrl(event: APIGatewayProxyEvent, userId: string, re
   } catch (err) {
     const error = toError(err)
     log.error('generate_upload_url_error', { userId, fileName, error: error.message })
-    throw error
+    return errorResponse(500, 'Failed to generate upload URL', requestOrigin)
   }
 }
 
@@ -372,7 +372,7 @@ async function markAsRead(event: APIGatewayProxyEvent, userId: string, requestOr
       return errorResponse(403, 'You are not a member of this conversation', requestOrigin)
     }
     log.error('mark_as_read_error', { conversationId, userId, error: error.message })
-    throw error
+    return errorResponse(500, 'Failed to mark as read', requestOrigin)
   }
 }
 
@@ -483,7 +483,7 @@ async function deleteConversation(event: APIGatewayProxyEvent, userId: string, r
   } catch (err) {
     const error = toError(err)
     log.error('delete_conversation_error', { conversationId, userId, error: error.message })
-    throw error
+    return errorResponse(500, 'Failed to delete conversation', requestOrigin)
   }
 }
 
@@ -540,7 +540,7 @@ async function deleteMessage(event: APIGatewayProxyEvent, userId: string, reques
   } catch (err) {
     const error = toError(err)
     log.error('delete_message_error', { conversationId, messageId, userId, error: error.message })
-    throw error
+    return errorResponse(500, 'Failed to delete message', requestOrigin)
   }
 }
 

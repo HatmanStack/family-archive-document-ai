@@ -64,7 +64,7 @@ Fix these specific contradictions:
 - [x] Reaction PK/SK match Key Patterns table
 
 **Commit Message Template:**
-```
+```text
 docs(data-model): fix entity schema contradictions with key patterns table
 
 - Letter SK: METADATA → CURRENT
@@ -124,7 +124,7 @@ Fix each drift item by checking the corresponding route handler code:
 - [x] Comment length limit matches actual code enforcement
 
 **Commit Message Template:**
-```
+```text
 docs(api-reference): fix response format and field name drift
 
 - Comments response key: items → comments
@@ -167,7 +167,7 @@ docs(api-reference): fix response format and field name drift
 - [x] CLAUDE.md lists all 9 key prefixes
 
 **Commit Message Template:**
-```
+```text
 docs: update architecture routing and CLAUDE.md key prefixes
 
 - Add /pdf, /download, /upload to media routing docs
@@ -195,7 +195,7 @@ docs: update architecture routing and CLAUDE.md key prefixes
 - [x] DEVELOPMENT.md correctly states CI triggers on main AND develop
 
 **Commit Message Template:**
-```
+```text
 docs(development): fix CI trigger branch description
 
 - Add develop branch to CI trigger documentation
@@ -247,7 +247,7 @@ docs(development): fix CI trigger branch description
 - [x] CLAUDE.md backend structure includes utility Lambdas
 
 **Commit Message Template:**
-```
+```text
 docs: document Python utility Lambdas and missing frontend routes
 
 - Add admin-provisioner, amplify-deployer, frontend-builder to architecture
@@ -288,7 +288,7 @@ docs: document Python utility Lambdas and missing frontend routes
 - [x] SKIP_VALIDATION reference is removed from TROUBLESHOOTING.md
 
 **Commit Message Template:**
-```
+```text
 docs: remove stale references and clarify repository status
 
 - Remove non-existent auth/signup route
@@ -330,7 +330,7 @@ docs: remove stale references and clarify repository status
 - [x] TROUBLESHOOTING.md config validation description matches code
 
 **Commit Message Template:**
-```
+```text
 docs: update stale code examples to match current implementation
 
 - Fix auth flow example in AUTHENTICATION.md
@@ -392,7 +392,7 @@ docs: update stale code examples to match current implementation
 - [x] README setup instructions match CI setup (`cp .env.example frontend/.env`)
 
 **Commit Message Template:**
-```
+```text
 docs: document backend environment variables and fix .env setup instructions
 
 - Add backend env var reference table to deployment docs

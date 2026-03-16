@@ -76,7 +76,7 @@ Address architectural debt and performance issues: consolidate duplicated S3 cli
 - Verify by grepping: `grep -rn "new S3Client" backend/lambdas/api/src/` should return only `s3-utils.ts`.
 
 **Commit Message Template:**
-```
+```text
 refactor(api): consolidate S3 client instantiations to s3-utils
 
 - Export shared s3Client and ragstackS3Client from lib/s3-utils.ts
@@ -131,7 +131,7 @@ refactor(api): consolidate S3 client instantiations to s3-utils
   - Mock empty result — verify empty array returned
 
 **Commit Message Template:**
-```
+```text
 perf(drafts): replace DynamoDB Scan with GSI query for draft listing
 
 - Use GSI1 index with DRAFTS partition key
@@ -200,7 +200,7 @@ perf(drafts): replace DynamoDB Scan with GSI query for draft listing
 - No unit test for this (frontend service with `fetch` — would require a fetch mock setup not currently in place). Verify by code review.
 
 **Commit Message Template:**
-```
+```text
 fix(gallery): add 15s timeout to RAGStack GraphQL fetch calls
 
 - Prevents gallery page from hanging indefinitely if RAGStack is slow
@@ -251,7 +251,7 @@ fix(gallery): add 15s timeout to RAGStack GraphQL fetch calls
 - No unit test (frontend service). Verify by code review.
 
 **Commit Message Template:**
-```
+```text
 fix(gallery): improve error handling in getImageById
 
 - Re-throw authentication errors instead of swallowing
@@ -364,7 +364,7 @@ The route handlers are exported as `handle(event, context)` functions. To test t
 - All should pass.
 
 **Commit Message Template:**
-```
+```text
 test(api): add unit tests for comments, messages, and profile handlers
 
 - Test happy paths, auth checks, validation errors

@@ -125,7 +125,11 @@ export function escapeHtml(text: string): string {
  */
 export function parseRequestBody(body: string | null): Record<string, unknown> | null {
   try {
-    return JSON.parse(body || '{}')
+    const parsed = JSON.parse(body || '{}')
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return null
+    }
+    return parsed as Record<string, unknown>
   } catch {
     return null
   }

@@ -104,7 +104,7 @@ beforeEach(() => {
 
 Use conventional commits format:
 
-```
+```text
 type(scope): brief description
 
 - Detail 1

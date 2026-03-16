@@ -10,6 +10,8 @@ constraints: None
 
 ## CODEBASE HEALTH AUDIT
 
+- **Snapshot:** Commit `2364af4` / 2026-03-15T17:37:39Z (initial scan baseline)
+
 ### EXECUTIVE SUMMARY
 - Overall health: **FAIR**
 - Biggest structural risk: Legacy JavaScript files alongside TypeScript rewrites create a parallel codebase that can silently drift, and the gallery page component at 1072 lines is a monolith mixing UI, state management, caching, search, navigation, and upload logic.

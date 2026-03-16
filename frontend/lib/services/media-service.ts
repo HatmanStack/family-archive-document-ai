@@ -410,7 +410,15 @@ export async function getImageById(imageId: string): Promise<RagImage | null> {
   }
   catch (error) {
     // Re-throw auth errors so callers can redirect to login
-    if (error instanceof Error && error.message.includes('not authenticated')) {
+    if (error instanceof Error && (
+      error.message.includes('not authenticated')
+      || error.message.includes('401')
+      || error.message.includes('403')
+    )) {
+      throw error
+    }
+    const statusCode = (error as Record<string, unknown>)?.status ?? (error as Record<string, unknown>)?.statusCode
+    if (statusCode === 401 || statusCode === 403) {
       throw error
     }
     // For network/other errors, return null (graceful degradation)

@@ -64,7 +64,7 @@ describe('batchWriteWithRetry', () => {
     expect(calls.length).toBe(2)
   })
 
-  it('stops after maxRetries and logs warning', async () => {
+  it('throws after maxRetries with unprocessed items', async () => {
     const items = [
       { PutRequest: { Item: { PK: 'test1', SK: 'sk1' } } },
     ]
@@ -76,10 +76,12 @@ describe('batchWriteWithRetry', () => {
       },
     })
 
-    const promise = batchWriteWithRetry(items, TABLE_NAME, 2)
+    const promise = batchWriteWithRetry(items, TABLE_NAME, 2).catch((e: unknown) => e)
     // Advance past all backoff timers
     await vi.advanceTimersByTimeAsync(1000)
-    await promise
+    const result = await promise
+    expect(result).toBeInstanceOf(Error)
+    expect((result as Error).message).toBe('batchWriteWithRetry failed: 1 unprocessed items after 2 retries')
 
     const calls = ddbMock.commandCalls(BatchWriteCommand)
     // Initial call + 2 retries = 3 total

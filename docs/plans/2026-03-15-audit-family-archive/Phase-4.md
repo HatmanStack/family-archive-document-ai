@@ -46,7 +46,7 @@ Add pre-commit hooks, enforce commit conventions, harden `.gitignore`, and add a
 - Run `nvm use` from repo root (if nvm is installed) — should pick up v24.
 
 **Commit Message Template:**
-```
+```text
 chore: add root .nvmrc pinning Node 24
 
 - Matches CI configuration and frontend/.nvmrc
@@ -110,7 +110,7 @@ chore: add root .nvmrc pinning Node 24
 - Stage a clean file, attempt `git commit` — should succeed.
 
 **Commit Message Template:**
-```
+```text
 chore(ci): add pre-commit hooks with husky and lint-staged
 
 - Install husky for git hooks
@@ -169,7 +169,7 @@ chore(ci): add pre-commit hooks with husky and lint-staged
 - Run `echo "fix(api): good message" | npx commitlint` — should pass.
 
 **Commit Message Template:**
-```
+```text
 chore(ci): add commitlint for conventional commit enforcement
 
 - Install @commitlint/cli and config-conventional
@@ -219,7 +219,7 @@ chore(ci): add commitlint for conventional commit enforcement
 - Run `git status` — should show no unexpected changes.
 
 **Commit Message Template:**
-```
+```text
 chore: harden .gitignore with additional exclusion patterns
 ```
 

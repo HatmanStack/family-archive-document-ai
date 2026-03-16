@@ -233,12 +233,11 @@ async function handlePublish(
   requesterId: string,
   requestOrigin?: string
 ): Promise<APIGatewayProxyResult> {
-  let body: PublishData
-  try {
-    body = JSON.parse(event.body || '{}')
-  } catch {
+  const parsed = parseRequestBody(event.body)
+  if (!parsed) {
     return errorResponse(400, 'Invalid JSON body', requestOrigin)
   }
+  const body = parsed as unknown as PublishData
 
   const { finalData } = body
   if (!finalData || !finalData.date || !finalData.title || !finalData.content) {
