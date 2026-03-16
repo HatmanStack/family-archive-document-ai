@@ -44,7 +44,7 @@ export async function handle(
   log.info('messages_request', { method, resource: normalizedResource, requesterId })
 
   if (method === 'GET' && normalizedResource === '/messages/conversations') {
-    return listConversations(requesterId, requestOrigin)
+    return listConversations(event, requesterId, requestOrigin)
   }
 
   if (method === 'GET' && normalizedResource === '/messages/{conversationId}') {
@@ -127,9 +127,11 @@ export async function handle(
   return errorResponse(404, 'Route not found', requestOrigin)
 }
 
-async function listConversations(userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
+async function listConversations(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
+  const lastEvaluatedKey = event.queryStringParameters?.lastEvaluatedKey
+
   try {
-    const result = await docClient.send(new QueryCommand({
+    const queryParams: QueryCommandInput = {
       TableName: TABLE_NAME,
       KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
       ExpressionAttributeValues: {
@@ -138,7 +140,19 @@ async function listConversations(userId: string, requestOrigin?: string): Promis
       },
       ScanIndexForward: false,
       Limit: 50,
-    }))
+    }
+
+    if (lastEvaluatedKey) {
+      const paginationResult = validatePaginationKey(lastEvaluatedKey, PREFIX.USER)
+      if (!paginationResult.valid) {
+        return errorResponse(400, paginationResult.error || 'Invalid pagination key', requestOrigin)
+      }
+      if (paginationResult.key) {
+        queryParams.ExclusiveStartKey = paginationResult.key
+      }
+    }
+
+    const result = await docClient.send(new QueryCommand(queryParams))
 
     const conversations = (result.Items || [])
       .filter(item => item.entityType === 'CONVERSATION_MEMBER')
@@ -153,7 +167,12 @@ async function listConversations(userId: string, requestOrigin?: string): Promis
         creatorId: item.creatorId,
       }))
 
-    return successResponse({ conversations }, 200, requestOrigin)
+    return successResponse({
+      conversations,
+      lastEvaluatedKey: result.LastEvaluatedKey
+        ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
+        : null,
+    }, 200, requestOrigin)
   } catch (err) {
     const error = toError(err)
     log.error('list_conversations_error', { userId, error: error.message })
@@ -368,13 +387,21 @@ async function sendMessage(event: APIGatewayProxyEvent, userId: string, requestO
   }
 }
 
+const ALLOWED_ATTACHMENT_TYPES = new Set([
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+  'application/pdf', 'application/octet-stream',
+  'video/mp4', 'video/quicktime',
+  'audio/mpeg', 'audio/mp4',
+])
+
 async function generateUploadUrl(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
   const body = parseRequestBody(event.body)
   if (!body) {
     return errorResponse(400, 'Invalid JSON in request body', requestOrigin)
   }
   const fileName = body.fileName || body.filename
-  const contentType = body.contentType || 'application/octet-stream'
+  const requestedType = (body.contentType as string) || 'application/octet-stream'
+  const contentType = ALLOWED_ATTACHMENT_TYPES.has(requestedType) ? requestedType : 'application/octet-stream'
 
   if (!fileName) {
     return errorResponse(400, 'Missing fileName', requestOrigin)

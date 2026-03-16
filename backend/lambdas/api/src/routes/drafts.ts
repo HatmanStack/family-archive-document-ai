@@ -14,7 +14,7 @@ import { successResponse, errorResponse, rateLimitResponse } from '../lib/respon
 import { log } from '../lib/logger'
 import { parseRequestBody } from '../lib/validation'
 import { s3Client } from '../lib/s3-utils'
-import { toError } from '../lib/errors'
+import { toError, hasErrorName } from '../lib/errors'
 import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 const lambdaClient = new LambdaClient({})
 
@@ -333,6 +333,10 @@ async function handlePublish(
 
     return successResponse({ message: 'Letter published', path: `/letters/${finalData.date}` }, 200, requestOrigin)
   } catch (err) {
+    if (hasErrorName(err, 'TransactionCanceledException')) {
+      log.warn('publish_conflict', { draftId, date: finalData.date })
+      return errorResponse(409, 'A letter with this date already exists', requestOrigin)
+    }
     log.error('publish_error', { draftId, error: toError(err).message })
     return errorResponse(500, 'Failed to publish letter', requestOrigin)
   }
