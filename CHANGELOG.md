@@ -5,6 +5,47 @@ All notable changes to Family Archive - Document AI will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-03-15
+
+### Added
+- Unit tests for comments, messages, and profile handlers
+- Rate limiting across all mutating API endpoints
+- Pagination key validation for all paginated queries
+- Husky pre-commit hooks with lint-staged for frontend linting
+- Commitlint for conventional commit message enforcement
+- Automatic package.json version sync in release workflow
+
+### Fixed
+- Input validation hardening: safe JSON parsing, URI decoding, participantId type checks
+- CORS origin propagation across all response helpers in messages, comments, reactions, drafts, media, and contact routes
+- Unsafe error type casts replaced with `toError()` utility throughout API
+- BatchWriteCommand retry on DynamoDB UnprocessedItems in messages
+- S3 key sanitization to prevent path traversal
+- Atomic draft-to-letter publish with duplicate detection (409 on conflict)
+- MIME type allowlist for draft uploads (reject arbitrary ContentType)
+- Pagination cursors validated against exact partition key, not just prefix
+- `decodeURIComponent` calls wrapped in try/catch for malformed parameters
+- RAGStack GraphQL fetch calls given 15s timeout in gallery
+- Error handling improvements in `getImageById`
+- Brace-style lint violation in media-service
+
+### Changed
+- Consolidated S3 client instantiations into shared `s3-utils` module
+- Replaced DynamoDB Scan with GSI query for draft listing
+- Removed `console.error`/`console.warn` from gallery page (use structured logger)
+- Removed legacy JavaScript files shadowing TypeScript source
+- Removed committed `__pycache__` bytecache from repository
+- Extracted `escapeHtml` to shared validation utility
+- Pinned Node version to 24 via `.nvmrc`
+- Hardened `.gitignore` with additional exclusion patterns
+
+### Documentation
+- Full codebase audit (health, evaluation, documentation) with remediation plan
+- Corrected API reference response formats and field name drift
+- Fixed DynamoDB data model entity schema contradictions
+- Documented Python utility Lambdas and missing frontend routes
+- Updated architecture docs for routing and key prefixes
+
 ## [1.1.0] - 2026-03-10
 
 ### Added
