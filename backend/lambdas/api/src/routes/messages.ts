@@ -10,7 +10,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { v4 as uuidv4 } from 'uuid'
 import { docClient, TABLE_NAME, ARCHIVE_BUCKET, batchWriteWithRetry } from '../lib/database'
 import { keys, PREFIX } from '../lib/keys'
-import { successResponse, errorResponse } from '../lib/responses'
+import { successResponse, errorResponse, rateLimitResponse } from '../lib/responses'
 import { log } from '../lib/logger'
 import { s3Client, signPhotoUrl } from '../lib/s3-utils'
 import { toError } from '../lib/errors'
@@ -54,7 +54,11 @@ export async function handle(
   if (method === 'POST' && normalizedResource === '/messages/conversations') {
     const rateLimit = await checkRateLimit(requesterId, 'message')
     if (!rateLimit.allowed) {
-      return errorResponse(429, `Rate limit exceeded. Retry after ${getRetryAfter(rateLimit.resetAt)}s`, requestOrigin)
+      return rateLimitResponse(
+        getRetryAfter(rateLimit.resetAt),
+        'Rate limit exceeded. Please try again later.',
+        requestOrigin
+      )
     }
     return createConversation(event, requesterId, requestOrigin)
   }
@@ -62,7 +66,11 @@ export async function handle(
   if (method === 'POST' && normalizedResource === '/messages/{conversationId}') {
     const rateLimit = await checkRateLimit(requesterId, 'message')
     if (!rateLimit.allowed) {
-      return errorResponse(429, `Rate limit exceeded. Retry after ${getRetryAfter(rateLimit.resetAt)}s`, requestOrigin)
+      return rateLimitResponse(
+        getRetryAfter(rateLimit.resetAt),
+        'Rate limit exceeded. Please try again later.',
+        requestOrigin
+      )
     }
     return sendMessage(event, requesterId, requestOrigin)
   }
@@ -71,7 +79,11 @@ export async function handle(
       normalizedResource === '/messages/attachments/upload-url')) {
     const rateLimit = await checkRateLimit(requesterId, 'upload')
     if (!rateLimit.allowed) {
-      return errorResponse(429, `Rate limit exceeded. Retry after ${getRetryAfter(rateLimit.resetAt)}s`, requestOrigin)
+      return rateLimitResponse(
+        getRetryAfter(rateLimit.resetAt),
+        'Rate limit exceeded. Please try again later.',
+        requestOrigin
+      )
     }
     return generateUploadUrl(event, requesterId, requestOrigin)
   }
@@ -79,7 +91,11 @@ export async function handle(
   if (method === 'PUT' && normalizedResource === '/messages/{conversationId}/read') {
     const rateLimit = await checkRateLimit(requesterId, 'message')
     if (!rateLimit.allowed) {
-      return errorResponse(429, `Rate limit exceeded. Retry after ${getRetryAfter(rateLimit.resetAt)}s`, requestOrigin)
+      return rateLimitResponse(
+        getRetryAfter(rateLimit.resetAt),
+        'Rate limit exceeded. Please try again later.',
+        requestOrigin
+      )
     }
     return markAsRead(event, requesterId, requestOrigin)
   }
@@ -87,7 +103,11 @@ export async function handle(
   if (method === 'DELETE' && normalizedResource === '/messages/{conversationId}') {
     const rateLimit = await checkRateLimit(requesterId, 'message')
     if (!rateLimit.allowed) {
-      return errorResponse(429, `Rate limit exceeded. Retry after ${getRetryAfter(rateLimit.resetAt)}s`, requestOrigin)
+      return rateLimitResponse(
+        getRetryAfter(rateLimit.resetAt),
+        'Rate limit exceeded. Please try again later.',
+        requestOrigin
+      )
     }
     return deleteConversation(event, requesterId, requestOrigin)
   }
@@ -95,7 +115,11 @@ export async function handle(
   if (method === 'DELETE' && normalizedResource === '/messages/{conversationId}/{messageId}') {
     const rateLimit = await checkRateLimit(requesterId, 'message')
     if (!rateLimit.allowed) {
-      return errorResponse(429, `Rate limit exceeded. Retry after ${getRetryAfter(rateLimit.resetAt)}s`, requestOrigin)
+      return rateLimitResponse(
+        getRetryAfter(rateLimit.resetAt),
+        'Rate limit exceeded. Please try again later.',
+        requestOrigin
+      )
     }
     return deleteMessage(event, requesterId, requestOrigin)
   }

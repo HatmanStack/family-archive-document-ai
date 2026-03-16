@@ -10,7 +10,7 @@ import { GetCommand, DeleteCommand, QueryCommand, PutCommand, TransactWriteComma
 import { v4 as uuidv4 } from 'uuid'
 import { docClient, TABLE_NAME, ARCHIVE_BUCKET, S3_PREFIXES } from '../lib/database'
 import { keys } from '../lib/keys'
-import { successResponse, errorResponse } from '../lib/responses'
+import { successResponse, errorResponse, rateLimitResponse } from '../lib/responses'
 import { log } from '../lib/logger'
 import { parseRequestBody } from '../lib/validation'
 import { s3Client } from '../lib/s3-utils'
@@ -39,7 +39,11 @@ export async function handle(
     }
     const rateLimit = await checkRateLimit(requesterId, 'upload')
     if (!rateLimit.allowed) {
-      return errorResponse(429, `Rate limit exceeded. Retry after ${getRetryAfter(rateLimit.resetAt)}s`, requestOrigin)
+      return rateLimitResponse(
+        getRetryAfter(rateLimit.resetAt),
+        'Rate limit exceeded. Please try again later.',
+        requestOrigin
+      )
     }
     return handleUploadRequest(event, requesterId, requestOrigin)
   }
@@ -56,7 +60,11 @@ export async function handle(
     }
     const rateLimit = await checkRateLimit(requesterId, 'upload')
     if (!rateLimit.allowed) {
-      return errorResponse(429, `Rate limit exceeded. Retry after ${getRetryAfter(rateLimit.resetAt)}s`, requestOrigin)
+      return rateLimitResponse(
+        getRetryAfter(rateLimit.resetAt),
+        'Rate limit exceeded. Please try again later.',
+        requestOrigin
+      )
     }
     return handleProcess(uploadId, requesterId, requestOrigin)
   }
@@ -68,16 +76,23 @@ export async function handle(
     }
 
     if (normalizedPath.endsWith('/publish') && method === 'POST') {
+      if (!requesterId) {
+        return errorResponse(401, 'Authentication required', requestOrigin)
+      }
       const match = normalizedPath.match(/\/admin\/drafts\/([^/]+)\/publish$/)
       const draftId = match?.[1]
       if (!draftId) {
         return errorResponse(400, 'Missing or invalid draftId', requestOrigin)
       }
-      const rateLimit = await checkRateLimit(requesterId || '', 'default')
+      const rateLimit = await checkRateLimit(requesterId, 'default')
       if (!rateLimit.allowed) {
-        return errorResponse(429, `Rate limit exceeded. Retry after ${getRetryAfter(rateLimit.resetAt)}s`, requestOrigin)
+        return rateLimitResponse(
+          getRetryAfter(rateLimit.resetAt),
+          'Rate limit exceeded. Please try again later.',
+          requestOrigin
+        )
       }
-      return handlePublish(event, draftId, requesterId || '', requestOrigin)
+      return handlePublish(event, draftId, requesterId, requestOrigin)
     }
 
     if (normalizedPath.endsWith('/drafts') && method === 'GET') {
@@ -304,6 +319,7 @@ async function handlePublish(
               GSI1PK: 'LETTERS',
               GSI1SK: finalData.date,
             },
+            ConditionExpression: 'attribute_not_exists(PK)',
           },
         },
         {

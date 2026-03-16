@@ -20,6 +20,7 @@ frontend/
 ├── routes/                  # SvelteKit file-based routing
 │   ├── +layout.svelte      # Root layout with nav
 │   ├── +page.svelte        # Homepage
+│   ├── admin/              # Admin panel
 │   ├── auth/               # Authentication pages
 │   │   ├── login/
 │   │   ├── callback/
@@ -27,12 +28,19 @@ frontend/
 │   │   ├── reset-password/
 │   │   ├── logout/
 │   │   └── pending-approval/
+│   ├── auth-status/        # Auth status page
+│   ├── dashboard/          # Dashboard
+│   ├── family/             # Family page
 │   ├── gallery/            # Media gallery
 │   ├── letters/            # Letter viewing and editing
 │   │   ├── [date]/        # Individual letter
-│   │   └── drafts/        # Draft management
+│   │   │   └── edit/      # Edit letter
+│   │   ├── drafts/        # Draft management
+│   │   │   └── [id]/      # Draft detail
+│   │   └── upload/        # Letter upload
 │   ├── messages/           # Direct messaging
 │   │   ├── +page.svelte   # Conversation list
+│   │   ├── new/           # New message
 │   │   └── [conversationId]/ # Conversation view
 │   ├── profile/            # User profiles
 │   │   ├── [userId]/      # View profile
