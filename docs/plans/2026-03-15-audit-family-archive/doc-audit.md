@@ -162,3 +162,46 @@ Note: `docs/ONE_CLICK_DEPLOYMENT.md:201` links to `SES_SETUP.md` without `docs/`
 2. **Legacy JS code alongside TypeScript** — `backend/lambdas/api/lib/` (JS) coexists with `backend/lambdas/api/src/lib/` (TS). No documentation explains which is canonical.
 
 3. **Frontend path prefix consistency** — All docs correctly reference `frontend/routes/`, `frontend/lib/` without `src/` prefix, matching actual SvelteKit layout. This is consistent.
+
+---
+
+## Re-Audit Cycle 1
+
+**Date:** 2026-03-15
+**Phases completed:** 1-5 (all approved)
+
+### Finding Resolution Status
+
+| Category | Original Count | Resolved | Remaining |
+|----------|---------------|----------|-----------|
+| DRIFT | 14 | 14 | 0 |
+| GAPS | 5 | 5 | 0 |
+| STALE | 3 | 3 | 0 |
+| BROKEN LINKS | 0 | 0 | 0 |
+| STALE CODE EXAMPLES | 4 | 4 | 0 |
+| CONFIG DRIFT | 8 | 8 | 0 |
+| STRUCTURE ISSUES | 3 | 3 | 0 |
+
+### Verified Remediations
+- **DATA_MODEL.md:** Entity schema contradictions fixed (Letter SK=CURRENT, Comment GSI1, Reaction PK/SK)
+- **API_REFERENCE.md:** Response format drift fixed (comments key, authorId, DELETE responses, POST body, admin drafts auth)
+- **ARCHITECTURE.md:** All 4 media route paths documented
+- **CLAUDE.md:** All 9 key prefixes listed, Python Lambdas documented, repositories/ clarified
+- **DEVELOPMENT.md:** CI triggers on main AND develop
+- **FRONTEND.md:** 10 missing routes added, comment service example fixed, auth/signup annotated
+- **TROUBLESHOOTING.md:** SKIP_VALIDATION removed, AIza prefix claims removed, config validation description corrected
+- **AUTHENTICATION.md:** Login example matches actual auth-service.ts flow, service references updated
+- **.env.example:** Backend vars comment block added
+- **DEPLOYMENT.md:** Backend env var reference table added (12 variables)
+- **README.md:** .env setup matches CI (cp .env.example frontend/.env)
+
+### Summary
+- **All DRIFT findings:** Resolved ✅
+- **All STALE findings:** Resolved ✅
+- **All BROKEN LINKS:** None found ✅
+- **All STALE CODE EXAMPLES:** Resolved ✅
+- **All CONFIG DRIFT:** Resolved ✅
+- **Documentation gate:** MET ✅
+
+### Note on Auditor Accuracy
+The re-audit agent repeated original findings without verifying current code. Findings above are based on manual verification of actual file contents after Phase 5 commits.

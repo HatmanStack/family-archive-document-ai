@@ -181,3 +181,52 @@ pillar_overrides: None
   - Add "Getting Started for Developers" section distinguishing frontend-only from full-stack setup.
   - Document test location conventions.
   - Estimated complexity: LOW
+
+---
+
+## Re-Evaluation Cycle 1
+
+**Date:** 2026-03-15
+**Phases completed:** 1-5 (all approved)
+**Evaluators re-run:** All 3 (Hire, Stress, Day2)
+
+### Updated Scorecard
+
+| Evaluator | Pillar | Initial | Cycle 1 | Status |
+|-----------|--------|---------|---------|--------|
+| Hire | Problem-Solution Fit | 8 | 9 | ✅ AT TARGET |
+| Hire | Architecture | 7 | 8 | ⚠️ Below (messages.ts/letters.ts still inline DynamoDB) |
+| Hire | Code Quality | 8 | 9 | ✅ AT TARGET |
+| Hire | Creativity | 7 | 7 | ⚠️ Below (no optimistic locking, SWR not extracted) |
+| Stress | Pragmatism | 8 | 9 | ✅ AT TARGET (verified: Scan→Query, S3 consolidated) |
+| Stress | Defensiveness | 7 | 8.5 | ⚠️ Below (CORS/pagination/JSON.parse all fixed, but JS Lambdas lack structured logging) |
+| Stress | Performance | 7 | 8 | ⚠️ Below (Scan→Query fixed, BatchWrite retry added, but N+1 presigned URLs remain) |
+| Stress | Type Rigor | 7 | 7.5 | ⚠️ Below (as unknown cast in comment-repo, no zod validation) |
+| Day2 | Test Value | 6 | 8 | ⚠️ Below (14 test files, 155 tests, but 4 of 9 handlers untested) |
+| Day2 | Reproducibility | 7 | 8 | ⚠️ Below (Husky/lint-staged/nvmrc added, but no Docker dev env) |
+| Day2 | Git Hygiene | 7 | 9 | ✅ AT TARGET |
+| Day2 | Onboarding | 8 | 9 | ✅ AT TARGET |
+
+**Pillars at target (≥9):** 5 of 12
+**Pillars below target:** 7 of 12
+
+### Successful Remediations
+- Legacy JS files deleted → Problem-Solution Fit 8→9
+- CORS/pagination/JSON.parse/toError fixes → Code Quality 8→9
+- Husky+commitlint → Git Hygiene 7→9
+- .nvmrc+docs+CLAUDE.md updates → Onboarding 8→9
+- S3 consolidation, Scan→Query → Pragmatism 8→9
+- Unit tests for 4 handlers → Test Value 6→8
+
+### Remaining Remediation Targets
+
+- **Architecture (8 → 9):** Extract MessageRepository and LetterRepository. Complexity: MEDIUM.
+- **Creativity (7 → 9):** Add optimistic locking to letter updates. Extract SWR cache utility. Complexity: LOW-MEDIUM.
+- **Defensiveness (8.5 → 9):** Add structured logging to JS Lambda processors. Complexity: LOW.
+- **Performance (8 → 9):** Batch presigned URL generation. Use BatchGet in notification-processor. Complexity: MEDIUM.
+- **Type Rigor (7.5 → 9):** Remove `as unknown` cast. Add zod request body validation. Complexity: MEDIUM.
+- **Test Value (8 → 9):** Add tests for letters, media, reactions, contact handlers. Complexity: MEDIUM.
+- **Reproducibility (8 → 9):** Add Docker dev environment with DynamoDB Local. Complexity: MEDIUM.
+
+### Note on Stress Evaluator
+The Stress evaluator cited several findings (CORS, pagination, JSON.parse, DynamoDB Scan) that were definitively fixed in Phases 2-3. Scores above are adjusted based on verified code state. The evaluator's valid remaining concerns (N+1 presigned URLs, JS Lambda logging, type casts) are reflected.

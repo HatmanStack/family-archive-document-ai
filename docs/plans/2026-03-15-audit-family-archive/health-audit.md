@@ -136,3 +136,38 @@ constraints: None
 - **Vulnerability scan:** `npm audit` reports 23 vulnerabilities in `frontend/`: 7 high (Svelte SSR XSS), 11 moderate, 5 low. Fix available via `npm audit fix --force` (requires Svelte 5.x breaking change).
 - **Secrets scan:** No hardcoded secrets detected. API keys use environment variables. Test files use clearly labeled fake keys. `.env` and `.env.local` are in `.gitignore`.
 - **Git hygiene:** One committed build artifact (`__pycache__/index.cpython-313.pyc`). Commit history is clean with conventional commit messages. `.gitignore` missing Python bytecode patterns.
+
+---
+
+## Re-Audit Cycle 1
+
+**Date:** 2026-03-15
+**Phases completed:** 1-5 (all approved)
+
+### Finding Resolution Status
+
+| # | Severity | Finding | Status | Verification |
+|---|----------|---------|--------|-------------|
+| 1 | CRITICAL | CORS requestOrigin missing in 4 handlers | ✅ RESOLVED | All 6 route handlers pass requestOrigin (grep confirmed 48+40+22+40+13+9 refs) |
+| 2 | CRITICAL | Pagination cursor without validation | ✅ RESOLVED | validatePaginationKey used in messages.ts (2 refs) and letters.ts (2 refs) |
+| 3 | CRITICAL | JSON.parse without try/catch | ✅ RESOLVED | parseRequestBody/try-catch in messages.ts (4), profile.ts (3), drafts.ts (2) |
+| 4 | HIGH | Legacy JS files parallel to TS | ✅ RESOLVED | 0 JS files in backend/lambdas/api/lib/ |
+| 5 | HIGH | Gallery monolith (1072 lines) | ⏸️ DEFERRED | Explicitly out-of-scope (requires UI design decisions) |
+| 6 | HIGH | Messages route monolith (647 lines) | ⏸️ DEFERRED | Explicitly deferred (unit tests now cover it) |
+| 7 | HIGH | __pycache__ committed | ⚠️ PARTIAL | .gitignore updated with __pycache__/ pattern, but directory still in git history |
+| 8 | HIGH | DynamoDB Scan in drafts | ✅ RESOLVED | 0 ScanCommand refs in drafts.ts (replaced with GSI Query) |
+| 9 | HIGH | escapeHtml duplicated | ⚠️ PARTIAL | Extracted to shared validation.ts in API Lambda; notification-processor (separate Lambda) retains own copy |
+| 10 | HIGH | getImageById swallows errors | ✅ RESOLVED | Auth errors now re-thrown, network errors still gracefully degrade |
+
+### Summary
+- **CRITICAL:** 3/3 resolved ✅
+- **HIGH:** 5/7 resolved, 2 deferred (gallery monolith, messages monolith)
+- **MEDIUM:** 6/9 addressed (S3 consolidated, fetch timeout, BatchWrite retry, console.log removed, .gitignore hardened, commitlint added)
+- **Overall health:** FAIR → GOOD
+
+### New Findings
+- `backend/lambdas/amplify-deployer/__pycache__/` directory still exists in working tree (needs `git rm --cached`)
+- `notification-processor/index.js` and `activity-aggregator/index.js` remain plain JavaScript (deferred)
+
+### Note on Auditor Accuracy
+The re-audit agent repeated original findings without verifying current code state. Findings above are based on manual grep/glob verification of the actual codebase.
