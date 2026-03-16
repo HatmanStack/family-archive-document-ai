@@ -143,7 +143,7 @@ async function listConversations(event: APIGatewayProxyEvent, userId: string, re
     }
 
     if (lastEvaluatedKey) {
-      const paginationResult = validatePaginationKey(lastEvaluatedKey, PREFIX.USER)
+      const paginationResult = validatePaginationKey(lastEvaluatedKey, `${PREFIX.USER}${userId}`)
       if (!paginationResult.valid) {
         return errorResponse(400, paginationResult.error || 'Invalid pagination key', requestOrigin)
       }
@@ -211,7 +211,7 @@ async function getMessages(event: APIGatewayProxyEvent, userId: string, requestO
     }
 
     if (lastEvaluatedKey) {
-      const paginationResult = validatePaginationKey(lastEvaluatedKey, PREFIX.CONV)
+      const paginationResult = validatePaginationKey(lastEvaluatedKey, `${PREFIX.CONV}${conversationId}`)
       if (!paginationResult.valid) {
         return errorResponse(400, paginationResult.error || 'Invalid pagination key', requestOrigin)
       }
@@ -273,11 +273,25 @@ async function createConversation(event: APIGatewayProxyEvent, userId: string, r
   if (!body) {
     return errorResponse(400, 'Invalid JSON in request body', requestOrigin)
   }
-  const participantIds: string[] = (body.participantIds as string[]) || []
+  const rawParticipantIds = body.participantIds
   const { messageText, conversationTitle } = body
 
-  if (!Array.isArray(participantIds) || participantIds.length === 0) {
+  if (!Array.isArray(rawParticipantIds) || rawParticipantIds.length === 0) {
     return errorResponse(400, 'participantIds must be a non-empty array', requestOrigin)
+  }
+
+  // Validate, normalize, and deduplicate participant IDs
+  const seen = new Set<string>()
+  const participantIds: string[] = []
+  for (const id of rawParticipantIds) {
+    if (typeof id !== 'string' || id.trim().length === 0) {
+      return errorResponse(400, 'Each participantId must be a non-empty string', requestOrigin)
+    }
+    const trimmed = id.trim()
+    if (!seen.has(trimmed)) {
+      seen.add(trimmed)
+      participantIds.push(trimmed)
+    }
   }
 
   if (!participantIds.includes(userId)) {
@@ -455,7 +469,12 @@ async function markAsRead(event: APIGatewayProxyEvent, userId: string, requestOr
 }
 
 async function deleteConversation(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
-  const conversationId = decodeURIComponent(event.pathParameters?.conversationId || '')
+  let conversationId: string
+  try {
+    conversationId = decodeURIComponent(event.pathParameters?.conversationId || '')
+  } catch {
+    return errorResponse(400, 'Malformed conversationId parameter', requestOrigin)
+  }
 
   if (!conversationId) {
     return errorResponse(400, 'Missing conversationId parameter', requestOrigin)
@@ -566,8 +585,14 @@ async function deleteConversation(event: APIGatewayProxyEvent, userId: string, r
 }
 
 async function deleteMessage(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
-  const conversationId = decodeURIComponent(event.pathParameters?.conversationId || '')
-  const messageId = decodeURIComponent(event.pathParameters?.messageId || '')
+  let conversationId: string
+  let messageId: string
+  try {
+    conversationId = decodeURIComponent(event.pathParameters?.conversationId || '')
+    messageId = decodeURIComponent(event.pathParameters?.messageId || '')
+  } catch {
+    return errorResponse(400, 'Malformed conversationId or messageId parameter', requestOrigin)
+  }
 
   if (!conversationId || !messageId) {
     return errorResponse(400, 'Missing conversationId or messageId parameter', requestOrigin)

@@ -123,6 +123,12 @@ export async function handle(
 
 const MAX_FILE_COUNT = 20
 
+const ALLOWED_UPLOAD_TYPES: Record<string, string> = {
+  'application/pdf': 'pdf',
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+}
+
 async function handleUploadRequest(
   event: APIGatewayProxyEvent,
   _requesterId: string,
@@ -147,10 +153,11 @@ async function handleUploadRequest(
   const urls: Array<{ url: string; key: string; index: number }> = []
 
   for (let i = 0; i < fileCount; i++) {
-    const type = fileTypes[i] || 'application/pdf'
-    let ext = 'pdf'
-    if (type === 'image/jpeg') ext = 'jpg'
-    if (type === 'image/png') ext = 'png'
+    const type = (fileTypes as string[])[i] || 'application/pdf'
+    const ext = ALLOWED_UPLOAD_TYPES[type]
+    if (!ext) {
+      return errorResponse(400, `Unsupported file type: ${type}. Allowed: ${Object.keys(ALLOWED_UPLOAD_TYPES).join(', ')}`, requestOrigin)
+    }
 
     const key = `${S3_PREFIXES.temp}${uploadId}/${i}.${ext}`
 
