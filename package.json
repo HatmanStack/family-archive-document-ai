@@ -30,7 +30,7 @@
     "preview": "cd frontend && npm run preview",
     "test:e2e": "playwright test",
     "test:load": "artillery run tests/load/comments-load.yml && artillery run tests/load/messages-load.yml && artillery run tests/load/profile-load.yml",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "lint-staged": {
     "frontend/**/*.{ts,svelte}": [
