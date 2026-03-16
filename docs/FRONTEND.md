@@ -33,7 +33,7 @@ frontend/
 │   │   └── drafts/        # Draft management
 │   ├── messages/           # Direct messaging
 │   │   ├── +page.svelte   # Conversation list
-│   │   └── [id]/          # Conversation view
+│   │   └── [conversationId]/ # Conversation view
 │   ├── profile/            # User profiles
 │   │   ├── [userId]/      # View profile
 │   │   └── settings/      # Edit profile

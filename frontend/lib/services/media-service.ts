@@ -417,7 +417,8 @@ export async function getImageById(imageId: string): Promise<RagImage | null> {
     )) {
       throw error
     }
-    const statusCode = (error as Record<string, unknown>)?.status ?? (error as Record<string, unknown>)?.statusCode
+    const rawStatusCode = (error as Record<string, unknown>)?.status ?? (error as Record<string, unknown>)?.statusCode
+    const statusCode = Number(rawStatusCode)
     if (statusCode === 401 || statusCode === 403) {
       throw error
     }

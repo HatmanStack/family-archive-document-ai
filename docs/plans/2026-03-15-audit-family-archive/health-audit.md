@@ -156,7 +156,7 @@ constraints: None
 | 4 | HIGH | Legacy JS files parallel to TS | ✅ RESOLVED | 0 JS files in backend/lambdas/api/lib/ |
 | 5 | HIGH | Gallery monolith (1072 lines) | ⏸️ DEFERRED | Explicitly out-of-scope (requires UI design decisions) |
 | 6 | HIGH | Messages route monolith (647 lines) | ⏸️ DEFERRED | Explicitly deferred (unit tests now cover it) |
-| 7 | HIGH | __pycache__ committed | ⚠️ PARTIAL | .gitignore updated with __pycache__/ pattern, but directory still in git history |
+| 7 | HIGH | `__pycache__` committed | ⚠️ PARTIAL | .gitignore updated with __pycache__/ pattern, but directory still in git history |
 | 8 | HIGH | DynamoDB Scan in drafts | ✅ RESOLVED | 0 ScanCommand refs in drafts.ts (replaced with GSI Query) |
 | 9 | HIGH | escapeHtml duplicated | ⚠️ PARTIAL | Extracted to shared validation.ts in API Lambda; notification-processor (separate Lambda) retains own copy |
 | 10 | HIGH | getImageById swallows errors | ✅ RESOLVED | Auth errors now re-thrown, network errors still gracefully degrade |

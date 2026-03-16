@@ -104,16 +104,17 @@ Backend environment variables are configured via `backend/template.yaml` SAM par
 
 | Variable | Lambda(s) | Description |
 |----------|-----------|-------------|
-| `TABLE_NAME` | API, activity-aggregator | DynamoDB table name |
-| `ARCHIVE_BUCKET` | API | S3 bucket for letters, media, profile photos |
+| `TABLE_NAME` | API, activity-aggregator, notification-processor, letter-processor | DynamoDB table name |
+| `ARCHIVE_BUCKET` | API, letter-processor | S3 bucket for letters, media, profile photos |
 | `USER_PROFILES_TABLE` | activity-aggregator | DynamoDB profiles table (legacy) |
-| `SES_FROM_EMAIL` | notification-processor, contact | SES sender email |
-| `ADMIN_EMAIL` | contact | Admin notification email |
+| `SES_FROM_EMAIL` | API, notification-processor | SES sender email |
+| `ADMIN_EMAIL` | API | Admin notification email |
 | `BASE_URL` | notification-processor | App base URL for email links |
-| `LOG_LEVEL` | API | Logging level (default: info) |
+| `LOG_LEVEL` | frontend-builder, amplify-deployer | Logging level (default: info) |
 | `LETTER_PROCESSOR_FUNCTION_NAME` | API (drafts) | Lambda function name for letter processing |
 | `RAGSTACK_BUCKET` | API (media, letters) | RAGStack S3 bucket |
 | `RAGSTACK_REGION` | API (media, letters) | RAGStack S3 region |
+| `GEMINI_API_KEY` | letter-processor | Google Gemini API key for AI letter parsing |
 | `GEMINI_MODEL` | letter-processor | Gemini model name (default: gemini-3.1-flash-lite-preview) |
 | `ALLOWED_ORIGINS` | API | CORS allowed origins (comma-separated) |
 

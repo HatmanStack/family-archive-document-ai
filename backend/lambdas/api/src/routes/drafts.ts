@@ -15,6 +15,7 @@ import { log } from '../lib/logger'
 import { parseRequestBody } from '../lib/validation'
 import { s3Client } from '../lib/s3-utils'
 import { toError } from '../lib/errors'
+import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 const lambdaClient = new LambdaClient({})
 
 /**
@@ -36,6 +37,10 @@ export async function handle(
     if (!requesterId) {
       return errorResponse(401, 'Authentication required', requestOrigin)
     }
+    const rateLimit = await checkRateLimit(requesterId, 'upload')
+    if (!rateLimit.allowed) {
+      return errorResponse(429, `Rate limit exceeded. Retry after ${getRetryAfter(rateLimit.resetAt)}s`, requestOrigin)
+    }
     return handleUploadRequest(event, requesterId, requestOrigin)
   }
 
@@ -48,6 +53,10 @@ export async function handle(
     const uploadId = match?.[1]
     if (!uploadId) {
       return errorResponse(400, 'Missing or invalid uploadId', requestOrigin)
+    }
+    const rateLimit = await checkRateLimit(requesterId, 'upload')
+    if (!rateLimit.allowed) {
+      return errorResponse(429, `Rate limit exceeded. Retry after ${getRetryAfter(rateLimit.resetAt)}s`, requestOrigin)
     }
     return handleProcess(uploadId, requesterId, requestOrigin)
   }
@@ -63,6 +72,10 @@ export async function handle(
       const draftId = match?.[1]
       if (!draftId) {
         return errorResponse(400, 'Missing or invalid draftId', requestOrigin)
+      }
+      const rateLimit = await checkRateLimit(requesterId || '', 'default')
+      if (!rateLimit.allowed) {
+        return errorResponse(429, `Rate limit exceeded. Retry after ${getRetryAfter(rateLimit.resetAt)}s`, requestOrigin)
       }
       return handlePublish(event, draftId, requesterId || '', requestOrigin)
     }
@@ -169,15 +182,26 @@ async function handleProcess(
 
 async function handleListDrafts(requestOrigin?: string): Promise<APIGatewayProxyResult> {
   try {
-    const command = new QueryCommand({
-      TableName: TABLE_NAME,
-      IndexName: 'GSI1',
-      KeyConditionExpression: 'GSI1PK = :pk',
-      ExpressionAttributeValues: { ':pk': 'DRAFTS' },
-    })
+    const drafts: Record<string, unknown>[] = []
+    let lastEvaluatedKey: Record<string, unknown> | undefined
 
-    const result = await docClient.send(command)
-    return successResponse({ drafts: result.Items || [] }, 200, requestOrigin)
+    do {
+      const command = new QueryCommand({
+        TableName: TABLE_NAME,
+        IndexName: 'GSI1',
+        KeyConditionExpression: 'GSI1PK = :pk',
+        ExpressionAttributeValues: { ':pk': 'DRAFTS' },
+        ExclusiveStartKey: lastEvaluatedKey,
+      })
+
+      const result = await docClient.send(command)
+      if (result.Items) {
+        drafts.push(...result.Items)
+      }
+      lastEvaluatedKey = result.LastEvaluatedKey
+    } while (lastEvaluatedKey)
+
+    return successResponse({ drafts }, 200, requestOrigin)
   } catch (err) {
     log.error('list_drafts_error', { error: toError(err).message })
     return errorResponse(500, 'Failed to list drafts', requestOrigin)

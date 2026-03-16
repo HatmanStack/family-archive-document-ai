@@ -17,6 +17,7 @@ pillar_overrides: None
 - **One-Line:** Solves a real family problem with appropriate technology, demonstrating strong backend fundamentals and security-conscious design.
 
 ### SCORECARD
+
 | Pillar | Score | Evidence |
 |--------|-------|----------|
 | Problem-Solution Fit | 8/10 | `frontend/package.json:1-64` — lean dependency set (5 prod deps); `backend/template.yaml:1-100` — single SAM template with well-organized parameters. Stack is proportional: SvelteKit + Lambda + DynamoDB + Gemini AI for a family archive with AI transcription. No over-engineering. |
@@ -75,6 +76,7 @@ pillar_overrides: None
 - **One-Line:** Solid defensive coding with thoughtful concurrency handling, but unguarded JSON.parse calls and a DynamoDB Scan on the hot path would wake me up.
 
 ### SCORECARD
+
 | Pillar | Score | Evidence |
 |--------|-------|----------|
 | Pragmatism | 8/10 | `backend/lambdas/api/src/lib/rate-limit.ts:46-186` — Atomic DynamoDB rate limiting with race-condition handling and fail-open semantics is correctly scoped complexity. `backend/lambdas/api/src/routes/drafts.ts:166` — DynamoDB `ScanCommand` for listing drafts is under-engineered. |
@@ -138,6 +140,7 @@ pillar_overrides: None
 - **One-Line:** Solid foundations for onboarding, but the main API Lambda is a test-coverage blind spot that would slow down any junior touching backend routes.
 
 ### SCORECARD
+
 | Pillar | Score | Evidence |
 |--------|-------|----------|
 | Test Value | 6/10 | `tests/unit/errors.test.js` — thorough behavioral tests; `tests/unit/retry.test.js` — excellent edge-case coverage. But zero unit tests for 9 API route handlers in `backend/lambdas/api/src/routes/`. Integration tests in `tests/integration/` are excluded from vitest config (line 18 of `vitest.config.ts`). |

@@ -260,8 +260,8 @@ Environment:
 Letter processor Lambda validates env vars at startup (backend/lambdas/letter-processor/src/lib/config.ts:36-58):
 
 **Gemini API Key validation:**
-- Must not be a placeholder value (e.g., `your-api-key`, `TODO`, `REPLACE`)
-- Must be at least 20 characters (real keys are typically ~39 characters)
+- Recommended: avoid placeholder values (e.g., `your-api-key`, `TODO`, `REPLACE`) — config.ts warns if detected
+- Recommended: at least 20 characters (real keys are typically ~39 characters) — config.ts warns if shorter
 - Get key: https://aistudio.google.com/app/apikey
 
 **Required variables:**

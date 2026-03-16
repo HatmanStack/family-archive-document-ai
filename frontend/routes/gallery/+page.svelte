@@ -228,8 +228,8 @@
             invalidateMediaCache()
             await loadMediaItems(selectedSection)
           }
-          catch {
-            // Background refresh failed silently — non-critical
+          catch (err) {
+            console.warn('Background refresh failed', { err, section: selectedSection })
           }
         }, delay)
         pendingRefreshTimeouts.add(timerId)
@@ -543,8 +543,14 @@ return
       // If Cognito is not configured, show content in development mode
       if (!data.cognitoConfigured) {
         // In development mode, still try to load media but handle auth errors gracefully
-        loadMediaItems(selectedSection).catch(() => {
-          error = 'Gallery requires authentication to be configured'
+        loadMediaItems(selectedSection).catch((err) => {
+          const isAuthError = (err instanceof Error && (
+            err.message.includes('401') || err.message.includes('403')
+            || err.message.includes('Unauthorized') || err.message.includes('not authenticated')
+          )) || Number(err?.status) === 401 || Number(err?.status) === 403
+          error = isAuthError
+            ? 'Gallery requires authentication to be configured'
+            : 'Failed to load gallery, please try again'
         })
         return
       }

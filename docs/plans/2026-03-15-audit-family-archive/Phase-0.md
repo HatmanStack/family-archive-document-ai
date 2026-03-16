@@ -132,9 +132,15 @@ The correct pattern (from `backend/lambdas/api/src/lib/errors.ts`):
 ```typescript
 import { toError } from '../lib/errors'
 
+let body: Record<string, unknown>
 try {
-  const body = JSON.parse(event.body || '{}')
-  // ... handle request
+  body = JSON.parse(event.body || '{}')
+} catch {
+  return errorResponse(400, 'Bad request', requestOrigin)
+}
+
+try {
+  // ... handle request using body
 } catch (err) {
   const error = toError(err)
   log.error('handler_name_failed', { error: error.message })

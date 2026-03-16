@@ -4,6 +4,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, BatchWriteCommand } from '@aws-sdk/lib-dynamodb'
 import { log } from './logger'
+import { DatabaseError } from './errors'
 
 // Shared DynamoDB clients
 const client = new DynamoDBClient({})
@@ -67,7 +68,7 @@ export async function batchWriteWithRetry(
         count: unprocessed.length,
         retries: maxRetries,
       })
-      throw new Error(
+      throw new DatabaseError(
         `batchWriteWithRetry failed: ${unprocessed.length} unprocessed items after ${maxRetries} retries`
       )
     }
