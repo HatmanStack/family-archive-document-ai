@@ -14,7 +14,7 @@ jobs:
     name: Lint (Strict)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -54,7 +54,7 @@ jobs:
       REACTIONS_TABLE: test-reactions
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
