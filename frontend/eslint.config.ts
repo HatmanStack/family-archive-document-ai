@@ -7,6 +7,11 @@ export default antfu({
     'mdsvex.config.js',
     '**/*.md',
   ],
+  overrides: {
+    svelte: {
+      'import/no-mutable-exports': 'off',
+    },
+  },
   rules: {
     'no-console': ['error', { allow: ['warn', 'error'] }],
     'no-debugger': 'error',
@@ -22,6 +27,7 @@ export default antfu({
     'svelte/indent': 'off',
     'style/indent-binary-ops': 'off',
     'regexp/no-super-linear-backtracking': 'off',
+    'e18e/prefer-static-regex': 'off',
     'eqeqeq': 'error',
     'no-undef-init': 'off',
   },

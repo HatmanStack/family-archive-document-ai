@@ -58,8 +58,8 @@ export interface CommentErrorResponse {
  * Union type for all comment API responses.
  * Use type guards (isCommentList, isCommentSingle) to narrow the type.
  */
-export type CommentApiResponse =
-  | CommentListResponse
+export type CommentApiResponse
+  = | CommentListResponse
   | CommentSingleResponse
   | CommentErrorResponse
 
@@ -113,8 +113,8 @@ export interface ReactionErrorResponse {
   error: string
 }
 
-export type ReactionApiResponse =
-  | ReactionListResponse
+export type ReactionApiResponse
+  = | ReactionListResponse
   | ReactionSingleResponse
   | ReactionErrorResponse
 

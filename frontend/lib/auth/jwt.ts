@@ -1,8 +1,9 @@
+import type { JWTPayload } from 'jose'
 import {
   PUBLIC_AWS_REGION,
   PUBLIC_COGNITO_USER_POOL_ID,
 } from '$env/static/public'
-import { createRemoteJWKSet, type JWTPayload, jwtVerify } from 'jose'
+import { createRemoteJWKSet, jwtVerify } from 'jose'
 
 // Check if Cognito is configured
 const isCognitoConfigured = PUBLIC_COGNITO_USER_POOL_ID && PUBLIC_AWS_REGION

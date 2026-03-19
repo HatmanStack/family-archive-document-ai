@@ -77,8 +77,8 @@ export interface MessageErrorResponse {
 /**
  * Union type for all message API responses
  */
-export type MessageApiResponse =
-  | MessageListResponse
+export type MessageApiResponse
+  = | MessageListResponse
   | MessageSingleResponse
   | MessageErrorResponse
 
@@ -115,8 +115,8 @@ export interface ConversationErrorResponse {
 /**
  * Union type for all conversation API responses
  */
-export type ConversationApiResponse =
-  | ConversationListResponse
+export type ConversationApiResponse
+  = | ConversationListResponse
   | ConversationSingleResponse
   | ConversationErrorResponse
 
@@ -180,6 +180,6 @@ export interface UploadAttachmentErrorResponse {
   data?: undefined
 }
 
-export type UploadAttachmentResponse =
-  | UploadAttachmentSuccessResponse
+export type UploadAttachmentResponse
+  = | UploadAttachmentSuccessResponse
   | UploadAttachmentErrorResponse

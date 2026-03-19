@@ -98,8 +98,8 @@ export interface ProfileErrorResponse {
  * Union type for all profile API responses.
  * Use type guards to narrow the type.
  */
-export type ProfileApiResponse =
-  | ProfileListResponse
+export type ProfileApiResponse
+  = | ProfileListResponse
   | ProfileSingleResponse
   | ProfileErrorResponse
 
@@ -177,6 +177,6 @@ export interface CommentHistoryErrorResponse {
   lastEvaluatedKey?: undefined
 }
 
-export type CommentHistoryResponse =
-  | CommentHistorySuccessResponse
+export type CommentHistoryResponse
+  = | CommentHistorySuccessResponse
   | CommentHistoryErrorResponse

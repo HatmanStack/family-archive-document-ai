@@ -30,7 +30,7 @@ function extractFilename(source: string): string {
   // https://example.com/path/file.jpg → file.jpg
   // /path/to/file.jpg → file.jpg
   const parts = source.split('/')
-  return parts[parts.length - 1] || source
+  return parts.at(-1) || source
 }
 
 /**

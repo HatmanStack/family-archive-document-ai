@@ -36,7 +36,7 @@
 
         if (!isApproved) {
           // User is authenticated but not approved - redirect to pending approval page
-          setTimeout(() => goto('/auth/pending-approval'), 1500)
+          setTimeout(goto, 1500, '/auth/pending-approval')
           return
         }
 
@@ -44,10 +44,10 @@
         const returnUrl = sessionStorage.getItem('auth_return_url')
         if (returnUrl) {
           sessionStorage.removeItem('auth_return_url')
-          setTimeout(() => goto(returnUrl), 1500)
+          setTimeout(goto, 1500, returnUrl)
         }
         else {
-          setTimeout(() => goto('/'), 1500)
+          setTimeout(goto, 1500, '/')
         }
       }
       else {

@@ -85,3 +85,4 @@ amplifytools.xcconfig
 backend/.env.deploy
 pnpm-lock.yaml
 .pnpm-store/
+backend/.env.deploy.*

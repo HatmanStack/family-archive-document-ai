@@ -1,8 +1,9 @@
 <script lang='ts'>
+  import type { FileUploadState } from '$lib/services/letter-upload-service'
   import { goto } from '$app/navigation'
   import { getDraft } from '$lib/services/draft-service'
-  import {
-    type FileUploadState,
+import {
+
     formatFileSize,
     LETTER_FILE_TYPES,
     uploadLetterFiles,
@@ -119,7 +120,7 @@
 
         if (draft.status === 'REVIEW') {
           successMessage = 'Processing complete! Redirecting to review...'
-          setTimeout(() => goto(`/letters/drafts/${uploadId}`), 1000)
+          setTimeout(goto, 1000, `/letters/drafts/${uploadId}`)
           return
         }
 
@@ -142,7 +143,7 @@
     // Timeout - redirect to drafts anyway
     processing = false
     successMessage = 'Processing is taking longer than expected. Redirecting to drafts...'
-    setTimeout(() => goto('/letters/drafts'), 1000)
+    setTimeout(goto, 1000, '/letters/drafts')
   }
 
   async function startUpload() {

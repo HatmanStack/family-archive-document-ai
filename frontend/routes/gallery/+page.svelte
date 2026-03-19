@@ -1,14 +1,16 @@
 <script lang='ts'>
+  import type { MediaItem } from '$lib/services/media-service'
+  import type { SearchResult } from '$lib/services/search-service'
   import type { PageData } from './$types'
   import { browser } from '$app/environment'
   import { goto } from '$app/navigation'
   import { page } from '$app/stores'
   import { authLoading, currentUser, isAuthenticated } from '$lib/auth/auth-store'
   import CommentSection from '$lib/components/comments/CommentSection.svelte'
-  import Head from '$lib/components/head.svelte'
-  import { createMediaItemFromSearch, getImageById, getMediaItems, getPresignedUrlForKey, invalidateMediaCache, type MediaItem, resolveSignedUrl } from '$lib/services/media-service'
+import Head from '$lib/components/head.svelte'
+  import { createMediaItemFromSearch, getImageById, getMediaItems, getPresignedUrlForKey, invalidateMediaCache, resolveSignedUrl } from '$lib/services/media-service'
   import { uploadToRagstack } from '$lib/services/ragstack-upload-service'
-  import { filterResultsByCategory, searchKnowledgeBase, type SearchResult } from '$lib/services/search-service'
+import { filterResultsByCategory, searchKnowledgeBase } from '$lib/services/search-service'
   import { onDestroy, onMount } from 'svelte'
 
   export let data: PageData

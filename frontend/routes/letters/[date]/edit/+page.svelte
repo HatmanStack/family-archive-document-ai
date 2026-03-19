@@ -1,8 +1,9 @@
 <script lang='ts'>
+  import type { Letter } from '$lib/services/letters-service'
   import { goto } from '$app/navigation'
   import { authTokens, isAuthenticated } from '$lib/auth/auth-store'
   import MarkdownEditor from '$lib/components/MarkdownEditor.svelte'
-  import { getLetter, type Letter, updateLetter } from '$lib/services/letters-service'
+import { getLetter, updateLetter } from '$lib/services/letters-service'
   import { onMount } from 'svelte'
 
   export let data: { date: string }

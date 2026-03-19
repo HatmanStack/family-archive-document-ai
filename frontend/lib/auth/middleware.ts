@@ -1,6 +1,7 @@
 import type { RequestEvent } from '@sveltejs/kit'
+import type { CognitoJWTPayload } from './jwt'
 import { error } from '@sveltejs/kit'
-import { type CognitoJWTPayload, extractTokenFromHeader, isUserApproved, verifyJWT } from './jwt'
+import { extractTokenFromHeader, isUserApproved, verifyJWT } from './jwt'
 
 export interface AuthenticatedUser {
   id: string

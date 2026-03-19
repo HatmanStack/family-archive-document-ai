@@ -43,15 +43,15 @@ export const genPosts: GenPostsFunction = ({
       html:
           postHtml || typeOfPost(module.metadata) !== 'article'
             ? module.default
-              .render()
-              .html // eslint-disable-next-line no-control-regex
-              .replace(/[\u0000-\u001F]/g, '')
-              .replace(/[\r\n]/g, '')
-              .match(/<main [^>]+>(.*?)<\/main>/gi)?.[0]
-              .replace(/<main [^>]+>(.*?)<\/main>/gi, '$1')
-              .replace(/( style=")(.*?)(")/gi, '')
-              .replace(/(<span>)(.*?)(<\/span>)/gi, '$2')
-              .replace(/(<main>)(.*?)(<\/main>)/gi, '$2')
+                .render()
+                .html // eslint-disable-next-line no-control-regex
+                .replace(/[\u0000-\u001F]/g, '')
+                .replace(/[\r\n]/g, '')
+                .match(/<main [^>]+>(.*?)<\/main>/gi)?.[0]
+                .replace(/<main [^>]+>(.*?)<\/main>/gi, '$1')
+                .replace(/( style=")(.*?)(")/gi, '')
+                .replace(/(<span>)(.*?)(<\/span>)/gi, '$2')
+                .replace(/(<main>)(.*?)(<\/main>)/gi, '$2')
             : '',
       type: typeOfPost(module.metadata),
     }))

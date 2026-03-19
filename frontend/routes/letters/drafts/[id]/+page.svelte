@@ -1,15 +1,16 @@
 <script lang='ts'>
+  import type { Draft, PublishData } from '$lib/services/draft-service'
   import type { PageData } from './$types'
   import { goto } from '$app/navigation'
   import { authTokens } from '$lib/auth/auth-store'
   import AuthGuard from '$lib/components/auth/AuthGuard.svelte'
   import DraftReviewModal from '$lib/components/letters/DraftReviewModal.svelte'
-  import {
+import {
     deleteDraft,
-    type Draft,
+
     getDraft,
     getDraftPdfUrl,
-    type PublishData,
+
     publishDraft,
   } from '$lib/services/draft-service'
   import { uploadDocumentToRagstack } from '$lib/services/ragstack-upload-service'

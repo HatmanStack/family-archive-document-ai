@@ -192,7 +192,7 @@ export async function downloadSourcePdf(): Promise<void> {
 
     const pathParts = sanitizedTitle.split('/').filter(Boolean)
     const filename = pathParts.length > 0
-      ? `${pathParts[pathParts.length - 1]}.pdf`
+      ? `${pathParts.at(-1)}.pdf`
       : 'letter.pdf'
     const link = document.createElement('a')
     link.href = blobUrl

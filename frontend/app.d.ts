@@ -38,9 +38,9 @@ declare global {
         type: 'article' | 'audio' | 'bookmark' | 'like' | 'note' | 'photo' | 'reply' | 'repost' | 'video'
 
         updated: string
-      } &
-      Omit<FFFBase, 'flags'> &
-      Pick<FFFMedia, 'alt'> & Pick<FFFMention, 'in_reply_to'>
+      }
+      & Omit<FFFBase, 'flags'>
+      & Pick<FFFMedia, 'alt'> & Pick<FFFMention, 'in_reply_to'>
       interface Toc {
         children?: Toc[]
         depth: number

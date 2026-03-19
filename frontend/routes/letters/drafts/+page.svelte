@@ -1,8 +1,9 @@
 <script lang='ts'>
+  import type { Draft } from '$lib/services/draft-service'
   import { goto } from '$app/navigation'
   import { authTokens } from '$lib/auth/auth-store'
   import AuthGuard from '$lib/components/auth/AuthGuard.svelte'
-  import { deleteDraft, type Draft, extractDraftId, formatDraftStatus, listDrafts } from '$lib/services/draft-service'
+import { deleteDraft, extractDraftId, formatDraftStatus, listDrafts } from '$lib/services/draft-service'
   import { onMount } from 'svelte'
 
   let drafts: Draft[] = []

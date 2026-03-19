@@ -1,6 +1,7 @@
 <script lang='ts'>
+  import type { LetterListItem } from '$lib/services/letters-service'
   import { authTokens, isAuthenticated } from '$lib/auth/auth-store'
-  import { type LetterListItem, listLetters } from '$lib/services/letters-service'
+import { listLetters } from '$lib/services/letters-service'
   import { title as storedTitle } from '$lib/stores/title'
   import { onMount, tick } from 'svelte'
   import { fly } from 'svelte/transition'

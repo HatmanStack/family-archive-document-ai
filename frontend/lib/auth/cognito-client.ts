@@ -1,3 +1,4 @@
+import type { InitiateAuthCommandInput } from '@aws-sdk/client-cognito-identity-provider'
 import {
   CognitoIdentityProviderClient,
   ConfirmForgotPasswordCommand,
@@ -5,7 +6,7 @@ import {
   GetUserCommand,
   GlobalSignOutCommand,
   InitiateAuthCommand,
-  type InitiateAuthCommandInput,
+
   RespondToAuthChallengeCommand,
 } from '@aws-sdk/client-cognito-identity-provider'
 import { cognitoConfig } from './cognito-config'

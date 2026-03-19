@@ -1,8 +1,9 @@
 <script lang='ts'>
+  import type { AdjacentLetters, Letter, LetterVersion } from '$lib/services/letters-service'
   import { authTokens, isAuthenticated } from '$lib/auth/auth-store'
   import CommentSection from '$lib/components/comments/CommentSection.svelte'
   import VersionHistory from '$lib/components/VersionHistory.svelte'
-  import { type AdjacentLetters, getAdjacentLetters, getLetter, getPdfUrl, getVersions, type Letter, type LetterVersion, revertToVersion } from '$lib/services/letters-service'
+import { getAdjacentLetters, getLetter, getPdfUrl, getVersions, revertToVersion } from '$lib/services/letters-service'
   import { title as storedTitle } from '$lib/stores/title'
   import DOMPurify from 'isomorphic-dompurify'
   import { marked } from 'marked'
