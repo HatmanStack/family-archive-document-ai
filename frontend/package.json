@@ -13,9 +13,9 @@
     "lint:fix": "eslint --flag unstable_ts_config . --fix"
   },
   "dependencies": {
-    "@aws-sdk/client-cognito-identity-provider": "^3.782.0",
+    "@aws-sdk/client-cognito-identity-provider": "^3.1012.0",
     "isomorphic-dompurify": "^3.5.1",
-    "jose": "^6.0.12",
+    "jose": "^6.2.2",
     "marked": "^17.0.4",
     "svelte-hero-icons": "^5.2.0"
   },
