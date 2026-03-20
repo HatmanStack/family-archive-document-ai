@@ -1,17 +1,15 @@
 import { sveltekit } from '@sveltejs/kit/vite'
+import tailwindcss from '@tailwindcss/postcss'
 import { SvelteKitPWA as pwa } from '@vite-pwa/sveltekit'
 import postcssLightningcss from 'postcss-lightningcss'
-import TailwindCSS from 'tailwindcss'
 import { defineConfig } from 'vite'
 import { imagetools } from 'vite-imagetools'
-
-import tailwindConfig from './tailwind.config'
 
 export default defineConfig({
   css: {
     postcss: {
       plugins: [
-        TailwindCSS(tailwindConfig),
+        tailwindcss(),
         postcssLightningcss({
           browsers: '>= .25%',
           lightningcssOptions: {

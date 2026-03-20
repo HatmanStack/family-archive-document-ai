@@ -164,9 +164,10 @@
 
 <!-- Contact Modal -->
 {#if showContactModal}
-  <button
-    type='button'
+  <div
     class='fixed inset-0 bg-black flex items-center justify-center z-50 p-4 w-full h-full border-none bg-opacity-50 cursor-default'
+    role='button'
+    tabindex='0'
     on:click={closeContactModal}
     on:keydown={handleKeydown}
     aria-label='Close contact form'
@@ -249,7 +250,7 @@
         </div>
       {/if}
     </div>
-  </button>
+  </div>
 {/if}
 
 <svelte:window on:keydown={handleKeydown} />
