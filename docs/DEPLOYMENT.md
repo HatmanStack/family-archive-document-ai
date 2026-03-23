@@ -160,7 +160,7 @@ Backend environment variables are configured via `backend/template.yaml` SAM par
 1. Go to Cognito Console → User Pool → Sign-in experience
 2. Add identity provider → Google
 3. Enter Google Client ID and Secret
-4. Map attributes: `email`, `name`, `picture`
+4. Map attributes: `email`, `name`
 
 ### User Groups
 

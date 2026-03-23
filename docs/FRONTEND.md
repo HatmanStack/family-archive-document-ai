@@ -194,21 +194,13 @@ Svelte stores manage application state:
 // lib/auth/auth-store.ts
 import { authStore } from '$lib/auth/auth-store'
 
-// Subscribe to auth state
-$: isAuthenticated = $authStore?.accessToken != null
-$: userId = $authStore?.userId
+// Setting auth state
+authStore.setAuthenticated(user, tokens)
 
-// Update auth state
-authStore.set({
-  accessToken: '...',
-  refreshToken: '...',
-  idToken: '...',
-  userId: '...',
-  email: '...'
-})
+// Clearing auth
+authStore.clearAuth()
 
-// Clear auth (logout)
-authStore.set(null)
+// State shape: { isAuthenticated, user, tokens, loading }
 ```
 
 ## Components

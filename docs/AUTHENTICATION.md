@@ -91,7 +91,7 @@ Google Client ID: {paste your Client ID}
 Google Client Secret: {paste your Client Secret}
 ```
 
-Cognito automatically configures the identity provider and attribute mapping (email→email, name→name, picture→picture).
+Cognito automatically configures the identity provider and attribute mapping (email→email, name→name).
 
 #### Step 5: Test OAuth Flow
 1. Open: `https://your-app-domain.com/auth/login`
@@ -117,7 +117,7 @@ Cognito automatically configures the identity provider and attribute mapping (em
 - Re-run `npm run deploy` with correct credentials
 
 **User attributes not mapping:**
-- Default mapping configured automatically in template (backend/template.yaml:346-359)
+- Default mapping configured automatically in template (backend/template.yaml:361-363)
 - Verify user pool client includes Google provider
 
 ### Guest Access (Optional)
@@ -147,7 +147,7 @@ Cognito JWTs include these claims:
 
 ### Login
 
-The login flow uses `AuthService` (which wraps `CognitoAuthClient` from `lib/auth/cognito-client.ts`):
+The login flow uses `AuthService` (which wraps `cognitoAuth` from `lib/auth/cognito-client.ts`):
 
 ```typescript
 // lib/auth/auth-service.ts
@@ -331,7 +331,7 @@ The profile includes:
 ```typescript
 async function logout() {
   // Clear local tokens
-  authStore.set(null)
+  authStore.clearAuth()
 
   // Optionally revoke refresh token
   await client.send(new RevokeTokenCommand({

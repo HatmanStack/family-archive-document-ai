@@ -161,10 +161,10 @@ and auth store API.
 
 **Verification Checklist:**
 
-- [ ] Attribute mapping lists only `email` and `name` (not `picture`)
-- [ ] Line references match actual `template.yaml` line numbers
-- [ ] Auth store example uses `setAuthenticated()`, `clearAuth()` methods
-- [ ] `CognitoAuthClient` reference replaced with actual import name
+- [x] Attribute mapping lists only `email` and `name` (not `picture`)
+- [x] Line references match actual `template.yaml` line numbers
+- [x] Auth store example uses `setAuthenticated()`, `clearAuth()` methods
+- [x] `CognitoAuthClient` reference replaced with actual import name
 
 **Testing Instructions:**
 
