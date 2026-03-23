@@ -3,6 +3,7 @@
  */
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext } from '../types'
+import path from 'node:path'
 import { PutObjectCommand } from '@aws-sdk/client-s3'
 import { GetCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
@@ -321,12 +322,13 @@ async function getPhotoUploadUrl(
   }
 
   const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-  if (!allowedTypes.includes(contentType)) {
+  if (!contentType || !allowedTypes.includes(contentType)) {
     return errorResponse(400, 'Invalid content type', requestOrigin)
   }
 
   try {
-    const ext = filename.split('.').pop() || 'jpg'
+    const safeName = path.basename(filename)
+    const ext = (safeName.match(/\.([a-zA-Z0-9]+)$/)?.[1] || 'jpg').toLowerCase()
     const key = `profile-photos/${requesterId}/${Date.now()}.${ext}`
 
     const command = new PutObjectCommand({
