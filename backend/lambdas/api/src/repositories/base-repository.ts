@@ -199,6 +199,12 @@ export class BaseRepository {
         throw new ValidationError(paginationResult.error || 'Invalid pagination key')
       }
       if (paginationResult.key) {
+        // Reject cursors whose PK does not match the current query's partition key
+        const expectedPK = expressionAttributeValues[':pk'] as string | undefined
+        const cursorPK = paginationResult.key.PK as string | undefined
+        if (expectedPK && cursorPK && cursorPK !== expectedPK) {
+          throw new ValidationError('Invalid pagination key: partition key mismatch')
+        }
         queryParams.ExclusiveStartKey = paginationResult.key
       }
     }

@@ -12,7 +12,7 @@ pillar_overrides:
 ## Configuration
 - **Role Level:** Senior Developer — production: defensive coding, observability, performance awareness, type rigor
 - **Focus Areas:** None — balanced evaluation across all pillars
-- **Exclusions:** Standard exclusions (vendor, generated, node_modules, __pycache__)
+- **Exclusions:** Standard exclusions (vendor, generated, node_modules, `__pycache__`)
 
 ## Combined Scorecard
 

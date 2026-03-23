@@ -193,12 +193,10 @@ Full test suite: **224 passed, 2 skipped, 0 failed** (19 test files).
    `docs/DEPLOYMENT.md:130-132` now correctly describes single
    `ArchiveBucketResource` created automatically.
 
-1. **API_REFERENCE.md comment length** -- UNVERIFIED.
-   `docs/API_REFERENCE.md:54` still says `1-10000 chars`. The constant
-   `MAX_COMMENT_LENGTH` in `constants.ts:42` is now `10000`, which matches
-   the doc and the route code. The original finding noted an internal
-   inconsistency that has been resolved by updating the constant to match
-   runtime behavior.
+1. **API_REFERENCE.md comment length** -- VERIFIED.
+   `docs/API_REFERENCE.md:54` says `1-10000 chars`. `MAX_COMMENT_LENGTH` in
+   `constants.ts:42` is now `10000`, which matches both the doc and the route
+   code. The original internal inconsistency has been resolved.
 
 1. **AUTHENTICATION.md `picture` attribute mapping** -- VERIFIED.
    `docs/AUTHENTICATION.md:94` now correctly states mapping is

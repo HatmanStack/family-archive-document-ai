@@ -15,7 +15,7 @@ Local development setup and workflows for Family Archive - Document AI.
 
 ```bash
 # Install nvm
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash
 
 # Install Node.js 24
 nvm install 24

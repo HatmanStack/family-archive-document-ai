@@ -76,7 +76,11 @@ export function getUserInfo(): UserInfo | null {
     id: payload.sub as string,
     email: payload.email as string,
     username: payload['cognito:username'] as string,
-    groups: (payload['cognito:groups'] as string[]) || [],
+    groups: Array.isArray(payload['cognito:groups'])
+      ? (payload['cognito:groups'] as string[])
+      : typeof payload['cognito:groups'] === 'string'
+        ? [payload['cognito:groups'] as string]
+        : [],
     given_name: payload.given_name as string | undefined,
     family_name: payload.family_name as string | undefined,
     picture: payload.picture as string | undefined,

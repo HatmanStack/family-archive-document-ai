@@ -102,7 +102,7 @@ describe('letters handler', () => {
       const queryCalls = ddbMock.commandCalls(QueryCommand)
       expect(queryCalls.length).toBe(1)
       const queryInput = queryCalls[0].args[0].input
-      expect(queryInput.Limit).toBeLessThanOrEqual(100)
+      expect(queryInput.Limit).toBe(100)
     })
 
     it('rejects invalid pagination cursor with 400', async () => {

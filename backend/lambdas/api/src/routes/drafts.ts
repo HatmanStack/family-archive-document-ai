@@ -12,10 +12,10 @@ import { docClient, TABLE_NAME, ARCHIVE_BUCKET, S3_PREFIXES } from '../lib/datab
 import { keys } from '../lib/keys'
 import { successResponse, errorResponse, rateLimitResponse } from '../lib/responses'
 import { log } from '../lib/logger'
-import { parseRequestBody, validatePaginationKey } from '../lib/validation'
+import { parseRequestBody, validatePaginationKey, parsePageLimit } from '../lib/validation'
 import { s3Client } from '../lib/s3-utils'
 import { toError, hasErrorName } from '../lib/errors'
-import { MAX_PAGE_SIZE } from '../lib/constants'
+import { MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE } from '../lib/constants'
 import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 const lambdaClient = new LambdaClient({})
 
@@ -208,10 +208,7 @@ async function handleListDrafts(
   requestOrigin?: string
 ): Promise<APIGatewayProxyResult> {
   try {
-    const limit = Math.min(
-      parseInt(event.queryStringParameters?.limit || '50', 10),
-      MAX_PAGE_SIZE
-    )
+    const limit = parsePageLimit(event.queryStringParameters?.limit, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE)
     const cursor = event.queryStringParameters?.cursor
 
     const params: QueryCommandInput = {

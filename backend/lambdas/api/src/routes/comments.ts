@@ -5,8 +5,8 @@ import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext } from '../types'
 import { commentRepository } from '../repositories'
 import { successResponse, errorResponse, rateLimitResponse } from '../lib/responses'
-import { sanitizeText, validateContentLength, parseRequestBody } from '../lib/validation'
-import { MAX_COMMENT_LENGTH, MAX_PAGE_SIZE } from '../lib/constants'
+import { sanitizeText, validateContentLength, parseRequestBody, parsePageLimit } from '../lib/validation'
+import { MAX_COMMENT_LENGTH, MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE } from '../lib/constants'
 import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 import { log } from '../lib/logger'
 import { toError, AppError, getStatusCode, getUserMessage } from '../lib/errors'
@@ -73,7 +73,7 @@ async function listComments(
   requestOrigin?: string
 ): Promise<APIGatewayProxyResult> {
   const rawItemId = event.pathParameters?.itemId
-  const limit = parseInt(event.queryStringParameters?.limit || '50', 10)
+  const limit = parsePageLimit(event.queryStringParameters?.limit, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE)
   const lastEvaluatedKey = event.queryStringParameters?.lastEvaluatedKey
 
   if (!rawItemId) {
@@ -84,7 +84,7 @@ async function listComments(
 
   try {
     const result = await commentRepository.listByItemId(itemId, {
-      limit: Math.min(limit, MAX_PAGE_SIZE),
+      limit,
       lastEvaluatedKey,
     })
 
