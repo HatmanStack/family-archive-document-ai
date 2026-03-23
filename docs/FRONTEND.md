@@ -48,14 +48,23 @@ frontend/
 │   └── about/              # About page
 │
 ├── lib/
-│   ├── auth/               # Authentication utilities
-│   │   ├── client.ts      # Cognito client
-│   │   └── auth-store.ts  # Auth state store
+│   ├── auth/               # Authentication (Cognito, JWT, OAuth)
+│   │   ├── api-client.ts       # Class-based API client
+│   │   ├── auth-service.ts     # Auth orchestration (sign in, refresh, sign out)
+│   │   ├── auth-store.ts       # Auth state store
+│   │   ├── client.ts           # authenticatedFetch wrapper
+│   │   ├── cognito-client.ts   # CognitoAuthClient (AWS SDK calls)
+│   │   ├── cognito-config.ts   # Cognito env var config
+│   │   ├── google-oauth.ts     # Google OAuth helpers
+│   │   ├── jwt-decode.ts       # JWT payload decoder
+│   │   ├── jwt.ts              # JWT utilities
+│   │   └── middleware.ts       # Auth middleware
 │   ├── components/         # Reusable components
 │   │   ├── comments/      # Comment system
 │   │   ├── messages/      # Messaging components
 │   │   ├── profile/       # Profile components
 │   │   └── letters/       # Letter components
+│   ├── config/             # Site configuration (general, icons, posts)
 │   ├── services/           # API service modules
 │   │   ├── comment-service.ts        # Comment CRUD
 │   │   ├── content-service.ts        # Content transformation
@@ -71,7 +80,12 @@ frontend/
 │   │   ├── reaction-service.ts       # Reaction toggle, counts
 │   │   └── search-service.ts         # RAGStack semantic search
 │   ├── stores/             # Svelte stores
-│   └── types/              # TypeScript definitions
+│   │   ├── messages.ts    # Message/conversation state
+│   │   ├── posts.ts       # Posts state
+│   │   ├── profiles.ts    # User profiles state
+│   │   └── title.ts       # Page title state
+│   ├── types/              # TypeScript definitions
+│   └── utils/              # Utility functions (retry, fetch, dedup)
 │
 ├── static/                  # Static assets
 ├── app.html                # HTML template

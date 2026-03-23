@@ -63,7 +63,7 @@ backend/
 │   ├── api/src/               # Main API Lambda (consolidated)
 │   │   ├── index.ts           # Entry point, route dispatcher
 │   │   ├── routes/            # Route handlers (comments, letters, media, messages, profile, reactions)
-│   │   ├── repositories/      # DynamoDB data access
+│   │   ├── repositories/      # DynamoDB data access (base-repository, comment-repository)
 │   │   └── lib/               # Shared utilities
 │   ├── activity-aggregator/   # DynamoDB stream processor for user stats
 │   ├── letter-processor/      # PDF merge + Gemini AI parsing
