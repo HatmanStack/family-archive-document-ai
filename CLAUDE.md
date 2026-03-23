@@ -29,12 +29,12 @@ npm run deploy                 # Deploy backend via SAM
 
 ## Architecture
 
-### Frontend (SvelteKit 2.x + Svelte 4)
+### Frontend (SvelteKit 2.x + Svelte 5)
 
-```
+```text
 frontend/
 ├── routes/                    # SvelteKit file-based routing
-│   ├── auth/                  # Login, signup, callback, password reset
+│   ├── auth/                  # Login, callback, forgot/reset-password, logout, pending-approval
 │   ├── gallery/               # Media gallery with RAGStack integration
 │   ├── letters/               # Letter viewing and editing
 │   ├── messages/              # Direct messaging between users
@@ -56,14 +56,14 @@ frontend/
 
 ### Backend (AWS SAM + Lambda)
 
-```
+```text
 backend/
 ├── template.yaml              # SAM template - single consolidated definition
 ├── lambdas/
 │   ├── api/src/               # Main API Lambda (consolidated)
 │   │   ├── index.ts           # Entry point, route dispatcher
 │   │   ├── routes/            # Route handlers (comments, letters, media, messages, profile, reactions)
-│   │   ├── repositories/      # DynamoDB data access
+│   │   ├── repositories/      # DynamoDB data access (base-repository, comment-repository)
 │   │   └── lib/               # Shared utilities
 │   ├── activity-aggregator/   # DynamoDB stream processor for user stats
 │   ├── letter-processor/      # PDF merge + Gemini AI parsing
@@ -105,7 +105,7 @@ Common access patterns:
 
 ### Test Structure
 
-```
+```text
 tests/
 ├── unit/                      # Vitest unit tests (handler tests)
 ├── integration/               # API integration tests
@@ -124,7 +124,7 @@ Copy `.env.example` to `.env` and configure:
 
 ## CI Pipeline
 
-GitHub Actions runs on push/PR to main/develop:
+GitHub Actions runs on push/PR to main:
 1. **Lint**: ESLint with `--max-warnings 0`, TypeScript type check
 2. **Test**: Vitest unit tests in parallel
 

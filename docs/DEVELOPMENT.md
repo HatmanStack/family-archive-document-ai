@@ -15,7 +15,7 @@ Local development setup and workflows for Family Archive - Document AI.
 
 ```bash
 # Install nvm
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash
 
 # Install Node.js 24
 nvm install 24
@@ -71,12 +71,12 @@ Edit `.env` with your settings:
 
 ```bash
 # Required for frontend
-PUBLIC_API_GATEWAY_URL=https://xxx.execute-api.us-east-1.amazonaws.com
-PUBLIC_AWS_REGION=us-east-1
-PUBLIC_COGNITO_USER_POOL_ID=us-east-1_XXXXXXXXX
+PUBLIC_API_GATEWAY_URL=https://xxx.execute-api.us-west-2.amazonaws.com
+PUBLIC_AWS_REGION=us-west-2
+PUBLIC_COGNITO_USER_POOL_ID=us-west-2_XXXXXXXXX
 PUBLIC_COGNITO_USER_POOL_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxxx
-PUBLIC_COGNITO_IDENTITY_POOL_ID=us-east-1:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-PUBLIC_COGNITO_HOSTED_UI_URL=https://your-app.auth.us-east-1.amazoncognito.com
+PUBLIC_COGNITO_IDENTITY_POOL_ID=us-west-2:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+PUBLIC_COGNITO_HOSTED_UI_URL=https://your-app.auth.us-west-2.amazoncognito.com
 PUBLIC_COGNITO_HOSTED_UI_DOMAIN=your-app
 
 # Optional for RAGStack integration
@@ -154,8 +154,8 @@ Integration tests require a deployed backend and valid credentials:
 
 ```bash
 # Set environment variables
-export API_URL=https://xxx.execute-api.us-east-1.amazonaws.com
-export COGNITO_USER_POOL_ID=us-east-1_XXXXXXXXX
+export API_URL=https://xxx.execute-api.us-west-2.amazonaws.com
+export COGNITO_USER_POOL_ID=us-west-2_XXXXXXXXX
 export COGNITO_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxxx
 export TEST_USER_EMAIL=test@example.com
 export TEST_USER_PASSWORD=TestPassword123!
@@ -254,8 +254,8 @@ cd backend
 # Start local API
 sam local start-api
 
-# Invoke single function
-sam local invoke ApiFunction -e events/test-event.json
+# Invoke single function (create a test event JSON file manually)
+sam local invoke ApiFunction -e test-event.json
 ```
 
 ### Deploy Backend
@@ -302,13 +302,13 @@ refactor: Extract validation utilities
 
 ## CI/CD
 
-GitHub Actions runs on push/PR to main and develop:
+GitHub Actions runs on push/PR to main:
 
 1. **Lint**: ESLint with `--max-warnings 0`
 2. **Type Check**: `svelte-check`
 3. **Unit Tests**: Vitest in parallel
 
-Both must pass for merge.
+All three must pass for merge.
 
 ## Debugging
 

@@ -136,6 +136,22 @@ export function parseRequestBody(body: string | null): Record<string, unknown> |
 }
 
 /**
+ * Parse and clamp a page limit from query string input.
+ * Returns defaultSize for NaN, zero, negative, or non-integer values.
+ */
+export function parsePageLimit(
+  raw: string | undefined | null,
+  defaultSize: number,
+  maxSize: number
+): number {
+  const parsed = Number(raw ?? defaultSize)
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    return Math.min(defaultSize, maxSize)
+  }
+  return Math.min(parsed, maxSize)
+}
+
+/**
  * Result of pagination key validation
  */
 export interface PaginationKeyValidation {

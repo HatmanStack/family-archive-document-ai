@@ -13,7 +13,10 @@ interface LogEntry {
   data?: unknown
 }
 
-// Current correlation ID for the request (set via setCorrelationId)
+// Module-level state is safe in AWS Lambda: each execution environment processes
+// one request at a time (even with Provisioned Concurrency). If this code is ever
+// deployed as a long-running server (ECS/Fargate), migrate to AsyncLocalStorage.
+// See: ADR-5 in docs/plans/2026-03-23-audit-document-ai/Phase-0.md
 let currentCorrelationId: string | undefined
 
 /**

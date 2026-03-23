@@ -5,10 +5,11 @@ import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext } from '../types'
 import { commentRepository } from '../repositories'
 import { successResponse, errorResponse, rateLimitResponse } from '../lib/responses'
-import { sanitizeText, validateContentLength, parseRequestBody } from '../lib/validation'
+import { sanitizeText, validateContentLength, parseRequestBody, parsePageLimit } from '../lib/validation'
+import { MAX_COMMENT_LENGTH, MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE } from '../lib/constants'
 import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 import { log } from '../lib/logger'
-import { toError } from '../lib/errors'
+import { toError, AppError, getStatusCode, getUserMessage } from '../lib/errors'
 
 /**
  * Decode base64url itemId from URL path
@@ -72,7 +73,7 @@ async function listComments(
   requestOrigin?: string
 ): Promise<APIGatewayProxyResult> {
   const rawItemId = event.pathParameters?.itemId
-  const limit = parseInt(event.queryStringParameters?.limit || '50', 10)
+  const limit = parsePageLimit(event.queryStringParameters?.limit, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE)
   const lastEvaluatedKey = event.queryStringParameters?.lastEvaluatedKey
 
   if (!rawItemId) {
@@ -83,7 +84,7 @@ async function listComments(
 
   try {
     const result = await commentRepository.listByItemId(itemId, {
-      limit: Math.min(limit, 100),
+      limit,
       lastEvaluatedKey,
     })
 
@@ -96,6 +97,9 @@ async function listComments(
     }, 200, requestOrigin)
   } catch (error) {
     log.error('list_comments_error', { itemId, error: toError(error).message })
+    if (error instanceof AppError) {
+      return errorResponse(getStatusCode(error), getUserMessage(error), requestOrigin)
+    }
     return errorResponse(500, 'Failed to fetch comments', requestOrigin)
   }
 }
@@ -132,8 +136,8 @@ async function createComment(
   }
 
   const content = sanitizeText(body.content as string)
-  if (!validateContentLength(content, 1, 10000)) {
-    return errorResponse(400, 'Comment content must be between 1 and 10000 characters', requestOrigin)
+  if (!validateContentLength(content, 1, MAX_COMMENT_LENGTH)) {
+    return errorResponse(400, `Comment content must be between 1 and ${MAX_COMMENT_LENGTH} characters`, requestOrigin)
   }
 
   try {
@@ -177,8 +181,8 @@ async function editComment(
   }
 
   const content = sanitizeText(body.content as string)
-  if (!validateContentLength(content, 1, 10000)) {
-    return errorResponse(400, 'Comment content must be between 1 and 10000 characters', requestOrigin)
+  if (!validateContentLength(content, 1, MAX_COMMENT_LENGTH)) {
+    return errorResponse(400, `Comment content must be between 1 and ${MAX_COMMENT_LENGTH} characters`, requestOrigin)
   }
 
   try {

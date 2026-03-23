@@ -8,11 +8,11 @@ import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { docClient, TABLE_NAME, ARCHIVE_BUCKET } from '../lib/database'
 import { s3Client, ragstackS3Client, RAGSTACK_BUCKET } from '../lib/s3-utils'
-import { PRESIGNED_URL_EXPIRY_SECONDS } from '../lib/constants'
+import { PRESIGNED_URL_EXPIRY_SECONDS, MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE } from '../lib/constants'
 import { keys } from '../lib/keys'
 import { successResponse, errorResponse } from '../lib/responses'
 import { log } from '../lib/logger'
-import { validatePaginationKey } from '../lib/validation'
+import { validatePaginationKey, parsePageLimit } from '../lib/validation'
 import { toError } from '../lib/errors'
 
 function isValidDate(date: string | undefined): boolean {
@@ -67,7 +67,7 @@ export async function handle(
 }
 
 async function listLetters(event: APIGatewayProxyEvent, requestOrigin?: string): Promise<APIGatewayProxyResult> {
-  const limit = parseInt(event.queryStringParameters?.limit || '50', 10)
+  const limit = parsePageLimit(event.queryStringParameters?.limit, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE)
   const cursor = event.queryStringParameters?.cursor
 
   try {
@@ -104,9 +104,9 @@ async function listLetters(event: APIGatewayProxyEvent, requestOrigin?: string):
         ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
         : null,
     }, 200, requestOrigin)
-  } catch (error) {
-    log.error('list_letters_error', { error: toError(error).message })
-    throw error
+  } catch (err) {
+    log.error('list_letters_error', { error: toError(err).message })
+    return errorResponse(500, 'Failed to list letters', requestOrigin)
   }
 }
 
@@ -141,9 +141,9 @@ async function getLetter(event: APIGatewayProxyEvent, requestOrigin?: string): P
       lastEditedBy: result.Item.lastEditedBy,
       versionCount: result.Item.versionCount || 0,
     }, 200, requestOrigin)
-  } catch (error) {
-    log.error('get_letter_error', { date, error: toError(error).message })
-    throw error
+  } catch (err) {
+    log.error('get_letter_error', { date, error: toError(err).message })
+    return errorResponse(500, 'Failed to get letter', requestOrigin)
   }
 }
 
@@ -223,9 +223,9 @@ async function updateLetter(
       message: 'Letter updated',
       versionCount: versionNumber,
     }, 200, requestOrigin)
-  } catch (error) {
-    log.error('update_letter_error', { date, error: toError(error).message })
-    throw error
+  } catch (err) {
+    log.error('update_letter_error', { date, error: toError(err).message })
+    return errorResponse(500, 'Failed to update letter', requestOrigin)
   }
 }
 
@@ -255,9 +255,9 @@ async function getVersions(event: APIGatewayProxyEvent, requestOrigin?: string):
     }))
 
     return successResponse({ versions }, 200, requestOrigin)
-  } catch (error) {
-    log.error('get_versions_error', { date, error: toError(error).message })
-    throw error
+  } catch (err) {
+    log.error('get_versions_error', { date, error: toError(err).message })
+    return errorResponse(500, 'Failed to get letter versions', requestOrigin)
   }
 }
 
@@ -341,9 +341,9 @@ async function revertToVersion(
     }
 
     return successResponse({ message: 'Reverted to version', timestamp }, 200, requestOrigin)
-  } catch (error) {
-    log.error('revert_version_error', { date, timestamp, error: toError(error).message })
-    throw error
+  } catch (err) {
+    log.error('revert_version_error', { date, timestamp, error: toError(err).message })
+    return errorResponse(500, 'Failed to revert to version', requestOrigin)
   }
 }
 
@@ -386,8 +386,8 @@ async function getPdfUrl(event: APIGatewayProxyEvent, requestOrigin?: string): P
     }
 
     return successResponse({ downloadUrl }, 200, requestOrigin)
-  } catch (error) {
-    log.error('get_pdf_url_error', { date, error: toError(error).message })
-    throw error
+  } catch (err) {
+    log.error('get_pdf_url_error', { date, error: toError(err).message })
+    return errorResponse(500, 'Failed to get PDF URL', requestOrigin)
   }
 }

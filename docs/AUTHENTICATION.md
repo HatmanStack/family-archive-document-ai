@@ -33,11 +33,11 @@ The SAM template creates a Cognito User Pool with:
 Frontend requires these Cognito settings:
 
 ```bash
-PUBLIC_AWS_REGION=us-east-1
-PUBLIC_COGNITO_USER_POOL_ID=us-east-1_XXXXXXXXX
+PUBLIC_AWS_REGION=us-west-2
+PUBLIC_COGNITO_USER_POOL_ID=us-west-2_XXXXXXXXX
 PUBLIC_COGNITO_USER_POOL_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxxx
-PUBLIC_COGNITO_IDENTITY_POOL_ID=us-east-1:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-PUBLIC_COGNITO_HOSTED_UI_URL=https://your-app.auth.us-east-1.amazoncognito.com
+PUBLIC_COGNITO_IDENTITY_POOL_ID=us-west-2:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+PUBLIC_COGNITO_HOSTED_UI_URL=https://your-app.auth.us-west-2.amazoncognito.com
 PUBLIC_COGNITO_HOSTED_UI_DOMAIN=your-app
 ```
 
@@ -77,7 +77,7 @@ To enable "Sign in with Google":
    - `https://your-app-domain.com`
    - `http://localhost:5173` (for dev)
 6. Authorized redirect URIs:
-   - `https://your-cognito-domain.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`
+   - `https://your-cognito-domain.auth.us-west-2.amazoncognito.com/oauth2/idpresponse`
    - Replace `your-cognito-domain` with your actual domain
    - Get domain from: `aws cognito-idp describe-user-pool --user-pool-id YOUR_POOL_ID --query 'UserPool.Domain'`
 7. Click "Create"
@@ -91,7 +91,7 @@ Google Client ID: {paste your Client ID}
 Google Client Secret: {paste your Client Secret}
 ```
 
-Cognito automatically configures the identity provider and attribute mapping (email→email, name→name, picture→picture).
+Cognito automatically configures the identity provider and attribute mapping (email→email, name→name).
 
 #### Step 5: Test OAuth Flow
 1. Open: `https://your-app-domain.com/auth/login`
@@ -117,7 +117,7 @@ Cognito automatically configures the identity provider and attribute mapping (em
 - Re-run `npm run deploy` with correct credentials
 
 **User attributes not mapping:**
-- Default mapping configured automatically in template (backend/template.yaml:346-359)
+- Default mapping configured automatically in template (backend/template.yaml:361-363)
 - Verify user pool client includes Google provider
 
 ### Guest Access (Optional)
@@ -147,7 +147,7 @@ Cognito JWTs include these claims:
 
 ### Login
 
-The login flow uses `AuthService` (which wraps `CognitoAuthClient` from `lib/auth/cognito-client.ts`):
+The login flow uses `AuthService` (which wraps `cognitoAuth` from `lib/auth/cognito-client.ts`):
 
 ```typescript
 // lib/auth/auth-service.ts
@@ -331,7 +331,7 @@ The profile includes:
 ```typescript
 async function logout() {
   // Clear local tokens
-  authStore.set(null)
+  authStore.clearAuth()
 
   // Optionally revoke refresh token
   await client.send(new RevokeTokenCommand({

@@ -3,10 +3,23 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mockClient } from 'aws-sdk-client-mock'
-import { DynamoDBDocumentClient, QueryCommand, GetCommand, PutCommand, BatchGetCommand, BatchWriteCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import { DynamoDBDocumentClient, QueryCommand, GetCommand, PutCommand, BatchGetCommand, BatchWriteCommand, UpdateCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb'
+import { DeleteObjectCommand } from '@aws-sdk/client-s3'
 import type { APIGatewayProxyEvent } from 'aws-lambda'
 
 const ddbMock = mockClient(DynamoDBDocumentClient)
+
+// Mock s3-utils to provide a mockable S3 client and signPhotoUrl
+const { mockS3Send } = vi.hoisted(() => {
+  const mockS3Send = vi.fn().mockResolvedValue({})
+  return { mockS3Send }
+})
+vi.mock('../../backend/lambdas/api/src/lib/s3-utils', () => ({
+  s3Client: { send: mockS3Send },
+  signPhotoUrl: vi.fn().mockResolvedValue(null),
+  ragstackS3Client: { send: vi.fn() },
+  RAGSTACK_BUCKET: '',
+}))
 
 // Mock S3 presigning to avoid real calls
 vi.mock('@aws-sdk/s3-request-presigner', () => ({
@@ -47,6 +60,8 @@ function createMockContext(overrides = {}) {
 
 beforeEach(() => {
   ddbMock.reset()
+  mockS3Send.mockReset()
+  mockS3Send.mockResolvedValue({})
 })
 
 describe('messages handler', () => {
@@ -186,6 +201,38 @@ describe('messages handler', () => {
     })
   })
 
+  describe('pagination limit capping', () => {
+    it('caps limit at MAX_PAGE_SIZE when user supplies a very large limit', async () => {
+      // Mock the member check to pass
+      ddbMock.on(GetCommand).resolves({
+        Item: {
+          PK: 'USER#user-123',
+          SK: 'CONV#conv-1',
+          entityType: 'CONVERSATION_MEMBER',
+          conversationId: 'conv-1',
+          participantIds: new Set(['user-123']),
+          creatorId: 'user-123',
+        },
+      })
+
+      ddbMock.on(QueryCommand).resolves({ Items: [] })
+
+      const event = createMockEvent({
+        httpMethod: 'GET',
+        resource: '/messages/{conversationId}',
+        pathParameters: { conversationId: 'conv-1' },
+        queryStringParameters: { limit: '999' },
+      })
+
+      await handle(event, createMockContext())
+
+      const queryCalls = ddbMock.commandCalls(QueryCommand)
+      expect(queryCalls.length).toBeGreaterThanOrEqual(1)
+      const queryInput = queryCalls[0].args[0].input
+      expect(queryInput.Limit).toBe(100)
+    })
+  })
+
   describe('invalid pagination cursor', () => {
     it('returns 400 for malformed pagination key', async () => {
       // Mock the member check to pass
@@ -210,6 +257,55 @@ describe('messages handler', () => {
       const result = await handle(event, createMockContext())
       expect(result.statusCode).toBe(400)
       expect(result.headers?.['Access-Control-Allow-Origin']).toBeDefined()
+    })
+  })
+
+  describe('DELETE /messages/{conversationId}', () => {
+    it('deletes conversation and batches S3 attachment deletes', async () => {
+      // Create 30 attachments to force batching (batch size is 25)
+      const messagesWithAttachments = Array.from({ length: 30 }, (_, i) => ({
+        PK: `CONV#conv-1`,
+        SK: `MSG#msg-${i}`,
+        entityType: 'MESSAGE',
+        messageId: `msg-${i}`,
+        conversationId: 'conv-1',
+        senderId: 'user-123',
+        attachments: [{ s3Key: `messages/attachments/file-${i}.jpg` }],
+      }))
+
+      // Mock GetCommand for conversation meta lookup
+      ddbMock.on(GetCommand).resolves({
+        Item: {
+          PK: 'CONV#conv-1',
+          SK: 'META',
+          entityType: 'CONVERSATION_META',
+          creatorId: 'user-123',
+          participantIds: new Set(['user-123', 'user-456']),
+        },
+      })
+
+      // Mock QueryCommand to return messages with attachments (single page, no continuation)
+      ddbMock.on(QueryCommand).resolves({
+        Items: messagesWithAttachments,
+      })
+
+      // Mock BatchWriteCommand for DynamoDB deletes
+      ddbMock.on(BatchWriteCommand).resolves({ UnprocessedItems: {} })
+
+      const event = createMockEvent({
+        httpMethod: 'DELETE',
+        resource: '/messages/{conversationId}',
+        pathParameters: { conversationId: 'conv-1' },
+      })
+
+      const result = await handle(event, createMockContext())
+
+      expect(result.statusCode).toBe(200)
+      const body = JSON.parse(result.body)
+      expect(body.message).toBe('Conversation deleted')
+
+      // Verify all S3 deletes were called (one per attachment)
+      expect(mockS3Send.mock.calls.length).toBe(30)
     })
   })
 })

@@ -5,6 +5,46 @@ All notable changes to Family Archive - Document AI will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-03-23
+
+### Added
+- Unit tests for letters, contact, reactions, and media route handlers (56 new tests, 224 total)
+- `Vary: Origin` CORS header on all response paths to prevent CDN caching issues
+- Request timeout (30s) with `AbortController` in frontend API client
+- Pagination limit on `listUsers` query (`MAX_PAGE_SIZE` guard)
+- Pagination support for draft listing (replaces unbounded scan)
+- Features roadmap with interactive family tree visualization design (`docs/FEATURES_ROADMAP.md`)
+
+### Fixed
+- **Security:** Base repository pagination key bypass — now validates via `validatePaginationKey()`
+- **Security:** Profile photo filename sanitized with `path.basename()` and regex extraction
+- Letters route error handling standardized — all 6 `throw error` re-throws replaced with `return errorResponse()`
+- Comment content length constant aligned to runtime value (5000 → 10000)
+- Contact form validates both `ADMIN_EMAIL` and `SES_FROM_EMAIL` before sending
+- `console.warn` in `user.ts` replaced with structured `log.warn`
+- Presigned URL generation batched (groups of 10) to prevent connection exhaustion
+- S3 deletes in `deleteConversation` batched (groups of 25)
+- Pagination limits capped with `Math.min(limit, MAX_PAGE_SIZE)` in letters, messages, and comments routes
+
+### Changed
+- Deduplicated JWT decode into shared `frontend/lib/auth/jwt-decode.ts` (removed 3 copies)
+- API client types tightened: `T = any` → `T = unknown`, `body?: any` → `body?: Record<string, unknown>`
+- JWT payload return type changed from `any` to `Record<string, unknown> | null`
+- Correlation ID documented with ADR-5 safety comment for Lambda concurrency model
+
+### Documentation
+- Full codebase audit (health, evaluation, documentation) with 6-phase remediation
+- Fixed Svelte 4 → Svelte 5 references across all docs
+- Fixed S3 bucket description (single auto-created, not 3 pre-existing)
+- Fixed Google OAuth attribute mapping (email + name only, no picture)
+- Fixed CI trigger docs (main only, not main + develop)
+- Fixed auth store API examples (`setAuthenticated`/`clearAuth`, not `set`/`set(null)`)
+- Updated frontend project structure with config/, utils/, all auth files, all stores
+- Fixed SES log group reference (ApiFunction, not ContactFunction)
+- Fixed tailwind config filename (.ts not .js)
+- Standardized region references to us-west-2
+- Removed stale references to signup route, events/ directory, legacy table labels
+
 ## [1.2.0] - 2026-03-15
 
 ### Added

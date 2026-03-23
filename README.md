@@ -7,7 +7,7 @@
 
 <p align="center">
 <a href="https://kit.svelte.dev"><img src="https://img.shields.io/badge/SvelteKit-2.x-orange" alt="SvelteKit" /></a>
-<a href="https://svelte.dev"><img src="https://img.shields.io/badge/Svelte-4.x-FF3E00" alt="Svelte 4" /></a>
+<a href="https://svelte.dev"><img src="https://img.shields.io/badge/Svelte-5.x-FF3E00" alt="Svelte 5" /></a>
 <a href="https://vitest.dev"><img src="https://img.shields.io/badge/Vitest-2.x-yellow" alt="Vitest" /></a>
 <a href="https://docs.aws.amazon.com/lambda/"><img src="https://img.shields.io/badge/AWS-Lambda-FF9900" alt="AWS Lambda" /></a>
 <a href="https://aws.amazon.com/dynamodb/"><img src="https://img.shields.io/badge/AWS-DynamoDB-4053D6" alt="AWS DynamoDB" /></a>
@@ -62,7 +62,7 @@ aws cognito-idp admin-add-user-to-group \
 <img align="center" src="data/images/family-archive-architecture.png" alt="Family Archive - Document AI - Architecture">
 
 **Key Components:**
-- **Frontend**: SvelteKit 2.x + Svelte 4, DaisyUI components, TailwindCSS
+- **Frontend**: SvelteKit 2.x + Svelte 5, DaisyUI components, TailwindCSS
 - **Backend**: Consolidated API Lambda with route-based handlers
 - **Database**: DynamoDB single-table design with GSI for queries
 - **Storage**: S3 with presigned URLs for secure media access
@@ -118,7 +118,7 @@ See [ONE_CLICK_DEPLOYMENT.md](docs/ONE_CLICK_DEPLOYMENT.md) for detailed setup.
 family-archive-document-ai/
 ├── frontend/                 # SvelteKit application
 │   ├── routes/              # File-based routing
-│   │   ├── auth/           # Login, signup, password reset
+│   │   ├── auth/           # Login, callback, forgot/reset-password, logout, pending-approval
 │   │   ├── gallery/        # Media gallery
 │   │   ├── letters/        # Letter viewing and editing
 │   │   ├── messages/       # Direct messaging

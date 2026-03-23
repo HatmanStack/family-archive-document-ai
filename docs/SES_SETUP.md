@@ -51,4 +51,4 @@ Request production access:
 
 - Email not received: Check spam, verify region matches deployment
 - Domain verification: Wait 48 hours for DNS propagation, verify with `dig TXT _amazonses.yourdomain.com`
-- Contact form errors: Check CloudWatch logs `/aws/lambda/{StackName}-ContactFunction`
+- Contact form errors: Check CloudWatch logs `/aws/lambda/{StackName}-ApiFunction` (contact handling is part of the consolidated API Lambda)

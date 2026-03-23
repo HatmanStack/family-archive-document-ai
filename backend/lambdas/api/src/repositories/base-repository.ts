@@ -13,6 +13,8 @@ import {
   type QueryCommandInput,
 } from '@aws-sdk/lib-dynamodb'
 import { docClient, TABLE_NAME } from '../lib/database'
+import { validatePaginationKey } from '../lib/validation'
+import { ValidationError } from '../lib/errors'
 import type { DynamoDBKey, PaginatedResult } from '../types'
 
 export interface QueryOptions {
@@ -192,9 +194,23 @@ export class BaseRepository {
     }
 
     if (lastEvaluatedKey) {
-      queryParams.ExclusiveStartKey = JSON.parse(
-        Buffer.from(lastEvaluatedKey, 'base64').toString()
-      )
+      const paginationResult = validatePaginationKey(lastEvaluatedKey)
+      if (!paginationResult.valid) {
+        throw new ValidationError(paginationResult.error || 'Invalid pagination key')
+      }
+      if (paginationResult.key) {
+        // Reject cursors whose partition key does not match the current query.
+        // Handles both primary table (PK) and GSI (GSI1PK) queries by checking
+        // whichever key attribute the cursor and query share.
+        const pkAttr = indexName ? 'GSI1PK' : 'PK'
+        const expectedPK = expressionAttributeValues[':pk'] as string | undefined
+          ?? expressionAttributeValues[':gsi1pk'] as string | undefined
+        const cursorPK = paginationResult.key[pkAttr] as string | undefined
+        if (expectedPK && cursorPK && cursorPK !== expectedPK) {
+          throw new ValidationError('Invalid pagination key: partition key mismatch')
+        }
+        queryParams.ExclusiveStartKey = paginationResult.key
+      }
     }
 
     const result = await this.docClient.send(new QueryCommand(queryParams))

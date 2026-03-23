@@ -82,7 +82,7 @@ describe('drafts handler', () => {
       expect(body.drafts).toEqual([])
     })
 
-    it('uses GSI1 index with DRAFTS partition key', async () => {
+    it('uses GSI1 index with DRAFTS partition key and includes Limit', async () => {
       ddbMock.on(QueryCommand).resolves({ Items: [] })
 
       const event = createMockEvent({
@@ -93,10 +93,51 @@ describe('drafts handler', () => {
       await handle(event, createMockContext())
 
       const calls = ddbMock.commandCalls(QueryCommand)
-      expect(calls.length).toBeGreaterThanOrEqual(1)
+      expect(calls.length).toBe(1)
       const queryInput = calls[0].args[0].input
       expect(queryInput.IndexName).toBe('GSI1')
       expect(queryInput.ExpressionAttributeValues).toEqual({ ':pk': 'DRAFTS' })
+      expect(queryInput.Limit).toBeDefined()
+      expect(queryInput.Limit).toBeLessThanOrEqual(100)
+    })
+
+    it('returns nextCursor when more results exist', async () => {
+      const mockDrafts = [
+        { PK: 'DRAFT#abc', SK: 'METADATA', GSI1PK: 'DRAFTS', GSI1SK: 'DRAFT#abc', status: 'REVIEW' },
+      ]
+
+      ddbMock.on(QueryCommand).resolves({
+        Items: mockDrafts,
+        LastEvaluatedKey: { PK: 'DRAFT#abc', SK: 'METADATA', GSI1PK: 'DRAFTS', GSI1SK: 'DRAFT#abc' },
+      })
+
+      const event = createMockEvent({
+        httpMethod: 'GET',
+        path: '/admin/drafts',
+      })
+
+      const result = await handle(event, createMockContext())
+      const body = JSON.parse(result.body)
+
+      expect(result.statusCode).toBe(200)
+      const expectedCursor = Buffer.from(JSON.stringify(
+        { PK: 'DRAFT#abc', SK: 'METADATA', GSI1PK: 'DRAFTS', GSI1SK: 'DRAFT#abc' }
+      )).toString('base64')
+      expect(body.nextCursor).toBe(expectedCursor)
+    })
+
+    it('makes only one DynamoDB query (no unbounded loop)', async () => {
+      ddbMock.on(QueryCommand).resolves({ Items: [] })
+
+      const event = createMockEvent({
+        httpMethod: 'GET',
+        path: '/admin/drafts',
+      })
+
+      await handle(event, createMockContext())
+
+      const calls = ddbMock.commandCalls(QueryCommand)
+      expect(calls.length).toBe(1)
     })
 
     it('includes CORS header in response', async () => {

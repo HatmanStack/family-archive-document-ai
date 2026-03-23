@@ -1,11 +1,14 @@
 import { authService } from './auth-service'
 import { cognitoConfig } from './cognito-config'
 
+const DEFAULT_TIMEOUT = 30_000 // 30 seconds
+
 export interface ApiRequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
-  body?: any
+  body?: Record<string, unknown>
   headers?: Record<string, string>
   requireAuth?: boolean
+  timeout?: number // milliseconds, defaults to DEFAULT_TIMEOUT
 }
 
 /**
@@ -22,12 +25,13 @@ export class ApiClient {
     this.baseUrl = `${base}${API_VERSION}`
   }
 
-  async request<T = any>(endpoint: string, options: ApiRequestOptions = {}): Promise<T> {
+  async request<T = unknown>(endpoint: string, options: ApiRequestOptions = {}): Promise<T> {
     const {
       method = 'GET',
       body,
       headers = {},
       requireAuth = true,
+      timeout,
     } = options
 
     const url = `${this.baseUrl}${endpoint}`
@@ -57,8 +61,15 @@ export class ApiClient {
       requestOptions.body = JSON.stringify(body)
     }
 
+    const controller = new AbortController()
+    const effectiveTimeout = timeout ?? DEFAULT_TIMEOUT
+    const timeoutId = setTimeout(() => controller.abort(), effectiveTimeout)
+
     try {
-      const response = await fetch(url, requestOptions)
+      const response = await fetch(url, {
+        ...requestOptions,
+        signal: controller.signal,
+      })
 
       if (!response.ok) {
         const errorText = await response.text()
@@ -78,38 +89,44 @@ export class ApiClient {
         throw new Error(errorMessage)
       }
 
-      // Handle empty responses
+      // Handle non-JSON responses (e.g., 204 No Content, text responses)
       const contentType = response.headers.get('content-type')
       if (!contentType || !contentType.includes('application/json')) {
-        return {} as T
+        return null as unknown as T
       }
 
       return await response.json()
     }
     catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new Error(`Request timeout after ${effectiveTimeout}ms: ${method} ${url}`)
+      }
       console.error(`API request failed for ${method} ${url}:`, error)
       throw error
+    }
+    finally {
+      clearTimeout(timeoutId)
     }
   }
 
   // Convenience methods
-  async get<T = any>(endpoint: string, options: Omit<ApiRequestOptions, 'method'> = {}): Promise<T> {
+  async get<T = unknown>(endpoint: string, options: Omit<ApiRequestOptions, 'method'> = {}): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: 'GET' })
   }
 
-  async post<T = any>(endpoint: string, body?: any, options: Omit<ApiRequestOptions, 'method' | 'body'> = {}): Promise<T> {
+  async post<T = unknown>(endpoint: string, body?: Record<string, unknown>, options: Omit<ApiRequestOptions, 'method' | 'body'> = {}): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: 'POST', body })
   }
 
-  async put<T = any>(endpoint: string, body?: any, options: Omit<ApiRequestOptions, 'method' | 'body'> = {}): Promise<T> {
+  async put<T = unknown>(endpoint: string, body?: Record<string, unknown>, options: Omit<ApiRequestOptions, 'method' | 'body'> = {}): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: 'PUT', body })
   }
 
-  async delete<T = any>(endpoint: string, options: Omit<ApiRequestOptions, 'method'> = {}): Promise<T> {
+  async delete<T = unknown>(endpoint: string, options: Omit<ApiRequestOptions, 'method'> = {}): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: 'DELETE' })
   }
 
-  async patch<T = any>(endpoint: string, body?: any, options: Omit<ApiRequestOptions, 'method' | 'body'> = {}): Promise<T> {
+  async patch<T = unknown>(endpoint: string, body?: Record<string, unknown>, options: Omit<ApiRequestOptions, 'method' | 'body'> = {}): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: 'PATCH', body })
   }
 }

@@ -14,7 +14,8 @@ import { successResponse, errorResponse, rateLimitResponse } from '../lib/respon
 import { log } from '../lib/logger'
 import { s3Client, signPhotoUrl } from '../lib/s3-utils'
 import { toError } from '../lib/errors'
-import { validatePaginationKey, parseRequestBody } from '../lib/validation'
+import { validatePaginationKey, parseRequestBody, parsePageLimit } from '../lib/validation'
+import { MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE } from '../lib/constants'
 import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 
 interface Attachment {
@@ -182,7 +183,7 @@ async function listConversations(event: APIGatewayProxyEvent, userId: string, re
 
 async function getMessages(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
   const conversationId = event.pathParameters?.conversationId
-  const limit = parseInt(event.queryStringParameters?.limit || '50', 10)
+  const limit = parsePageLimit(event.queryStringParameters?.limit, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE)
   const lastEvaluatedKey = event.queryStringParameters?.lastEvaluatedKey
 
   if (!conversationId) {
@@ -222,10 +223,15 @@ async function getMessages(event: APIGatewayProxyEvent, userId: string, requestO
 
     const result = await docClient.send(new QueryCommand(queryParams))
 
-    const messages = await Promise.all(
-      (result.Items || [])
-        .filter(item => item.entityType === 'MESSAGE')
-        .map(async item => {
+    // Process messages in batches to limit concurrent signing operations
+    const SIGN_BATCH_SIZE = 10
+    const filteredMessages = (result.Items || []).filter(item => item.entityType === 'MESSAGE')
+    const messages = []
+
+    for (let i = 0; i < filteredMessages.length; i += SIGN_BATCH_SIZE) {
+      const batch = filteredMessages.slice(i, i + SIGN_BATCH_SIZE)
+      const batchResults = await Promise.all(
+        batch.map(async item => {
           const attachmentsWithUrls = await Promise.all(
             ((item.attachments as Attachment[]) || []).map(async attachment => {
               if (attachment.s3Key) {
@@ -251,7 +257,9 @@ async function getMessages(event: APIGatewayProxyEvent, userId: string, requestO
             createdAt: item.createdAt,
           }
         })
-    )
+      )
+      messages.push(...batchResults)
+    }
 
     return successResponse({
       messages,
@@ -557,21 +565,24 @@ async function deleteConversation(event: APIGatewayProxyEvent, userId: string, r
       lastKey = msgs.LastEvaluatedKey
     } while (lastKey)
 
-    // Delete S3 attachments (soft cleanup - log failures but don't fail the operation)
-    // We await these to ensure cleanup is attempted before returning success
-    await Promise.all(
-      s3KeysToDelete.map(async (s3Key) => {
-        try {
-          await s3Client.send(new DeleteObjectCommand({
-            Bucket: ARCHIVE_BUCKET,
-            Key: s3Key,
-          }))
-        } catch (e) {
-          // Log but don't fail - orphaned S3 objects are cleaned up by lifecycle policies
-          log.warn('attachment_delete_failed', { s3Key, error: toError(e).message })
-        }
-      })
-    )
+    // Delete S3 attachments in batches to prevent connection exhaustion
+    const S3_DELETE_BATCH_SIZE = 25
+    for (let i = 0; i < s3KeysToDelete.length; i += S3_DELETE_BATCH_SIZE) {
+      const batch = s3KeysToDelete.slice(i, i + S3_DELETE_BATCH_SIZE)
+      await Promise.all(
+        batch.map(async (s3Key) => {
+          try {
+            await s3Client.send(new DeleteObjectCommand({
+              Bucket: ARCHIVE_BUCKET,
+              Key: s3Key,
+            }))
+          } catch (e) {
+            // Log but don't fail - orphaned S3 objects are cleaned up by lifecycle policies
+            log.warn('attachment_delete_failed', { s3Key, error: toError(e).message })
+          }
+        })
+      )
+    }
 
     // Batch delete DynamoDB records
     await batchWriteWithRetry(deleteOps, TABLE_NAME)

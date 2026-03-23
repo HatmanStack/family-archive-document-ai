@@ -1,13 +1,13 @@
 # Frontend Guide
 
-The frontend is built with SvelteKit 2.x and Svelte 4, using DaisyUI components and TailwindCSS for styling.
+The frontend is built with SvelteKit 2.x and Svelte 5, using DaisyUI components and TailwindCSS for styling.
 
 ## Stack
 
 | Technology | Purpose |
 |------------|---------|
 | SvelteKit 2 | Full-stack framework with file-based routing |
-| Svelte 4 | Reactive component framework |
+| Svelte 5 | Reactive component framework |
 | DaisyUI | Component library (buttons, forms, modals) |
 | TailwindCSS | Utility-first CSS |
 | MDSvex | Markdown rendering for letters |
@@ -48,14 +48,23 @@ frontend/
 │   └── about/              # About page
 │
 ├── lib/
-│   ├── auth/               # Authentication utilities
-│   │   ├── client.ts      # Cognito client
-│   │   └── auth-store.ts  # Auth state store
+│   ├── auth/               # Authentication (Cognito, JWT, OAuth)
+│   │   ├── api-client.ts       # Class-based API client
+│   │   ├── auth-service.ts     # Auth orchestration (sign in, refresh, sign out)
+│   │   ├── auth-store.ts       # Auth state store
+│   │   ├── client.ts           # authenticatedFetch wrapper
+│   │   ├── cognito-client.ts   # CognitoAuthClient (AWS SDK calls)
+│   │   ├── cognito-config.ts   # Cognito env var config
+│   │   ├── google-oauth.ts     # Google OAuth helpers
+│   │   ├── jwt-decode.ts       # JWT payload decoder
+│   │   ├── jwt.ts              # JWT utilities
+│   │   └── middleware.ts       # Auth middleware
 │   ├── components/         # Reusable components
 │   │   ├── comments/      # Comment system
 │   │   ├── messages/      # Messaging components
 │   │   ├── profile/       # Profile components
 │   │   └── letters/       # Letter components
+│   ├── config/             # Site configuration (general, icons, posts)
 │   ├── services/           # API service modules
 │   │   ├── comment-service.ts        # Comment CRUD
 │   │   ├── content-service.ts        # Content transformation
@@ -71,7 +80,12 @@ frontend/
 │   │   ├── reaction-service.ts       # Reaction toggle, counts
 │   │   └── search-service.ts         # RAGStack semantic search
 │   ├── stores/             # Svelte stores
-│   └── types/              # TypeScript definitions
+│   │   ├── messages.ts    # Message/conversation state
+│   │   ├── posts.ts       # Posts state
+│   │   ├── profiles.ts    # User profiles state
+│   │   └── title.ts       # Page title state
+│   ├── types/              # TypeScript definitions
+│   └── utils/              # Utility functions (retry, fetch, dedup)
 │
 ├── static/                  # Static assets
 ├── app.html                # HTML template
@@ -194,21 +208,13 @@ Svelte stores manage application state:
 // lib/auth/auth-store.ts
 import { authStore } from '$lib/auth/auth-store'
 
-// Subscribe to auth state
-$: isAuthenticated = $authStore?.accessToken != null
-$: userId = $authStore?.userId
+// Setting auth state
+authStore.setAuthenticated(user, tokens)
 
-// Update auth state
-authStore.set({
-  accessToken: '...',
-  refreshToken: '...',
-  idToken: '...',
-  userId: '...',
-  email: '...'
-})
+// Clearing auth
+authStore.clearAuth()
 
-// Clear auth (logout)
-authStore.set(null)
+// State shape: { isAuthenticated, user, tokens, loading }
 ```
 
 ## Components
@@ -410,19 +416,19 @@ Frontend environment variables (must be prefixed with `PUBLIC_`):
 
 ```bash
 # API
-PUBLIC_API_GATEWAY_URL=https://xxx.execute-api.us-east-1.amazonaws.com
+PUBLIC_API_GATEWAY_URL=https://xxx.execute-api.us-west-2.amazonaws.com
 
 # Cognito
-PUBLIC_AWS_REGION=us-east-1
-PUBLIC_COGNITO_USER_POOL_ID=us-east-1_XXXXXXXXX
+PUBLIC_AWS_REGION=us-west-2
+PUBLIC_COGNITO_USER_POOL_ID=us-west-2_XXXXXXXXX
 PUBLIC_COGNITO_USER_POOL_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxxx
-PUBLIC_COGNITO_IDENTITY_POOL_ID=us-east-1:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-PUBLIC_COGNITO_HOSTED_UI_URL=https://your-app.auth.us-east-1.amazoncognito.com
+PUBLIC_COGNITO_IDENTITY_POOL_ID=us-west-2:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+PUBLIC_COGNITO_HOSTED_UI_URL=https://your-app.auth.us-west-2.amazoncognito.com
 PUBLIC_COGNITO_HOSTED_UI_DOMAIN=your-app
 
 # RAGStack (optional)
 PUBLIC_RAGSTACK_CHAT_URL=https://xxx.cloudfront.net/ragstack-chat.js
-PUBLIC_RAGSTACK_GRAPHQL_URL=https://xxx.appsync-api.us-east-1.amazonaws.com/graphql
+PUBLIC_RAGSTACK_GRAPHQL_URL=https://xxx.appsync-api.us-west-2.amazonaws.com/graphql
 PUBLIC_RAGSTACK_API_KEY=da2-xxxxxxxxxxxxxxxxxxxxx
 ```
 
