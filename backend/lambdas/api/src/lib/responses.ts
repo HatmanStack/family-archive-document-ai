@@ -82,8 +82,10 @@ export function getCorsHeaders(requestOrigin?: string): Record<string, string> {
   }
 
   // Request origin not in allowed list - fail closed (no CORS headers)
+  // Vary: Origin still needed so caches don't serve this no-CORS response to an allowed origin
   return {
     'Content-Type': 'application/json',
+    'Vary': 'Origin',
   }
 }
 

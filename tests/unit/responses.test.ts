@@ -73,13 +73,13 @@ describe('getCorsHeaders', () => {
     expect(headers['Vary']).toBeUndefined()
   })
 
-  it('does NOT include Vary: Origin when origin not in allowed list (fail-closed)', async () => {
+  it('includes Vary: Origin but NOT Access-Control-Allow-Origin when origin not in allowed list (fail-closed)', async () => {
     process.env.ALLOWED_ORIGINS = 'https://app.example.com'
     const mod = await import('../../backend/lambdas/api/src/lib/responses')
     getCorsHeaders = mod.getCorsHeaders
 
     const headers = getCorsHeaders('https://evil.example.com')
     expect(headers['Access-Control-Allow-Origin']).toBeUndefined()
-    expect(headers['Vary']).toBeUndefined()
+    expect(headers['Vary']).toBe('Origin')
   })
 })

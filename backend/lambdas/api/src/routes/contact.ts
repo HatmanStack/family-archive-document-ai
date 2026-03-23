@@ -49,6 +49,12 @@ export async function handle(
   }
 
   try {
+    if (!ADMIN_EMAIL || !SES_FROM_EMAIL) {
+      const missing = [!ADMIN_EMAIL && 'ADMIN_EMAIL', !SES_FROM_EMAIL && 'SES_FROM_EMAIL'].filter(Boolean)
+      log.error('contact_not_configured', { missing })
+      return errorResponse(500, 'Contact form not configured', requestOrigin)
+    }
+
     const subject = `Contact Form: Message from ${email}`
 
     const bodyHtml = `
@@ -65,13 +71,6 @@ export async function handle(
         </p>
       </div>
     `
-
-    if (!ADMIN_EMAIL || !SES_FROM_EMAIL) {
-      log.error('contact_not_configured', {
-        reason: !ADMIN_EMAIL ? 'ADMIN_EMAIL not set' : 'SES_FROM_EMAIL not set'
-      })
-      return errorResponse(500, 'Contact form not configured', requestOrigin)
-    }
 
     await sesClient.send(new SendEmailCommand({
       Source: SES_FROM_EMAIL,

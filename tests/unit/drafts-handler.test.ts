@@ -120,8 +120,10 @@ describe('drafts handler', () => {
       const body = JSON.parse(result.body)
 
       expect(result.statusCode).toBe(200)
-      expect(body.nextCursor).not.toBeNull()
-      expect(typeof body.nextCursor).toBe('string')
+      const expectedCursor = Buffer.from(JSON.stringify(
+        { PK: 'DRAFT#abc', SK: 'METADATA', GSI1PK: 'DRAFTS', GSI1SK: 'DRAFT#abc' }
+      )).toString('base64')
+      expect(body.nextCursor).toBe(expectedCursor)
     })
 
     it('makes only one DynamoDB query (no unbounded loop)', async () => {

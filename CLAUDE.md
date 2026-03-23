@@ -31,7 +31,7 @@ npm run deploy                 # Deploy backend via SAM
 
 ### Frontend (SvelteKit 2.x + Svelte 5)
 
-```
+```text
 frontend/
 ├── routes/                    # SvelteKit file-based routing
 │   ├── auth/                  # Login, callback, forgot/reset-password, logout, pending-approval
@@ -56,7 +56,7 @@ frontend/
 
 ### Backend (AWS SAM + Lambda)
 
-```
+```text
 backend/
 ├── template.yaml              # SAM template - single consolidated definition
 ├── lambdas/
@@ -105,7 +105,7 @@ Common access patterns:
 
 ### Test Structure
 
-```
+```text
 tests/
 ├── unit/                      # Vitest unit tests (handler tests)
 ├── integration/               # API integration tests

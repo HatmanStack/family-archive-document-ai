@@ -9,7 +9,7 @@ import { decodeJWTPayload } from './jwt-decode'
  * Maps a decoded JWT payload to a User object.
  * Centralizes the mapping to avoid duplication across auth flows.
  */
-function mapJwtPayloadToUser(payload: Record<string, unknown>): User {
+export function mapJwtPayloadToUser(payload: Record<string, unknown>): User {
   return {
     'email': payload.email as string,
     'sub': payload.sub as string,

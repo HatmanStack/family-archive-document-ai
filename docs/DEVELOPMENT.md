@@ -308,7 +308,7 @@ GitHub Actions runs on push/PR to main:
 2. **Type Check**: `svelte-check`
 3. **Unit Tests**: Vitest in parallel
 
-Both must pass for merge.
+All three must pass for merge.
 
 ## Debugging
 

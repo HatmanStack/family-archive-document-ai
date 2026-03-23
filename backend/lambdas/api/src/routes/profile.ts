@@ -10,8 +10,8 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { docClient, TABLE_NAME, ARCHIVE_BUCKET } from '../lib/database'
 import { keys, PREFIX } from '../lib/keys'
 import { successResponse, errorResponse, rateLimitResponse } from '../lib/responses'
-import { validateUserId, sanitizeText, validateLimit, parseRequestBody } from '../lib/validation'
-import { MAX_PAGE_SIZE } from '../lib/constants'
+import { validateUserId, sanitizeText, validateLimit, parseRequestBody, validatePaginationKey, parsePageLimit } from '../lib/validation'
+import { MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE } from '../lib/constants'
 import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 import { log } from '../lib/logger'
 import { toError } from '../lib/errors'
@@ -59,7 +59,7 @@ export async function handle(
   }
 
   if (method === 'GET' && normalizedResource === '/users') {
-    return listUsers(requesterId, requestOrigin)
+    return listUsers(event, requestOrigin)
   }
 
   return errorResponse(404, 'Route not found', requestOrigin)
@@ -348,17 +348,31 @@ async function getPhotoUploadUrl(
   }
 }
 
-async function listUsers(_requesterId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
+async function listUsers(event: APIGatewayProxyEvent, requestOrigin?: string): Promise<APIGatewayProxyResult> {
   try {
-    // Use GSI1 Query instead of Scan for better scalability
-    const result = await docClient.send(new QueryCommand({
+    const limit = parsePageLimit(event.queryStringParameters?.limit, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE)
+    const cursor = event.queryStringParameters?.cursor
+
+    const queryParams: Record<string, unknown> = {
       TableName: TABLE_NAME,
       IndexName: 'GSI1',
       KeyConditionExpression: 'GSI1PK = :gsi1pk',
       ExpressionAttributeValues: { ':gsi1pk': 'USERS' },
       ProjectionExpression: 'userId, displayName, profilePhotoUrl, bio',
-      Limit: MAX_PAGE_SIZE,
-    }))
+      Limit: limit,
+    }
+
+    if (cursor) {
+      const paginationResult = validatePaginationKey(cursor)
+      if (!paginationResult.valid) {
+        return errorResponse(400, paginationResult.error || 'Invalid pagination key', requestOrigin)
+      }
+      if (paginationResult.key) {
+        queryParams.ExclusiveStartKey = paginationResult.key
+      }
+    }
+
+    const result = await docClient.send(new QueryCommand(queryParams))
 
     const users = await Promise.all(
       (result.Items || []).map(async item => ({
@@ -369,7 +383,11 @@ async function listUsers(_requesterId: string, requestOrigin?: string): Promise<
       }))
     )
 
-    return successResponse({ users }, 200, requestOrigin)
+    const nextCursor = result.LastEvaluatedKey
+      ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
+      : null
+
+    return successResponse({ users, nextCursor }, 200, requestOrigin)
   } catch (error) {
     log.error('list_users_error', { error: toError(error).message })
     return errorResponse(500, 'Failed to list users', requestOrigin)

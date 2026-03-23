@@ -89,10 +89,10 @@ export class ApiClient {
         throw new Error(errorMessage)
       }
 
-      // Handle empty responses
+      // Handle non-JSON responses (e.g., 204 No Content, text responses)
       const contentType = response.headers.get('content-type')
       if (!contentType || !contentType.includes('application/json')) {
-        return {} as T
+        return null as unknown as T
       }
 
       return await response.json()
