@@ -66,8 +66,10 @@ export async function handle(
       </div>
     `
 
-    if (!ADMIN_EMAIL) {
-      log.error('contact_not_configured', { reason: 'ADMIN_EMAIL not set' })
+    if (!ADMIN_EMAIL || !SES_FROM_EMAIL) {
+      log.error('contact_not_configured', {
+        reason: !ADMIN_EMAIL ? 'ADMIN_EMAIL not set' : 'SES_FROM_EMAIL not set'
+      })
       return errorResponse(500, 'Contact form not configured', requestOrigin)
     }
 
