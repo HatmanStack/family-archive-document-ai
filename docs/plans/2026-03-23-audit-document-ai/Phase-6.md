@@ -274,10 +274,10 @@ SES CloudWatch log group, README auth routes, config drift.
 
 **Verification Checklist:**
 
-- [ ] `tailwind.config.ts` referenced (not `.js`)
-- [ ] SES log group references `ApiFunction` (not `ContactFunction`)
-- [ ] README auth routes match actual route directories
-- [ ] Region references are consistent (`us-west-2`)
+- [x] `tailwind.config.ts` referenced (not `.js`)
+- [x] SES log group references `ApiFunction` (not `ContactFunction`)
+- [x] README auth routes match actual route directories
+- [x] Region references are consistent (`us-west-2`)
 
 **Testing Instructions:**
 

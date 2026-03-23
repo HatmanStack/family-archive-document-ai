@@ -235,10 +235,10 @@ Environment:
 
 1. **Missing TailwindCSS classes**
    - Run `npm run dev` to regenerate styles
-   - Check `tailwind.config.js` content paths
+   - Check `tailwind.config.ts` content paths
 
 2. **DaisyUI theme not loaded**
-   - Verify `daisyui` in `tailwind.config.js` plugins
+   - Verify `daisyui` in `tailwind.config.ts` plugins
    - Check `data-theme` attribute on HTML
 
 ### Hot Reload Not Working

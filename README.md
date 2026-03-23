@@ -118,7 +118,7 @@ See [ONE_CLICK_DEPLOYMENT.md](docs/ONE_CLICK_DEPLOYMENT.md) for detailed setup.
 family-archive-document-ai/
 ├── frontend/                 # SvelteKit application
 │   ├── routes/              # File-based routing
-│   │   ├── auth/           # Login, signup, password reset
+│   │   ├── auth/           # Login, callback, forgot/reset-password, logout, pending-approval
 │   │   ├── gallery/        # Media gallery
 │   │   ├── letters/        # Letter viewing and editing
 │   │   ├── messages/       # Direct messaging

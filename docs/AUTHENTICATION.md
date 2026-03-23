@@ -33,11 +33,11 @@ The SAM template creates a Cognito User Pool with:
 Frontend requires these Cognito settings:
 
 ```bash
-PUBLIC_AWS_REGION=us-east-1
-PUBLIC_COGNITO_USER_POOL_ID=us-east-1_XXXXXXXXX
+PUBLIC_AWS_REGION=us-west-2
+PUBLIC_COGNITO_USER_POOL_ID=us-west-2_XXXXXXXXX
 PUBLIC_COGNITO_USER_POOL_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxxx
-PUBLIC_COGNITO_IDENTITY_POOL_ID=us-east-1:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-PUBLIC_COGNITO_HOSTED_UI_URL=https://your-app.auth.us-east-1.amazoncognito.com
+PUBLIC_COGNITO_IDENTITY_POOL_ID=us-west-2:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+PUBLIC_COGNITO_HOSTED_UI_URL=https://your-app.auth.us-west-2.amazoncognito.com
 PUBLIC_COGNITO_HOSTED_UI_DOMAIN=your-app
 ```
 
@@ -77,7 +77,7 @@ To enable "Sign in with Google":
    - `https://your-app-domain.com`
    - `http://localhost:5173` (for dev)
 6. Authorized redirect URIs:
-   - `https://your-cognito-domain.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`
+   - `https://your-cognito-domain.auth.us-west-2.amazoncognito.com/oauth2/idpresponse`
    - Replace `your-cognito-domain` with your actual domain
    - Get domain from: `aws cognito-idp describe-user-pool --user-pool-id YOUR_POOL_ID --query 'UserPool.Domain'`
 7. Click "Create"
