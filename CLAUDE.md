@@ -34,7 +34,7 @@ npm run deploy                 # Deploy backend via SAM
 ```
 frontend/
 ├── routes/                    # SvelteKit file-based routing
-│   ├── auth/                  # Login, signup, callback, password reset
+│   ├── auth/                  # Login, callback, forgot/reset-password, logout, pending-approval
 │   ├── gallery/               # Media gallery with RAGStack integration
 │   ├── letters/               # Letter viewing and editing
 │   ├── messages/              # Direct messaging between users

@@ -416,19 +416,19 @@ Frontend environment variables (must be prefixed with `PUBLIC_`):
 
 ```bash
 # API
-PUBLIC_API_GATEWAY_URL=https://xxx.execute-api.us-east-1.amazonaws.com
+PUBLIC_API_GATEWAY_URL=https://xxx.execute-api.us-west-2.amazonaws.com
 
 # Cognito
-PUBLIC_AWS_REGION=us-east-1
-PUBLIC_COGNITO_USER_POOL_ID=us-east-1_XXXXXXXXX
+PUBLIC_AWS_REGION=us-west-2
+PUBLIC_COGNITO_USER_POOL_ID=us-west-2_XXXXXXXXX
 PUBLIC_COGNITO_USER_POOL_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxxx
-PUBLIC_COGNITO_IDENTITY_POOL_ID=us-east-1:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-PUBLIC_COGNITO_HOSTED_UI_URL=https://your-app.auth.us-east-1.amazoncognito.com
+PUBLIC_COGNITO_IDENTITY_POOL_ID=us-west-2:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+PUBLIC_COGNITO_HOSTED_UI_URL=https://your-app.auth.us-west-2.amazoncognito.com
 PUBLIC_COGNITO_HOSTED_UI_DOMAIN=your-app
 
 # RAGStack (optional)
 PUBLIC_RAGSTACK_CHAT_URL=https://xxx.cloudfront.net/ragstack-chat.js
-PUBLIC_RAGSTACK_GRAPHQL_URL=https://xxx.appsync-api.us-east-1.amazonaws.com/graphql
+PUBLIC_RAGSTACK_GRAPHQL_URL=https://xxx.appsync-api.us-west-2.amazonaws.com/graphql
 PUBLIC_RAGSTACK_API_KEY=da2-xxxxxxxxxxxxxxxxxxxxx
 ```
 
