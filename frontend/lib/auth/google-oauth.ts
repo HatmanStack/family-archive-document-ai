@@ -97,13 +97,23 @@ export class GoogleOAuthService {
       }
 
       const user: User = {
-        email: idTokenPayload.email,
-        sub: idTokenPayload.sub,
-        email_verified: idTokenPayload.email_verified,
-        given_name: idTokenPayload.given_name,
-        family_name: idTokenPayload.family_name,
-        picture: idTokenPayload.picture,
-        ...idTokenPayload,
+        'email': idTokenPayload.email as string,
+        'sub': idTokenPayload.sub as string,
+        'email_verified': idTokenPayload.email_verified as boolean,
+        'given_name': idTokenPayload.given_name as string | undefined,
+        'family_name': idTokenPayload.family_name as string | undefined,
+        'picture': idTokenPayload.picture as string | undefined,
+        'cognito:username': idTokenPayload['cognito:username'] as string | undefined,
+        'cognito:groups': idTokenPayload['cognito:groups'] as string[] | string | undefined,
+        'identities': idTokenPayload.identities as string | undefined,
+        'name': idTokenPayload.name as string | undefined,
+        'locale': idTokenPayload.locale as string | undefined,
+        'aud': idTokenPayload.aud as string | undefined,
+        'iss': idTokenPayload.iss as string | undefined,
+        'token_use': idTokenPayload.token_use as string | undefined,
+        'auth_time': idTokenPayload.auth_time as number | undefined,
+        'exp': idTokenPayload.exp as number | undefined,
+        'iat': idTokenPayload.iat as number | undefined,
       }
 
       authStore.setAuthenticated(user, tokenResult.tokens)

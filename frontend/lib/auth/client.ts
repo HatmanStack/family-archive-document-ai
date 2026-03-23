@@ -5,6 +5,7 @@ import {
   PUBLIC_COGNITO_USER_POOL_ID,
 } from '$env/static/public'
 import { authStore } from './auth-store'
+import { decodeJWTPayload } from './jwt-decode'
 
 export interface CognitoTokens {
   idToken: string
@@ -72,13 +73,13 @@ export function getUserInfo(): UserInfo | null {
     return null
 
   return {
-    id: payload.sub,
-    email: payload.email,
-    username: payload['cognito:username'],
-    groups: payload['cognito:groups'] || [],
-    given_name: payload.given_name,
-    family_name: payload.family_name,
-    picture: payload.picture,
+    id: payload.sub as string,
+    email: payload.email as string,
+    username: payload['cognito:username'] as string,
+    groups: (payload['cognito:groups'] as string[]) || [],
+    given_name: payload.given_name as string | undefined,
+    family_name: payload.family_name as string | undefined,
+    picture: payload.picture as string | undefined,
   }
 }
 
