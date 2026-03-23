@@ -3,25 +3,7 @@ import { get } from 'svelte/store'
 import { authStore } from './auth-store'
 import { cognitoAuth } from './cognito-client'
 import { cognitoConfig } from './cognito-config'
-
-// JWT token decoder (simple implementation)
-function decodeJWT(token: string) {
-  try {
-    const base64Url = token.split('.')[1]
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map(c => `%${(`00${c.charCodeAt(0).toString(16)}`).slice(-2)}`)
-        .join(''),
-    )
-    return JSON.parse(jsonPayload)
-  }
-  catch (error) {
-    console.error('Error decoding JWT:', error)
-    return null
-  }
-}
+import { decodeJWTPayload } from './jwt-decode'
 
 /**
  * Maps a decoded JWT payload to a User object.
@@ -88,7 +70,7 @@ export class AuthService {
       }
 
       // Decode the ID token to get user info
-      const idTokenPayload = decodeJWT(authResult.IdToken)
+      const idTokenPayload = decodeJWTPayload(authResult.IdToken)
       if (!idTokenPayload) {
         throw new Error('Invalid ID token')
       }
@@ -233,7 +215,7 @@ export class AuthService {
         throw new Error('Invalid authentication response')
       }
 
-      const idTokenPayload = decodeJWT(authResult.IdToken)
+      const idTokenPayload = decodeJWTPayload(authResult.IdToken)
       if (!idTokenPayload) {
         throw new Error('Invalid ID token')
       }

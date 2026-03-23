@@ -60,23 +60,7 @@ export function clearTokens(): void {
   localStorage.removeItem('cognito_refresh_token')
 }
 
-export function decodeJWTPayload(token: string): any {
-  try {
-    const base64Url = token.split('.')[1]
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map(c => `%${(`00${c.charCodeAt(0).toString(16)}`).slice(-2)}`)
-        .join(''),
-    )
-    return JSON.parse(jsonPayload)
-  }
-  catch (error) {
-    console.warn('Failed to decode JWT payload:', error)
-    return null
-  }
-}
+export { decodeJWTPayload } from './jwt-decode'
 
 export function getUserInfo(): UserInfo | null {
   const tokens = getStoredTokens()

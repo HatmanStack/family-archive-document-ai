@@ -1,6 +1,7 @@
 import type { AuthTokens, User } from './auth-store'
 import { authStore } from './auth-store'
 import { cognitoConfig } from './cognito-config'
+import { decodeJWTPayload } from './jwt-decode'
 
 export class GoogleOAuthService {
   private getHostedUIUrl(): string {
@@ -79,24 +80,6 @@ export class GoogleOAuthService {
     }
   }
 
-  // Decode JWT token to get user info
-  private decodeJWT(token: string) {
-    try {
-      const base64Url = token.split('.')[1]
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
-      const jsonPayload = decodeURIComponent(
-        atob(base64)
-          .split('')
-          .map(c => `%${(`00${c.charCodeAt(0).toString(16)}`).slice(-2)}`)
-          .join(''),
-      )
-      return JSON.parse(jsonPayload)
-    }
-    catch {
-      return null
-    }
-  }
-
   async handleOAuthCallback(code: string, redirectUri?: string): Promise<{ success: boolean, user?: User, error?: Error }> {
     authStore.setLoading(true)
 
@@ -108,7 +91,7 @@ export class GoogleOAuthService {
       }
 
       // Decode the ID token to get user info
-      const idTokenPayload = this.decodeJWT(tokenResult.tokens.idToken)
+      const idTokenPayload = decodeJWTPayload(tokenResult.tokens.idToken)
       if (!idTokenPayload) {
         throw new Error('Invalid ID token')
       }
