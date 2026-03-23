@@ -318,10 +318,10 @@ remediation phases. This is the most important doc for AI-assisted development.
 
 **Verification Checklist:**
 
-- [ ] Svelte version is "5" not "4"
-- [ ] CI section says "main" only
-- [ ] Repository layer description is accurate
-- [ ] All file paths in CLAUDE.md exist on disk
+- [x] Svelte version is "5" not "4"
+- [x] CI section says "main" only
+- [x] Repository layer description is accurate
+- [x] All file paths in CLAUDE.md exist on disk
 
 **Testing Instructions:**
 

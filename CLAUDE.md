@@ -124,7 +124,7 @@ Copy `.env.example` to `.env` and configure:
 
 ## CI Pipeline
 
-GitHub Actions runs on push/PR to main/develop:
+GitHub Actions runs on push/PR to main:
 1. **Lint**: ESLint with `--max-warnings 0`, TypeScript type check
 2. **Test**: Vitest unit tests in parallel
 
