@@ -16,6 +16,7 @@ vi.mock('../../backend/lambdas/api/src/lib/rate-limit', () => ({
 
 import { handle } from '../../backend/lambdas/api/src/routes/comments'
 import { checkRateLimit } from '../../backend/lambdas/api/src/lib/rate-limit'
+import { MAX_COMMENT_LENGTH } from '../../backend/lambdas/api/src/lib/constants'
 
 function createMockEvent(overrides: Partial<APIGatewayProxyEvent> = {}): APIGatewayProxyEvent {
   return {
@@ -147,6 +148,19 @@ describe('comments handler', () => {
       const result = await handle(event, createMockContext())
 
       expect(result.statusCode).toBe(400)
+    })
+
+    it('returns 400 when content exceeds MAX_COMMENT_LENGTH', async () => {
+      const event = createMockEvent({
+        httpMethod: 'POST',
+        resource: '/comments/{itemId}',
+        body: JSON.stringify({ content: 'x'.repeat(MAX_COMMENT_LENGTH + 1) }),
+      })
+      const result = await handle(event, createMockContext())
+
+      expect(result.statusCode).toBe(400)
+      const body = JSON.parse(result.body)
+      expect(body.error).toContain(String(MAX_COMMENT_LENGTH))
     })
 
     it('returns 400 for invalid JSON body', async () => {

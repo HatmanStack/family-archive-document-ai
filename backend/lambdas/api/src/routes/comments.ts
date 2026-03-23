@@ -6,6 +6,7 @@ import type { RequestContext } from '../types'
 import { commentRepository } from '../repositories'
 import { successResponse, errorResponse, rateLimitResponse } from '../lib/responses'
 import { sanitizeText, validateContentLength, parseRequestBody } from '../lib/validation'
+import { MAX_COMMENT_LENGTH } from '../lib/constants'
 import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 import { log } from '../lib/logger'
 import { toError, AppError, getStatusCode, getUserMessage } from '../lib/errors'
@@ -135,8 +136,8 @@ async function createComment(
   }
 
   const content = sanitizeText(body.content as string)
-  if (!validateContentLength(content, 1, 10000)) {
-    return errorResponse(400, 'Comment content must be between 1 and 10000 characters', requestOrigin)
+  if (!validateContentLength(content, 1, MAX_COMMENT_LENGTH)) {
+    return errorResponse(400, `Comment content must be between 1 and ${MAX_COMMENT_LENGTH} characters`, requestOrigin)
   }
 
   try {
@@ -180,8 +181,8 @@ async function editComment(
   }
 
   const content = sanitizeText(body.content as string)
-  if (!validateContentLength(content, 1, 10000)) {
-    return errorResponse(400, 'Comment content must be between 1 and 10000 characters', requestOrigin)
+  if (!validateContentLength(content, 1, MAX_COMMENT_LENGTH)) {
+    return errorResponse(400, `Comment content must be between 1 and ${MAX_COMMENT_LENGTH} characters`, requestOrigin)
   }
 
   try {
