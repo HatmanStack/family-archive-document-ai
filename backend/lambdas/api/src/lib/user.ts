@@ -6,6 +6,7 @@ import { docClient, TABLE_NAME } from './database'
 import { keys } from './keys'
 import type { UserProfile } from '../types'
 import { toError } from './errors'
+import { log } from './logger'
 
 /**
  * Backfill GSI1 attributes for a profile if missing (read-repair).
@@ -38,7 +39,7 @@ async function backfillGSI1IfMissing(profile: UserProfile): Promise<UserProfile>
         return { ...profile, ...gsi1Keys }
       }
       // Log but don't fail - GSI1 is for listing, not critical path
-      console.warn('GSI1 backfill failed:', toError(err).message)
+      log.warn('gsi1_backfill_failed', { error: toError(err).message })
     }
   }
 
