@@ -199,9 +199,13 @@ export class BaseRepository {
         throw new ValidationError(paginationResult.error || 'Invalid pagination key')
       }
       if (paginationResult.key) {
-        // Reject cursors whose PK does not match the current query's partition key
+        // Reject cursors whose partition key does not match the current query.
+        // Handles both primary table (PK) and GSI (GSI1PK) queries by checking
+        // whichever key attribute the cursor and query share.
+        const pkAttr = indexName ? 'GSI1PK' : 'PK'
         const expectedPK = expressionAttributeValues[':pk'] as string | undefined
-        const cursorPK = paginationResult.key.PK as string | undefined
+          ?? expressionAttributeValues[':gsi1pk'] as string | undefined
+        const cursorPK = paginationResult.key[pkAttr] as string | undefined
         if (expectedPK && cursorPK && cursorPK !== expectedPK) {
           throw new ValidationError('Invalid pagination key: partition key mismatch')
         }

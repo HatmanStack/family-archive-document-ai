@@ -146,7 +146,7 @@ export function parsePageLimit(
 ): number {
   const parsed = Number(raw ?? defaultSize)
   if (!Number.isInteger(parsed) || parsed < 1) {
-    return defaultSize
+    return Math.min(defaultSize, maxSize)
   }
   return Math.min(parsed, maxSize)
 }
