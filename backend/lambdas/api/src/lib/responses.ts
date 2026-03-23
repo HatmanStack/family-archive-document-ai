@@ -46,12 +46,14 @@ export function getCorsHeaders(requestOrigin?: string): Record<string, string> {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': requestOrigin,
         'Access-Control-Allow-Credentials': 'true',
+        'Vary': 'Origin',
       }
     }
     // No origin provided - use wildcard without credentials
     return {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': '*',
+      'Vary': 'Origin',
     }
   }
 
@@ -64,6 +66,7 @@ export function getCorsHeaders(requestOrigin?: string): Record<string, string> {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': requestOrigin,
       'Access-Control-Allow-Credentials': 'true',
+      'Vary': 'Origin',
     }
   }
 
@@ -74,6 +77,7 @@ export function getCorsHeaders(requestOrigin?: string): Record<string, string> {
       'Content-Type': 'application/json',
       'Access-Control-Allow-Origin': allowedList[0],
       'Access-Control-Allow-Credentials': 'true',
+      'Vary': 'Origin',
     }
   }
 
