@@ -106,7 +106,7 @@ Backend environment variables are configured via `backend/template.yaml` SAM par
 |----------|-----------|-------------|
 | `TABLE_NAME` | API, activity-aggregator, notification-processor, letter-processor | DynamoDB table name |
 | `ARCHIVE_BUCKET` | API, letter-processor | S3 bucket for letters, media, profile photos |
-| `USER_PROFILES_TABLE` | activity-aggregator | DynamoDB profiles table (legacy) |
+| `USER_PROFILES_TABLE` | activity-aggregator | DynamoDB table name (maps to main table via `!Ref TableName`) |
 | `SES_FROM_EMAIL` | API, notification-processor | SES sender email |
 | `ADMIN_EMAIL` | API | Admin notification email |
 | `BASE_URL` | notification-processor | App base URL for email links |
@@ -127,9 +127,9 @@ Backend environment variables are configured via `backend/template.yaml` SAM par
 - **DynamoDB Table** - Single-table design for all data
 - **Cognito User Pool** - User authentication with Identity Pool and domain
 
-### Required Parameters (existing resources)
+### Auto-Created Resources
 
-- **S3 Buckets** - Archive bucket, photo bucket, media bucket (must exist before deploy)
+- **S3 Bucket** - Single `ArchiveBucketResource` created automatically by the SAM template. No pre-existing buckets required.
 
 ### Manual Setup Required
 

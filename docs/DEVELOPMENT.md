@@ -15,7 +15,7 @@ Local development setup and workflows for Family Archive - Document AI.
 
 ```bash
 # Install nvm
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
 
 # Install Node.js 24
 nvm install 24
@@ -254,8 +254,8 @@ cd backend
 # Start local API
 sam local start-api
 
-# Invoke single function
-sam local invoke ApiFunction -e events/test-event.json
+# Invoke single function (create a test event JSON file manually)
+sam local invoke ApiFunction -e test-event.json
 ```
 
 ### Deploy Backend
@@ -302,7 +302,7 @@ refactor: Extract validation utilities
 
 ## CI/CD
 
-GitHub Actions runs on push/PR to main and develop:
+GitHub Actions runs on push/PR to main:
 
 1. **Lint**: ESLint with `--max-warnings 0`
 2. **Type Check**: `svelte-check`

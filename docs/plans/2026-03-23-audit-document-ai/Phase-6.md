@@ -102,11 +102,11 @@ environment variables.
 
 **Verification Checklist:**
 
-- [ ] S3 bucket description matches `template.yaml` (single bucket, auto-created)
-- [ ] USER_PROFILES_TABLE not labeled as "(legacy)"
-- [ ] CI docs say "main" only, not "main and develop"
-- [ ] No reference to non-existent `events/` directory
-- [ ] nvm install URL is current
+- [x] S3 bucket description matches `template.yaml` (single bucket, auto-created)
+- [x] USER_PROFILES_TABLE not labeled as "(legacy)"
+- [x] CI docs say "main" only, not "main and develop"
+- [x] No reference to non-existent `events/` directory
+- [x] nvm install URL is current
 
 **Testing Instructions:**
 
