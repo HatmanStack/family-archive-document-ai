@@ -226,10 +226,15 @@ async function getMessages(event: APIGatewayProxyEvent, userId: string, requestO
 
     const result = await docClient.send(new QueryCommand(queryParams))
 
-    const messages = await Promise.all(
-      (result.Items || [])
-        .filter(item => item.entityType === 'MESSAGE')
-        .map(async item => {
+    // Process messages in batches to limit concurrent signing operations
+    const SIGN_BATCH_SIZE = 10
+    const filteredMessages = (result.Items || []).filter(item => item.entityType === 'MESSAGE')
+    const messages = []
+
+    for (let i = 0; i < filteredMessages.length; i += SIGN_BATCH_SIZE) {
+      const batch = filteredMessages.slice(i, i + SIGN_BATCH_SIZE)
+      const batchResults = await Promise.all(
+        batch.map(async item => {
           const attachmentsWithUrls = await Promise.all(
             ((item.attachments as Attachment[]) || []).map(async attachment => {
               if (attachment.s3Key) {
@@ -255,7 +260,9 @@ async function getMessages(event: APIGatewayProxyEvent, userId: string, requestO
             createdAt: item.createdAt,
           }
         })
-    )
+      )
+      messages.push(...batchResults)
+    }
 
     return successResponse({
       messages,

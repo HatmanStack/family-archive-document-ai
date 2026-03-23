@@ -273,10 +273,10 @@ unbounded `Promise.all`. Add concurrency control. This closes health-audit findi
 
 **Verification Checklist:**
 
-- [ ] Presigned URL generation is batched (not all-at-once)
-- [ ] Batch size is a named constant
-- [ ] Response format is unchanged
-- [ ] `npm test` passes
+- [x] Presigned URL generation is batched (not all-at-once)
+- [x] Batch size is a named constant
+- [x] Response format is unchanged
+- [x] `npm test` passes
 
 **Testing Instructions:**
 
