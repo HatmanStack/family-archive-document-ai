@@ -1,11 +1,14 @@
 import { authService } from './auth-service'
 import { cognitoConfig } from './cognito-config'
 
+const DEFAULT_TIMEOUT = 30_000 // 30 seconds
+
 export interface ApiRequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
   body?: any
   headers?: Record<string, string>
   requireAuth?: boolean
+  timeout?: number // milliseconds, defaults to DEFAULT_TIMEOUT
 }
 
 /**
@@ -28,6 +31,7 @@ export class ApiClient {
       body,
       headers = {},
       requireAuth = true,
+      timeout,
     } = options
 
     const url = `${this.baseUrl}${endpoint}`
@@ -57,8 +61,15 @@ export class ApiClient {
       requestOptions.body = JSON.stringify(body)
     }
 
+    const controller = new AbortController()
+    const effectiveTimeout = timeout ?? DEFAULT_TIMEOUT
+    const timeoutId = setTimeout(() => controller.abort(), effectiveTimeout)
+
     try {
-      const response = await fetch(url, requestOptions)
+      const response = await fetch(url, {
+        ...requestOptions,
+        signal: controller.signal,
+      })
 
       if (!response.ok) {
         const errorText = await response.text()
@@ -87,8 +98,14 @@ export class ApiClient {
       return await response.json()
     }
     catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw new Error(`Request timeout after ${effectiveTimeout}ms: ${method} ${url}`)
+      }
       console.error(`API request failed for ${method} ${url}:`, error)
       throw error
+    }
+    finally {
+      clearTimeout(timeoutId)
     }
   }
 
