@@ -6,15 +6,16 @@ import type { RequestContext } from '../types'
 import { PutObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda'
-import { GetCommand, DeleteCommand, QueryCommand, PutCommand, TransactWriteCommand } from '@aws-sdk/lib-dynamodb'
+import { GetCommand, DeleteCommand, QueryCommand, PutCommand, TransactWriteCommand, type QueryCommandInput } from '@aws-sdk/lib-dynamodb'
 import { v4 as uuidv4 } from 'uuid'
 import { docClient, TABLE_NAME, ARCHIVE_BUCKET, S3_PREFIXES } from '../lib/database'
 import { keys } from '../lib/keys'
 import { successResponse, errorResponse, rateLimitResponse } from '../lib/responses'
 import { log } from '../lib/logger'
-import { parseRequestBody } from '../lib/validation'
+import { parseRequestBody, validatePaginationKey } from '../lib/validation'
 import { s3Client } from '../lib/s3-utils'
 import { toError, hasErrorName } from '../lib/errors'
+import { MAX_PAGE_SIZE } from '../lib/constants'
 import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 const lambdaClient = new LambdaClient({})
 
@@ -96,7 +97,7 @@ export async function handle(
     }
 
     if (normalizedPath.endsWith('/drafts') && method === 'GET') {
-      return handleListDrafts(requestOrigin)
+      return handleListDrafts(event, requestOrigin)
     }
 
     if (method === 'GET') {
@@ -202,28 +203,43 @@ async function handleProcess(
   }
 }
 
-async function handleListDrafts(requestOrigin?: string): Promise<APIGatewayProxyResult> {
+async function handleListDrafts(
+  event: APIGatewayProxyEvent,
+  requestOrigin?: string
+): Promise<APIGatewayProxyResult> {
   try {
-    const drafts: Record<string, unknown>[] = []
-    let lastEvaluatedKey: Record<string, unknown> | undefined
+    const limit = Math.min(
+      parseInt(event.queryStringParameters?.limit || '50', 10),
+      MAX_PAGE_SIZE
+    )
+    const cursor = event.queryStringParameters?.cursor
 
-    do {
-      const command = new QueryCommand({
-        TableName: TABLE_NAME,
-        IndexName: 'GSI1',
-        KeyConditionExpression: 'GSI1PK = :pk',
-        ExpressionAttributeValues: { ':pk': 'DRAFTS' },
-        ExclusiveStartKey: lastEvaluatedKey,
-      })
+    const params: QueryCommandInput = {
+      TableName: TABLE_NAME,
+      IndexName: 'GSI1',
+      KeyConditionExpression: 'GSI1PK = :pk',
+      ExpressionAttributeValues: { ':pk': 'DRAFTS' },
+      Limit: limit,
+    }
 
-      const result = await docClient.send(command)
-      if (result.Items) {
-        drafts.push(...result.Items)
+    if (cursor) {
+      const paginationResult = validatePaginationKey(cursor)
+      if (!paginationResult.valid) {
+        return errorResponse(400, paginationResult.error || 'Invalid pagination key', requestOrigin)
       }
-      lastEvaluatedKey = result.LastEvaluatedKey
-    } while (lastEvaluatedKey)
+      if (paginationResult.key) {
+        params.ExclusiveStartKey = paginationResult.key
+      }
+    }
 
-    return successResponse({ drafts }, 200, requestOrigin)
+    const result = await docClient.send(new QueryCommand(params))
+
+    return successResponse({
+      drafts: result.Items || [],
+      nextCursor: result.LastEvaluatedKey
+        ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
+        : null,
+    }, 200, requestOrigin)
   } catch (err) {
     log.error('list_drafts_error', { error: toError(err).message })
     return errorResponse(500, 'Failed to list drafts', requestOrigin)

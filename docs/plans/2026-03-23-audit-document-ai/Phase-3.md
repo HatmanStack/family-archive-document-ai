@@ -151,10 +151,10 @@ that returns a single page and a cursor. This closes health-audit finding #10.
 
 **Verification Checklist:**
 
-- [ ] `handleListDrafts` no longer has a `do...while` loop
-- [ ] Single DynamoDB query with `Limit` parameter
-- [ ] Pagination cursor support (both reading and returning)
-- [ ] `npm test` passes (especially `drafts-handler.test.ts`)
+- [x] `handleListDrafts` no longer has a `do...while` loop
+- [x] Single DynamoDB query with `Limit` parameter
+- [x] Pagination cursor support (both reading and returning)
+- [x] `npm test` passes (especially `drafts-handler.test.ts`)
 
 **Testing Instructions:**
 
