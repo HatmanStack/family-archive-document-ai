@@ -1,4 +1,4 @@
-import type { AuthTokens } from './auth-store'
+import type { AuthTokens, User } from './auth-store'
 import { mapJwtPayloadToUser } from './auth-service'
 import { authStore } from './auth-store'
 import { cognitoConfig } from './cognito-config'
