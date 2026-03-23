@@ -213,10 +213,10 @@ Add chunking with a concurrency limit. This closes health-audit finding #1 (CRIT
 
 **Verification Checklist:**
 
-- [ ] S3 deletes are batched (not unbounded `Promise.all`)
-- [ ] Batch size is a named constant (e.g., 25)
-- [ ] Individual delete failures are still logged but do not fail the operation
-- [ ] `npm test` passes (especially `messages-handler.test.ts`)
+- [x] S3 deletes are batched (not unbounded `Promise.all`)
+- [x] Batch size is a named constant (e.g., 25)
+- [x] Individual delete failures are still logged but do not fail the operation
+- [x] `npm test` passes (especially `messages-handler.test.ts`)
 
 **Testing Instructions:**
 

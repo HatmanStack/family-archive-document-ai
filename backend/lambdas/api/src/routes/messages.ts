@@ -561,21 +561,24 @@ async function deleteConversation(event: APIGatewayProxyEvent, userId: string, r
       lastKey = msgs.LastEvaluatedKey
     } while (lastKey)
 
-    // Delete S3 attachments (soft cleanup - log failures but don't fail the operation)
-    // We await these to ensure cleanup is attempted before returning success
-    await Promise.all(
-      s3KeysToDelete.map(async (s3Key) => {
-        try {
-          await s3Client.send(new DeleteObjectCommand({
-            Bucket: ARCHIVE_BUCKET,
-            Key: s3Key,
-          }))
-        } catch (e) {
-          // Log but don't fail - orphaned S3 objects are cleaned up by lifecycle policies
-          log.warn('attachment_delete_failed', { s3Key, error: toError(e).message })
-        }
-      })
-    )
+    // Delete S3 attachments in batches to prevent connection exhaustion
+    const S3_DELETE_BATCH_SIZE = 25
+    for (let i = 0; i < s3KeysToDelete.length; i += S3_DELETE_BATCH_SIZE) {
+      const batch = s3KeysToDelete.slice(i, i + S3_DELETE_BATCH_SIZE)
+      await Promise.all(
+        batch.map(async (s3Key) => {
+          try {
+            await s3Client.send(new DeleteObjectCommand({
+              Bucket: ARCHIVE_BUCKET,
+              Key: s3Key,
+            }))
+          } catch (e) {
+            // Log but don't fail - orphaned S3 objects are cleaned up by lifecycle policies
+            log.warn('attachment_delete_failed', { s3Key, error: toError(e).message })
+          }
+        })
+      )
+    }
 
     // Batch delete DynamoDB records
     await batchWriteWithRetry(deleteOps, TABLE_NAME)
