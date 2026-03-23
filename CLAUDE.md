@@ -29,7 +29,7 @@ npm run deploy                 # Deploy backend via SAM
 
 ## Architecture
 
-### Frontend (SvelteKit 2.x + Svelte 4)
+### Frontend (SvelteKit 2.x + Svelte 5)
 
 ```
 frontend/

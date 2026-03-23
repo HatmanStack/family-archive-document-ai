@@ -1,13 +1,13 @@
 # Frontend Guide
 
-The frontend is built with SvelteKit 2.x and Svelte 4, using DaisyUI components and TailwindCSS for styling.
+The frontend is built with SvelteKit 2.x and Svelte 5, using DaisyUI components and TailwindCSS for styling.
 
 ## Stack
 
 | Technology | Purpose |
 |------------|---------|
 | SvelteKit 2 | Full-stack framework with file-based routing |
-| Svelte 4 | Reactive component framework |
+| Svelte 5 | Reactive component framework |
 | DaisyUI | Component library (buttons, forms, modals) |
 | TailwindCSS | Utility-first CSS |
 | MDSvex | Markdown rendering for letters |
