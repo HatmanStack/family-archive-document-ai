@@ -86,6 +86,14 @@ describe('comments handler', () => {
 
       expect(result.statusCode).toBe(400)
     })
+
+    it('should reject malformed pagination keys from repository layer', async () => {
+      const event = createMockEvent({
+        queryStringParameters: { lastEvaluatedKey: 'not-valid-base64!!!' },
+      })
+      const result = await handle(event, createMockContext())
+      expect(result.statusCode).toBe(400)
+    })
   })
 
   describe('POST /comments/{itemId}', () => {

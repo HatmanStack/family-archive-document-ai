@@ -8,7 +8,7 @@ import { successResponse, errorResponse, rateLimitResponse } from '../lib/respon
 import { sanitizeText, validateContentLength, parseRequestBody } from '../lib/validation'
 import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 import { log } from '../lib/logger'
-import { toError } from '../lib/errors'
+import { toError, AppError, getStatusCode, getUserMessage } from '../lib/errors'
 
 /**
  * Decode base64url itemId from URL path
@@ -96,6 +96,9 @@ async function listComments(
     }, 200, requestOrigin)
   } catch (error) {
     log.error('list_comments_error', { itemId, error: toError(error).message })
+    if (error instanceof AppError) {
+      return errorResponse(getStatusCode(error), getUserMessage(error), requestOrigin)
+    }
     return errorResponse(500, 'Failed to fetch comments', requestOrigin)
   }
 }

@@ -13,6 +13,8 @@ import {
   type QueryCommandInput,
 } from '@aws-sdk/lib-dynamodb'
 import { docClient, TABLE_NAME } from '../lib/database'
+import { validatePaginationKey } from '../lib/validation'
+import { ValidationError } from '../lib/errors'
 import type { DynamoDBKey, PaginatedResult } from '../types'
 
 export interface QueryOptions {
@@ -192,9 +194,13 @@ export class BaseRepository {
     }
 
     if (lastEvaluatedKey) {
-      queryParams.ExclusiveStartKey = JSON.parse(
-        Buffer.from(lastEvaluatedKey, 'base64').toString()
-      )
+      const paginationResult = validatePaginationKey(lastEvaluatedKey)
+      if (!paginationResult.valid) {
+        throw new ValidationError(paginationResult.error || 'Invalid pagination key')
+      }
+      if (paginationResult.key) {
+        queryParams.ExclusiveStartKey = paginationResult.key
+      }
     }
 
     const result = await this.docClient.send(new QueryCommand(queryParams))
