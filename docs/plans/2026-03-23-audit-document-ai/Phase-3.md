@@ -313,9 +313,9 @@ to prevent unbounded responses. This addresses health-audit finding #24.
 
 **Verification Checklist:**
 
-- [ ] `listUsers` query includes a `Limit` parameter
-- [ ] `MAX_PAGE_SIZE` is imported and used
-- [ ] `npm test` passes
+- [x] `listUsers` query includes a `Limit` parameter
+- [x] `MAX_PAGE_SIZE` is imported and used
+- [x] `npm test` passes
 
 **Testing Instructions:**
 

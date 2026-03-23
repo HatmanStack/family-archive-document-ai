@@ -3,7 +3,7 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mockClient } from 'aws-sdk-client-mock'
-import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import { DynamoDBDocumentClient, GetCommand, UpdateCommand, QueryCommand } from '@aws-sdk/lib-dynamodb'
 import type { APIGatewayProxyEvent } from 'aws-lambda'
 
 const ddbMock = mockClient(DynamoDBDocumentClient)
@@ -179,6 +179,37 @@ describe('profile handler', () => {
 
       const result = await handle(event, createMockContext())
       expect(result.statusCode).toBe(400)
+    })
+  })
+
+  describe('GET /users', () => {
+    it('returns user list with limit guard', async () => {
+      ddbMock.on(QueryCommand).resolves({
+        Items: [
+          { userId: 'user-1', displayName: 'Alice', profilePhotoUrl: null, bio: 'Hello' },
+          { userId: 'user-2', displayName: 'Bob', profilePhotoUrl: null, bio: 'World' },
+        ],
+      })
+
+      const event = createMockEvent({
+        httpMethod: 'GET',
+        resource: '/users',
+        path: '/users',
+        pathParameters: null,
+      })
+
+      const result = await handle(event, createMockContext())
+      const body = JSON.parse(result.body)
+
+      expect(result.statusCode).toBe(200)
+      expect(body.users).toHaveLength(2)
+
+      // Verify the query includes a Limit parameter
+      const queryCalls = ddbMock.commandCalls(QueryCommand)
+      expect(queryCalls.length).toBe(1)
+      const queryInput = queryCalls[0].args[0].input
+      expect(queryInput.Limit).toBeDefined()
+      expect(queryInput.Limit).toBeLessThanOrEqual(100)
     })
   })
 

@@ -11,6 +11,7 @@ import { docClient, TABLE_NAME, ARCHIVE_BUCKET } from '../lib/database'
 import { keys, PREFIX } from '../lib/keys'
 import { successResponse, errorResponse, rateLimitResponse } from '../lib/responses'
 import { validateUserId, sanitizeText, validateLimit, parseRequestBody } from '../lib/validation'
+import { MAX_PAGE_SIZE } from '../lib/constants'
 import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 import { log } from '../lib/logger'
 import { toError } from '../lib/errors'
@@ -356,6 +357,7 @@ async function listUsers(_requesterId: string, requestOrigin?: string): Promise<
       KeyConditionExpression: 'GSI1PK = :gsi1pk',
       ExpressionAttributeValues: { ':gsi1pk': 'USERS' },
       ProjectionExpression: 'userId, displayName, profilePhotoUrl, bio',
+      Limit: MAX_PAGE_SIZE,
     }))
 
     const users = await Promise.all(
