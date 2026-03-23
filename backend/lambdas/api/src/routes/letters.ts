@@ -8,7 +8,7 @@ import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { docClient, TABLE_NAME, ARCHIVE_BUCKET } from '../lib/database'
 import { s3Client, ragstackS3Client, RAGSTACK_BUCKET } from '../lib/s3-utils'
-import { PRESIGNED_URL_EXPIRY_SECONDS } from '../lib/constants'
+import { PRESIGNED_URL_EXPIRY_SECONDS, MAX_PAGE_SIZE } from '../lib/constants'
 import { keys } from '../lib/keys'
 import { successResponse, errorResponse } from '../lib/responses'
 import { log } from '../lib/logger'
@@ -67,7 +67,10 @@ export async function handle(
 }
 
 async function listLetters(event: APIGatewayProxyEvent, requestOrigin?: string): Promise<APIGatewayProxyResult> {
-  const limit = parseInt(event.queryStringParameters?.limit || '50', 10)
+  const limit = Math.min(
+    parseInt(event.queryStringParameters?.limit || '50', 10),
+    MAX_PAGE_SIZE
+  )
   const cursor = event.queryStringParameters?.cursor
 
   try {

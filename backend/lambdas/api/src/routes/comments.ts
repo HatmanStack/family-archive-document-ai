@@ -6,7 +6,7 @@ import type { RequestContext } from '../types'
 import { commentRepository } from '../repositories'
 import { successResponse, errorResponse, rateLimitResponse } from '../lib/responses'
 import { sanitizeText, validateContentLength, parseRequestBody } from '../lib/validation'
-import { MAX_COMMENT_LENGTH } from '../lib/constants'
+import { MAX_COMMENT_LENGTH, MAX_PAGE_SIZE } from '../lib/constants'
 import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 import { log } from '../lib/logger'
 import { toError, AppError, getStatusCode, getUserMessage } from '../lib/errors'
@@ -84,7 +84,7 @@ async function listComments(
 
   try {
     const result = await commentRepository.listByItemId(itemId, {
-      limit: Math.min(limit, 100),
+      limit: Math.min(limit, MAX_PAGE_SIZE),
       lastEvaluatedKey,
     })
 

@@ -15,6 +15,7 @@ import { log } from '../lib/logger'
 import { s3Client, signPhotoUrl } from '../lib/s3-utils'
 import { toError } from '../lib/errors'
 import { validatePaginationKey, parseRequestBody } from '../lib/validation'
+import { MAX_PAGE_SIZE } from '../lib/constants'
 import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 
 interface Attachment {
@@ -182,7 +183,10 @@ async function listConversations(event: APIGatewayProxyEvent, userId: string, re
 
 async function getMessages(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
   const conversationId = event.pathParameters?.conversationId
-  const limit = parseInt(event.queryStringParameters?.limit || '50', 10)
+  const limit = Math.min(
+    parseInt(event.queryStringParameters?.limit || '50', 10),
+    MAX_PAGE_SIZE
+  )
   const lastEvaluatedKey = event.queryStringParameters?.lastEvaluatedKey
 
   if (!conversationId) {

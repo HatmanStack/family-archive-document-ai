@@ -186,6 +186,38 @@ describe('messages handler', () => {
     })
   })
 
+  describe('pagination limit capping', () => {
+    it('caps limit at MAX_PAGE_SIZE when user supplies a very large limit', async () => {
+      // Mock the member check to pass
+      ddbMock.on(GetCommand).resolves({
+        Item: {
+          PK: 'USER#user-123',
+          SK: 'CONV#conv-1',
+          entityType: 'CONVERSATION_MEMBER',
+          conversationId: 'conv-1',
+          participantIds: new Set(['user-123']),
+          creatorId: 'user-123',
+        },
+      })
+
+      ddbMock.on(QueryCommand).resolves({ Items: [] })
+
+      const event = createMockEvent({
+        httpMethod: 'GET',
+        resource: '/messages/{conversationId}',
+        pathParameters: { conversationId: 'conv-1' },
+        queryStringParameters: { limit: '999' },
+      })
+
+      await handle(event, createMockContext())
+
+      const queryCalls = ddbMock.commandCalls(QueryCommand)
+      expect(queryCalls.length).toBeGreaterThanOrEqual(1)
+      const queryInput = queryCalls[0].args[0].input
+      expect(queryInput.Limit).toBeLessThanOrEqual(100)
+    })
+  })
+
   describe('invalid pagination cursor', () => {
     it('returns 400 for malformed pagination key', async () => {
       // Mock the member check to pass
