@@ -81,7 +81,7 @@ export class CommentRepository extends BaseRepository {
       entityType: 'COMMENT',
     }
 
-    await this.putItem(comment as unknown as Record<string, unknown>)
+    await this.putItem(comment)
     return comment
   }
 
