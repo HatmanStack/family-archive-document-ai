@@ -1,36 +1,12 @@
 import type { ReactionApiResponse } from '$lib/types/comment'
-import { authTokens } from '$lib/auth/auth-store'
-import { getApiBaseUrl } from '$lib/utils/api-url'
-import { get } from 'svelte/store'
-
-const API_BASE = getApiBaseUrl()
-
-function getAuthHeader(): Record<string, string> {
-  const tokens = get(authTokens)
-  if (!tokens?.idToken) {
-    throw new Error('Your session has expired. Please log in again.')
-  }
-  return {
-    'Authorization': `Bearer ${tokens.idToken}`,
-    'Content-Type': 'application/json',
-  }
-}
+import { apiClient } from '$lib/auth/api-client'
 
 export async function getReactions(commentId: string): Promise<ReactionApiResponse> {
   try {
-    const response = await fetch(`${API_BASE}/reactions/${encodeURIComponent(commentId)}`, {
-      headers: getAuthHeader(),
-    })
+    const data = await apiClient.get<Record<string, unknown>>(
+      `/reactions/${encodeURIComponent(commentId)}`,
+    )
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to fetch reactions' }))
-      return {
-        success: false,
-        error: errorData.error || `HTTP ${response.status}: ${response.statusText}`,
-      }
-    }
-
-    const data = await response.json()
     return {
       success: true,
       data: data.items || data,
@@ -47,21 +23,11 @@ export async function getReactions(commentId: string): Promise<ReactionApiRespon
 
 export async function toggleReaction(commentId: string, itemId: string): Promise<ReactionApiResponse> {
   try {
-    const response = await fetch(`${API_BASE}/reactions/${encodeURIComponent(commentId)}`, {
-      method: 'POST',
-      headers: getAuthHeader(),
-      body: JSON.stringify({ itemId, reactionType: 'like' }),
-    })
+    const data = await apiClient.post(
+      `/reactions/${encodeURIComponent(commentId)}`,
+      { itemId, reactionType: 'like' },
+    )
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to toggle reaction' }))
-      return {
-        success: false,
-        error: errorData.error || `HTTP ${response.status}: ${response.statusText}`,
-      }
-    }
-
-    const data = await response.json()
     return {
       success: true,
       data,

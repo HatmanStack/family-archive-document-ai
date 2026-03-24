@@ -1,7 +1,4 @@
-import { getApiBaseUrl } from '$lib/utils/api-url'
-
-// Gallery API Gateway Configuration
-const GALLERY_API_BASE_URL = getApiBaseUrl()
+import { apiClient } from '$lib/auth/api-client'
 
 export interface GalleryItem {
   id: string
@@ -19,25 +16,12 @@ export interface GalleryItem {
 // Get gallery items by calling API Gateway endpoint
 export async function getGalleryItems(
   category: 'pictures' | 'videos' | 'documents',
-  userId: string,
-  authToken: string,
+  _userId: string,
+  _authToken: string,
 ): Promise<GalleryItem[]> {
   try {
-    const response = await fetch(`${GALLERY_API_BASE_URL}/gallery/${category}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${authToken}`,
-        'Content-Type': 'application/json',
-      },
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.message || `Failed to fetch ${category}: ${response.status} ${response.statusText}`)
-    }
-
-    const data = await response.json()
-    return data.items || []
+    const data = await apiClient.get<Record<string, unknown>>(`/gallery/${category}`)
+    return (data.items || []) as GalleryItem[]
   }
   catch (error) {
     console.error(`Error fetching ${category} from API Gateway:`, error)
@@ -46,17 +30,10 @@ export async function getGalleryItems(
 }
 
 // Health check function to verify API Gateway connection
-export async function checkAPIGatewayConnection(authToken: string): Promise<boolean> {
+export async function checkAPIGatewayConnection(_authToken: string): Promise<boolean> {
   try {
-    const response = await fetch(`${GALLERY_API_BASE_URL}/gallery/health`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${authToken}`,
-        'Content-Type': 'application/json',
-      },
-    })
-
-    return response.ok
+    await apiClient.get('/gallery/health')
+    return true
   }
   catch (error) {
     console.error('API Gateway connection check failed:', error)
@@ -65,31 +42,18 @@ export async function checkAPIGatewayConnection(authToken: string): Promise<bool
 }
 
 // Download letter function using API Gateway
-export async function downloadLetter(title: string, authToken: string): Promise<{ downloadUrl: string, fileNameSuggestion: string }> {
+export async function downloadLetter(_title: string, _authToken: string): Promise<{ downloadUrl: string, fileNameSuggestion: string }> {
   try {
-    const encodedTitle = encodeURIComponent(title)
-    const response = await fetch(`${GALLERY_API_BASE_URL}/gallery/letters/${encodedTitle}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${authToken}`,
-        'Content-Type': 'application/json',
-      },
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.message || `Failed to get download URL: ${response.status} ${response.statusText}`)
-    }
-
-    const data = await response.json()
+    const encodedTitle = encodeURIComponent(_title)
+    const data = await apiClient.get<Record<string, unknown>>(`/gallery/letters/${encodedTitle}`)
 
     if (!data.downloadUrl) {
       throw new Error('No download URL received from server')
     }
 
     return {
-      downloadUrl: data.downloadUrl,
-      fileNameSuggestion: data.fileNameSuggestion || `${title}.pdf`,
+      downloadUrl: data.downloadUrl as string,
+      fileNameSuggestion: (data.fileNameSuggestion as string) || `${_title}.pdf`,
     }
   }
   catch (error) {

@@ -1,6 +1,4 @@
-import { getApiBaseUrl } from '$lib/utils/api-url'
-
-const API_URL = getApiBaseUrl()
+import { apiClient } from '$lib/auth/api-client'
 
 export interface ParsedData {
   date?: string
@@ -42,86 +40,34 @@ export interface PublishResponse {
   path: string
 }
 
-async function handleResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}))
-    throw new Error(errorData.error || `Request failed: ${response.status} ${response.statusText}`)
-  }
-  // Handle 204 No Content or empty responses
-  if (response.status === 204 || response.headers.get('content-length') === '0') {
-    return undefined as T
-  }
-  const contentType = response.headers.get('content-type')
-  if (!contentType?.includes('application/json')) {
-    return undefined as T
-  }
-  return response.json()
-}
-
 export function extractDraftId(pk: string): string {
   return pk.replace('DRAFT#', '')
 }
 
-export async function listDrafts(authToken: string): Promise<Draft[]> {
-  const response = await fetch(`${API_URL}/admin/drafts`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${authToken}`,
-      'Content-Type': 'application/json',
-    },
-  })
-
-  const data = await handleResponse<DraftListResponse>(response)
+export async function listDrafts(_authToken: string): Promise<Draft[]> {
+  const data = await apiClient.get<DraftListResponse>('/admin/drafts')
   return data.drafts
 }
 
-export async function getDraft(draftId: string, authToken: string): Promise<Draft> {
-  const response = await fetch(`${API_URL}/admin/drafts/${encodeURIComponent(draftId)}`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${authToken}`,
-      'Content-Type': 'application/json',
-    },
-  })
-
-  return handleResponse<Draft>(response)
+export async function getDraft(draftId: string, _authToken: string): Promise<Draft> {
+  return apiClient.get<Draft>(`/admin/drafts/${encodeURIComponent(draftId)}`)
 }
 
-export async function deleteDraft(draftId: string, authToken: string): Promise<void> {
-  const response = await fetch(`${API_URL}/admin/drafts/${encodeURIComponent(draftId)}`, {
-    method: 'DELETE',
-    headers: {
-      'Authorization': `Bearer ${authToken}`,
-      'Content-Type': 'application/json',
-    },
-  })
-
-  await handleResponse<{ message: string }>(response)
+export async function deleteDraft(draftId: string, _authToken: string): Promise<void> {
+  await apiClient.delete(`/admin/drafts/${encodeURIComponent(draftId)}`)
 }
 
-export async function publishDraft(draftId: string, finalData: PublishData, authToken: string): Promise<PublishResponse> {
-  const response = await fetch(`${API_URL}/admin/drafts/${encodeURIComponent(draftId)}/publish`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${authToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ finalData }),
-  })
-
-  return handleResponse<PublishResponse>(response)
+export async function publishDraft(draftId: string, finalData: PublishData, _authToken: string): Promise<PublishResponse> {
+  return apiClient.post<PublishResponse>(
+    `/admin/drafts/${encodeURIComponent(draftId)}/publish`,
+    { finalData } as unknown as Record<string, unknown>,
+  )
 }
 
-export async function getDraftPdfUrl(s3Key: string, authToken: string): Promise<string> {
-  const response = await fetch(`${API_URL}/download/presigned-url?key=${encodeURIComponent(s3Key)}`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${authToken}`,
-      'Content-Type': 'application/json',
-    },
-  })
-
-  const data = await handleResponse<{ downloadUrl: string }>(response)
+export async function getDraftPdfUrl(s3Key: string, _authToken: string): Promise<string> {
+  const data = await apiClient.get<{ downloadUrl: string }>(
+    `/download/presigned-url?key=${encodeURIComponent(s3Key)}`,
+  )
   return data.downloadUrl
 }
 
