@@ -351,15 +351,28 @@ export class MessagingRepository extends BaseRepository {
   }
 
   /**
-   * Delete a single message. Returns S3 keys for attachment cleanup.
+   * Get a single message by conversation and message ID.
    */
-  async deleteMessage(
+  async getMessage(
     conversationId: string,
     messageId: string
-  ): Promise<{
-    s3Keys: string[]
-    senderId: string
-  }> {
+  ): Promise<Record<string, unknown> | null> {
+    const result = await this.docClient.send(new GetCommand({
+      TableName: this.tableName,
+      Key: keys.message(conversationId, messageId),
+    }))
+
+    return result.Item ?? null
+  }
+
+  /**
+   * Delete a single message. Returns S3 keys for attachment cleanup.
+   * Caller must verify ownership before calling this method.
+   */
+  async deleteMessageRecord(
+    conversationId: string,
+    messageId: string
+  ): Promise<{ s3Keys: string[] }> {
     const messageKey = keys.message(conversationId, messageId)
     const messageResult = await this.docClient.send(new GetCommand({
       TableName: this.tableName,
@@ -387,7 +400,7 @@ export class MessagingRepository extends BaseRepository {
       Key: messageKey,
     }))
 
-    return { s3Keys, senderId: message.senderId as string }
+    return { s3Keys }
   }
 
   /**
