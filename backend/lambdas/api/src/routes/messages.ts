@@ -1,8 +1,11 @@
 /**
- * Messages route handler
+ * Messages route handlers
  *
  * Delegates DynamoDB operations to MessagingRepository.
  * Handles request parsing, validation, response formatting, and S3 operations.
+ *
+ * Each function is registered individually on the router in index.ts.
+ * Rate limiting is applied declaratively via router middleware.
  */
 import path from 'node:path'
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
@@ -11,13 +14,12 @@ import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sd
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { v4 as uuidv4 } from 'uuid'
 import { ARCHIVE_BUCKET } from '../lib/database'
-import { successResponse, errorResponse, rateLimitResponse } from '../lib/responses'
+import { successResponse, errorResponse } from '../lib/responses'
 import { log } from '../lib/logger'
 import { s3Client, signPhotoUrl } from '../lib/s3-utils'
 import { toError } from '../lib/errors'
 import { parseRequestBody, parsePageLimit } from '../lib/validation'
 import { MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE } from '../lib/constants'
-import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 import { messagingRepository } from '../repositories'
 
 interface Attachment {
@@ -27,114 +29,12 @@ interface Attachment {
   url?: string
 }
 
-/**
- * Main messages route handler
- */
-export async function handle(
-  event: APIGatewayProxyEvent,
-  context: RequestContext
-): Promise<APIGatewayProxyResult> {
-  const { requesterId, requestOrigin } = context
-
-  if (!requesterId) {
-    return errorResponse(401, 'Unauthorized: Missing user context', requestOrigin)
-  }
-
-  const method = event.httpMethod
-  const resource = event.resource
-  const normalizedResource = resource.replace(/^\/v1/, '')
-
-  log.info('messages_request', { method, resource: normalizedResource, requesterId })
-
-  if (method === 'GET' && normalizedResource === '/messages/conversations') {
-    return listConversations(event, requesterId, requestOrigin)
-  }
-
-  if (method === 'GET' && normalizedResource === '/messages/{conversationId}') {
-    return getMessages(event, requesterId, requestOrigin)
-  }
-
-  if (method === 'POST' && normalizedResource === '/messages/conversations') {
-    const rateLimit = await checkRateLimit(requesterId, 'message')
-    if (!rateLimit.allowed) {
-      return rateLimitResponse(
-        getRetryAfter(rateLimit.resetAt),
-        'Rate limit exceeded. Please try again later.',
-        requestOrigin
-      )
-    }
-    return createConversation(event, requesterId, requestOrigin)
-  }
-
-  if (method === 'POST' && normalizedResource === '/messages/{conversationId}') {
-    const rateLimit = await checkRateLimit(requesterId, 'message')
-    if (!rateLimit.allowed) {
-      return rateLimitResponse(
-        getRetryAfter(rateLimit.resetAt),
-        'Rate limit exceeded. Please try again later.',
-        requestOrigin
-      )
-    }
-    return sendMessage(event, requesterId, requestOrigin)
-  }
-
-  if (method === 'POST' && (normalizedResource === '/messages/{conversationId}/upload-url' ||
-      normalizedResource === '/messages/attachments/upload-url')) {
-    const rateLimit = await checkRateLimit(requesterId, 'upload')
-    if (!rateLimit.allowed) {
-      return rateLimitResponse(
-        getRetryAfter(rateLimit.resetAt),
-        'Rate limit exceeded. Please try again later.',
-        requestOrigin
-      )
-    }
-    return generateUploadUrl(event, requesterId, requestOrigin)
-  }
-
-  if (method === 'PUT' && normalizedResource === '/messages/{conversationId}/read') {
-    const rateLimit = await checkRateLimit(requesterId, 'message')
-    if (!rateLimit.allowed) {
-      return rateLimitResponse(
-        getRetryAfter(rateLimit.resetAt),
-        'Rate limit exceeded. Please try again later.',
-        requestOrigin
-      )
-    }
-    return markAsRead(event, requesterId, requestOrigin)
-  }
-
-  if (method === 'DELETE' && normalizedResource === '/messages/{conversationId}') {
-    const rateLimit = await checkRateLimit(requesterId, 'message')
-    if (!rateLimit.allowed) {
-      return rateLimitResponse(
-        getRetryAfter(rateLimit.resetAt),
-        'Rate limit exceeded. Please try again later.',
-        requestOrigin
-      )
-    }
-    return deleteConversation(event, requesterId, requestOrigin)
-  }
-
-  if (method === 'DELETE' && normalizedResource === '/messages/{conversationId}/{messageId}') {
-    const rateLimit = await checkRateLimit(requesterId, 'message')
-    if (!rateLimit.allowed) {
-      return rateLimitResponse(
-        getRetryAfter(rateLimit.resetAt),
-        'Rate limit exceeded. Please try again later.',
-        requestOrigin
-      )
-    }
-    return deleteMessage(event, requesterId, requestOrigin)
-  }
-
-  return errorResponse(404, 'Route not found', requestOrigin)
-}
-
-async function listConversations(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
+export async function listConversations(event: APIGatewayProxyEvent, context: RequestContext): Promise<APIGatewayProxyResult> {
+  const { requesterId: userId, requestOrigin } = context
   const lastEvaluatedKey = event.queryStringParameters?.lastEvaluatedKey
 
   try {
-    const result = await messagingRepository.listConversationsForUser(userId, lastEvaluatedKey)
+    const result = await messagingRepository.listConversationsForUser(userId!, lastEvaluatedKey)
 
     const conversations = result.conversations.map(item => ({
       conversationId: item.conversationId,
@@ -161,7 +61,8 @@ async function listConversations(event: APIGatewayProxyEvent, userId: string, re
   }
 }
 
-async function getMessages(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
+export async function getMessages(event: APIGatewayProxyEvent, context: RequestContext): Promise<APIGatewayProxyResult> {
+  const { requesterId: userId, requestOrigin } = context
   const conversationId = event.pathParameters?.conversationId
   const limit = parsePageLimit(event.queryStringParameters?.limit, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE)
   const lastEvaluatedKey = event.queryStringParameters?.lastEvaluatedKey
@@ -171,7 +72,7 @@ async function getMessages(event: APIGatewayProxyEvent, userId: string, requestO
   }
 
   try {
-    const memberCheck = await messagingRepository.getConversationMembership(userId, conversationId)
+    const memberCheck = await messagingRepository.getConversationMembership(userId!, conversationId)
 
     if (!memberCheck) {
       return errorResponse(403, 'You are not a participant in this conversation', requestOrigin)
@@ -232,7 +133,8 @@ async function getMessages(event: APIGatewayProxyEvent, userId: string, requestO
   }
 }
 
-async function createConversation(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
+export async function createConversation(event: APIGatewayProxyEvent, context: RequestContext): Promise<APIGatewayProxyResult> {
+  const { requesterId: userId, requestOrigin } = context
   const body = parseRequestBody(event.body)
   if (!body) {
     return errorResponse(400, 'Invalid JSON in request body', requestOrigin)
@@ -258,8 +160,8 @@ async function createConversation(event: APIGatewayProxyEvent, userId: string, r
     }
   }
 
-  if (!participantIds.includes(userId)) {
-    participantIds.push(userId)
+  if (!participantIds.includes(userId!)) {
+    participantIds.push(userId!)
   }
 
   try {
@@ -275,16 +177,16 @@ async function createConversation(event: APIGatewayProxyEvent, userId: string, r
       conversationType,
       participantIds,
       participantNames,
-      userId,
+      userId!,
       conversationTitle as string | undefined
     )
 
     let message = null
     if (messageText) {
-      const senderProfile = await messagingRepository.getSenderProfile(userId)
+      const senderProfile = await messagingRepository.getSenderProfile(userId!)
       const messageRecord = await messagingRepository.createMessage(
         conversationId,
-        userId,
+        userId!,
         senderProfile,
         messageText as string,
         participantIds,
@@ -313,7 +215,8 @@ async function createConversation(event: APIGatewayProxyEvent, userId: string, r
   }
 }
 
-async function sendMessage(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
+export async function sendMessage(event: APIGatewayProxyEvent, context: RequestContext): Promise<APIGatewayProxyResult> {
+  const { requesterId: userId, requestOrigin } = context
   const conversationId = event.pathParameters?.conversationId
   const body = parseRequestBody(event.body)
   if (!body) {
@@ -337,7 +240,7 @@ async function sendMessage(event: APIGatewayProxyEvent, userId: string, requestO
   }
 
   try {
-    const membership = await messagingRepository.getConversationMembership(userId, conversationId)
+    const membership = await messagingRepository.getConversationMembership(userId!, conversationId)
 
     if (!membership) {
       return errorResponse(403, 'You are not a participant in this conversation', requestOrigin)
@@ -346,19 +249,20 @@ async function sendMessage(event: APIGatewayProxyEvent, userId: string, requestO
     const participantIds = Array.from(membership.participantIds)
     const conversationType = membership.conversationType
 
-    // Pass sender profile from membership context to avoid N+1 re-fetch
-    const senderProfile = await messagingRepository.getSenderProfile(userId)
+    // Fetch sender profile separately (extracted from createMessage for clarity,
+    // but still a dedicated DB call -- not derived from membership context)
+    const senderProfile = await messagingRepository.getSenderProfile(userId!)
 
     const messageRecord = await messagingRepository.createMessage(
       conversationId,
-      userId,
+      userId!,
       senderProfile,
       messageText as string,
       participantIds,
       conversationType,
       attachments as Attachment[]
     )
-    await messagingRepository.updateConversationMembers(conversationId, userId, participantIds)
+    await messagingRepository.updateConversationMembers(conversationId, userId!, participantIds)
 
     // Sign attachment URLs for response
     const attachmentsWithUrls = await Promise.all(
@@ -402,7 +306,8 @@ const ALLOWED_ATTACHMENT_TYPES = new Set([
   'audio/mpeg', 'audio/mp4',
 ])
 
-async function generateUploadUrl(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
+export async function generateUploadUrl(event: APIGatewayProxyEvent, context: RequestContext): Promise<APIGatewayProxyResult> {
+  const { requesterId: userId, requestOrigin } = context
   const body = parseRequestBody(event.body)
   if (!body) {
     return errorResponse(400, 'Invalid JSON in request body', requestOrigin)
@@ -435,7 +340,8 @@ async function generateUploadUrl(event: APIGatewayProxyEvent, userId: string, re
   }
 }
 
-async function markAsRead(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
+export async function markAsRead(event: APIGatewayProxyEvent, context: RequestContext): Promise<APIGatewayProxyResult> {
+  const { requesterId: userId, requestOrigin } = context
   const conversationId = event.pathParameters?.conversationId
 
   if (!conversationId) {
@@ -443,7 +349,7 @@ async function markAsRead(event: APIGatewayProxyEvent, userId: string, requestOr
   }
 
   try {
-    await messagingRepository.markConversationRead(userId, conversationId)
+    await messagingRepository.markConversationRead(userId!, conversationId)
 
     return successResponse({ message: 'Conversation marked as read' }, 200, requestOrigin)
   } catch (err) {
@@ -456,7 +362,8 @@ async function markAsRead(event: APIGatewayProxyEvent, userId: string, requestOr
   }
 }
 
-async function deleteConversation(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
+export async function deleteConversation(event: APIGatewayProxyEvent, context: RequestContext): Promise<APIGatewayProxyResult> {
+  const { requesterId: userId, requestOrigin } = context
   let conversationId: string
   try {
     conversationId = decodeURIComponent(event.pathParameters?.conversationId || '')
@@ -480,7 +387,7 @@ async function deleteConversation(event: APIGatewayProxyEvent, userId: string, r
       }
       participantIds = Array.from(meta.participantIds || [])
     } else {
-      const membership = await messagingRepository.getConversationMembership(userId, conversationId)
+      const membership = await messagingRepository.getConversationMembership(userId!, conversationId)
 
       if (!membership) {
         return errorResponse(404, 'Conversation not found', requestOrigin)
@@ -520,7 +427,8 @@ async function deleteConversation(event: APIGatewayProxyEvent, userId: string, r
   }
 }
 
-async function deleteMessage(event: APIGatewayProxyEvent, userId: string, requestOrigin?: string): Promise<APIGatewayProxyResult> {
+export async function deleteMessage(event: APIGatewayProxyEvent, context: RequestContext): Promise<APIGatewayProxyResult> {
+  const { requesterId: userId, requestOrigin } = context
   let conversationId: string
   let messageId: string
   try {

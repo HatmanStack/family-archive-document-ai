@@ -2,9 +2,36 @@
 
 ## Active Feedback
 
-<!-- No active feedback items -->
+(No open items.)
 
 ## Resolved Feedback
+
+### CODE_REVIEW - Phase 2 - Rate-limit middleware not applied declaratively to message routes
+
+> **Issue:** The `rateLimit()` middleware factory was created in `middleware.ts` but was not used on message routes in `index.ts`. Instead, `messages.ts` had inline `checkRateLimit` blocks.
+
+**Status:** RESOLVED
+**Resolution:** Rate-limit middleware is now applied declaratively in `index.ts` via `rateLimit('message')` and `rateLimit('upload')` on all mutating message routes. All inline `checkRateLimit` calls have been removed from `messages.ts`. The `handle()` dispatcher has been eliminated; individual handler functions are registered directly on the router.
+
+---
+
+### CODE_REVIEW - Phase 2 - messages.ts is 574 LOC, not ~200 as specified
+
+> **Issue:** The internal if/else dispatch within `handle()` duplicated the router's job, and inline rate-limit checks inflated the file size.
+
+**Status:** RESOLVED
+**Resolution:** The `handle()` function and its internal dispatch have been removed. Individual handler functions (`listConversations`, `getMessages`, `createConversation`, `sendMessage`, `generateUploadUrl`, `markAsRead`, `deleteConversation`, `deleteMessage`) are exported and registered directly on the router in `index.ts`. File is now 482 LOC. Tests updated to call individual handlers instead of the removed `handle()` function. Auth checks are now enforced by router middleware, so the auth-specific test was removed from the handler test suite.
+
+---
+
+### CODE_REVIEW - Phase 2 - Misleading comment about N+1 sender profile fix
+
+> **Issue:** Comment said "Pass sender profile from membership context to avoid N+1 re-fetch" but then called `getSenderProfile()` anyway.
+
+**Status:** RESOLVED
+**Resolution:** Comment in `sendMessage` handler (messages.ts line 252) updated to accurately describe behavior: "Fetch sender profile separately (extracted from createMessage for clarity, but still a dedicated DB call -- not derived from membership context)".
+
+---
 
 ### PLAN_REVIEW - Iteration 3 - Frontend service count
 
