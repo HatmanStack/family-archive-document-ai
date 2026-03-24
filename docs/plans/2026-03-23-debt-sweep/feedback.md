@@ -6,6 +6,24 @@
 
 ## Resolved Feedback
 
+### PLAN_REVIEW - Iteration 3 - Frontend service count
+
+> **Issue:** Service count says "10" but Tasks 8+9 only cover 9 services.
+
+**Status:** RESOLVED
+**Resolution:** Changed "10" to "9" in Phase 2 success criteria and README overview.
+
+---
+
+### PLAN_REVIEW - Iteration 3 - Phase 2 Task 3 reference signatures
+
+> **Consider:** Reference signatures had optional markers on non-optional params and omitted `remaining`.
+
+**Status:** RESOLVED
+**Resolution:** Fixed `checkRateLimit` return type to `{ allowed: boolean, remaining: number, resetAt: number }`. Fixed `getRetryAfter` param to non-optional `resetAt: number`. Added source line references.
+
+---
+
 ### PLAN_REVIEW - Iteration 2 - Phase 0 stale testing section
 
 > **Issue:** Phase 0 "Test files for TS migration" section contradicts Phase 1 Task 10 by describing migration of nonexistent test files.

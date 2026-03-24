@@ -13,7 +13,7 @@ Replace the if/else route dispatcher with a type-safe `Router` class, extract `M
 - `messages.ts` is reduced to request parsing and response formatting (~200 LOC, down from ~765)
 - `createMessageInternal` no longer re-fetches sender profile (passed from caller)
 - `deleteConversation` message query has `Limit: 25`
-- 10 frontend services use `apiClient` instead of raw `fetch` + manual auth
+- 9 frontend services use `apiClient` instead of raw `fetch` + manual auth
 - `frontend/lib/auth/client.ts` is renamed to `auth-utils.ts` with all imports updated
 - Documentation updated: CLAUDE.md, FEATURES_ROADMAP.md
 - `npm test` passes
@@ -121,9 +121,9 @@ Replace the if/else route dispatcher with a type-safe `Router` class, extract `M
 
 **Prerequisites:** Task 1
 
-**Reference signatures** (verify these before implementing):
-- `checkRateLimit(userId: string, action: string)` from `rate-limit.ts` — returns `{ allowed: boolean, resetAt?: number }`
-- `getRetryAfter(resetAt?: number)` from `rate-limit.ts` — returns `number` (seconds)
+**Reference signatures** (verified against source):
+- `checkRateLimit(userId: string, action: string)` from `rate-limit.ts:36` — returns `Promise<{ allowed: boolean, remaining: number, resetAt: number }>`
+- `getRetryAfter(resetAt: number)` from `rate-limit.ts:193` — returns `number` (seconds, minimum 1)
 - `rateLimitResponse(retryAfter: number, message: string, requestOrigin?: string)` from `responses.ts:125` — returns `APIGatewayProxyResult`
 - `errorResponse(statusCode: number, message: string, requestOrigin?: string)` from `responses.ts`
 
