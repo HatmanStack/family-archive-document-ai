@@ -413,28 +413,48 @@ Create the shared code layer (`backend/lambdas/shared/`), fix all type mismatche
 
 ---
 
-### Task 10: Migrate test files to TypeScript
+### Task 10: Create test files for migrated Lambdas
 
-**Goal:** Convert test files for both background Lambdas from JS to TS.
+**Goal:** Write new TypeScript unit tests for the activity-aggregator and notification-processor Lambdas. No prior test files exist for these Lambdas — these are new tests.
 
-**Files to modify:**
+**Files to create:**
 
-- `tests/unit/activity-aggregator-handler.test.js` → `.test.ts`
-- `tests/unit/notification-processor-handler.test.js` → `.test.ts`
+- `tests/unit/activity-aggregator-handler.test.ts`
+- `tests/unit/notification-processor-handler.test.ts`
 
 **Prerequisites:** Tasks 8-9 (Lambda source files are TS)
 
 **Implementation Steps:**
 
-1. Read both test files to understand their structure.
-1. Convert each test file:
-   - Change `require()` to `import` syntax
-   - Add type annotations to mock event builders (use `DynamoDBStreamEvent` from `@types/aws-lambda`)
-   - Keep all test logic identical — only change syntax
-   - Ensure `aws-sdk-client-mock` mock setup works with ESM imports
-1. Delete the `.test.js` files.
+1. Study the existing test pattern in `tests/unit/` (e.g., `profile-handler.test.ts`, `comments-handler.test.ts`) to understand the project's Vitest + `aws-sdk-client-mock` conventions: how environment variables are set, how mocks are initialized, and how handler functions are imported.
 
-**Verification:** `npm test` passes with all existing test assertions.
+1. Create `tests/unit/activity-aggregator-handler.test.ts`:
+   - Mock `DynamoDBDocumentClient` using `aws-sdk-client-mock`
+   - Mock `UpdateCommand` to capture calls
+   - Test `processInsertEvent` for each entity type:
+     - `COMMENT` entity: verify `incrementCommentCount` sends UpdateCommand with `ADD commentCount :inc` and `updateLastActive` sends UpdateCommand with `SET lastActive`
+     - `MESSAGE` entity: verify `updateLastActive` is called for the senderId
+     - `REACTION` entity: verify `updateLastActive` is called for the userId
+   - Test that unknown entity types are silently ignored
+   - Test that records without `eventName: 'INSERT'` are skipped
+   - Build mock DynamoDB stream event records using the `DynamoDBStreamEvent` type from `@types/aws-lambda`
+   - Set `process.env.TABLE_NAME` and `process.env.USER_PROFILES_TABLE` before importing the handler
+
+1. Create `tests/unit/notification-processor-handler.test.ts`:
+   - Mock `DynamoDBDocumentClient` (for `GetCommand` profile lookups) and `SESClient` (for `SendEmailCommand`)
+   - Test `processMessageNotification`:
+     - Verify email is sent to each participant except the sender
+     - Verify `notifyOnMessage === false` suppresses the email
+     - Verify missing profile skips notification
+   - Test `processCommentNotification`:
+     - Verify email is sent to previous commenters (excluding the commenter)
+     - Verify `notifyOnComment === false` suppresses the email
+     - Verify deduplication (same user not notified twice)
+   - Test `sendEmail`: verify `SendEmailCommand` is called with correct source, destination, and HTML body
+   - Test `maskEmail`: verify masking logic (e.g., `ab***@example.com`)
+   - Set `process.env.TABLE_NAME`, `process.env.SES_FROM_EMAIL`, `process.env.BASE_URL` before importing
+
+**Verification:** `npm test` passes with the new test files. Both Lambda handlers have coverage for their core logic paths.
 
 ---
 

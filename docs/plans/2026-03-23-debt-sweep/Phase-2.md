@@ -121,6 +121,12 @@ Replace the if/else route dispatcher with a type-safe `Router` class, extract `M
 
 **Prerequisites:** Task 1
 
+**Reference signatures** (verify these before implementing):
+- `checkRateLimit(userId: string, action: string)` from `rate-limit.ts` — returns `{ allowed: boolean, resetAt?: number }`
+- `getRetryAfter(resetAt?: number)` from `rate-limit.ts` — returns `number` (seconds)
+- `rateLimitResponse(retryAfter: number, message: string, requestOrigin?: string)` from `responses.ts:125` — returns `APIGatewayProxyResult`
+- `errorResponse(statusCode: number, message: string, requestOrigin?: string)` from `responses.ts`
+
 **Implementation Steps:**
 
 1. Create `backend/lambdas/api/src/lib/middleware.ts`:
@@ -389,7 +395,7 @@ Replace the if/else route dispatcher with a type-safe `Router` class, extract `M
 
 ### Task 9: Consolidate remaining frontend services to apiClient
 
-**Goal:** Apply the same pattern from Task 8 to the remaining 9 services: content, draft, gallery, letters, media, message, profile, reaction, search.
+**Goal:** Apply the same pattern from Task 8 to the remaining 8 services: content, draft, gallery, letters, media, message, profile, reaction. Note: `search-service.ts` is excluded — it talks to the RAGStack GraphQL endpoint with its own API key, not the main API.
 
 **Files to modify:**
 
@@ -401,7 +407,6 @@ Replace the if/else route dispatcher with a type-safe `Router` class, extract `M
 - `frontend/lib/services/message-service.ts`
 - `frontend/lib/services/profile-service.ts`
 - `frontend/lib/services/reaction-service.ts`
-- `frontend/lib/services/search-service.ts`
 
 **Prerequisites:** Task 8 (establish the pattern)
 
@@ -415,7 +420,6 @@ Replace the if/else route dispatcher with a type-safe `Router` class, extract `M
    - Keep any service-specific logic (caching in media-service, query string building, etc.)
 
 1. **Special cases:**
-   - `search-service.ts`: Uses RAGStack GraphQL endpoint with its own API key, not the main API. **Leave as-is** — this talks to a different service.
    - `content-service.ts`: Uses `refreshSession` from `client.ts`. Replace `fetch` + manual auth, but keep `refreshSession` import for token refresh on 401.
    - `media-service.ts`: Has its own caching layer. Replace the HTTP calls but preserve the cache logic.
 

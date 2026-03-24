@@ -19,8 +19,8 @@ After completion, the only remaining item in the features roadmap will be the fa
 | Phase | Goal | Token Estimate |
 |-------|------|----------------|
 | 0 | Foundation: architecture decisions, conventions, testing strategy | N/A (reference) |
-| 1 | Backend: TS migration, shared types, type safety, MessagingRepository, Router, performance fixes | ~50,000 |
-| 2 | Frontend: service consolidation onto apiClient, client.ts rename, documentation updates | ~35,000 |
+| 1 | Shared infrastructure, type fixes, BaseRepository generic putItem, ensureProfile optimization, TS migration of JS Lambdas | ~40,000 |
+| 2 | Router class, MessagingRepository extraction, frontend service consolidation onto apiClient, client.ts rename, documentation updates | ~60,000 |
 
 ## Navigation
 
