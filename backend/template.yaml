@@ -709,6 +709,16 @@ Resources:
   # =============================================================================
   ActivityAggregatorFunction:
     Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Sourcemap: true
+        EntryPoints:
+          - index.ts
+        External:
+          - '@aws-sdk/*'
     Properties:
       CodeUri: lambdas/activity-aggregator/
       Handler: index.handler
