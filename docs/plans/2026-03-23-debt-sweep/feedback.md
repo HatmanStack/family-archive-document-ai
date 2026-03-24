@@ -6,6 +6,15 @@
 
 ## Resolved Feedback
 
+### PLAN_REVIEW - Iteration 2 - Phase 0 stale testing section
+
+> **Issue:** Phase 0 "Test files for TS migration" section contradicts Phase 1 Task 10 by describing migration of nonexistent test files.
+
+**Status:** RESOLVED
+**Resolution:** Rewrote Phase 0 section "Test files for TS migration" → "Test files for background Lambdas". Now states no test files exist and new ones will be created in Phase 1 Task 10. Removed all bullet points about `require()` to `import` conversion.
+
+---
+
 ### PLAN_REVIEW - Iteration 1 - Phase 1, Task 10
 
 > **Consider:** Task 10 says "modify" test files that don't exist. No test files exist for activity-aggregator or notification-processor. The task must say "Create" and the implementation steps must be rewritten from scratch.

@@ -88,14 +88,9 @@ Scopes: `api`, `activity-aggregator`, `notification-processor`, `shared`, `front
 - Environment variables set at top of test files before module imports
 - New test files follow existing naming: `tests/unit/<scope>-handler.test.ts`
 
-### Test files for TS migration
+### Test files for background Lambdas
 
-When migrating `activity-aggregator/index.js` and `notification-processor/index.js` to TypeScript, their test files must also be migrated to TypeScript. The test logic stays identical; only the import syntax and type annotations change. Key considerations:
-
-- Change `require()` to `import` syntax
-- Change `module.exports` references to named imports
-- Add proper typing to mock event objects (use `DynamoDBStreamEvent` from `@types/aws-lambda` or from the new shared types)
-- Ensure `aws-sdk-client-mock` mock setup works with ESM imports
+No unit test files currently exist for `activity-aggregator` or `notification-processor`. New test files will be created in Phase 1 Task 10 following the existing `tests/unit/<scope>-handler.test.ts` naming pattern. Tests should use `aws-sdk-client-mock` for DynamoDB/SES mocking and build mock DynamoDB stream event records using the `DynamoDBStreamEvent` type from `@types/aws-lambda`.
 
 ### Mocking strategy for Router tests
 
