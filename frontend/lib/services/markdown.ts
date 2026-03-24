@@ -1,5 +1,5 @@
 import { authStore } from '$lib/auth/auth-store'
-import { refreshSession } from '$lib/auth/client'
+import { refreshSession } from '$lib/auth/auth-utils'
 import { getApiBaseUrl } from '$lib/utils/api-url'
 import { get } from 'svelte/store'
 

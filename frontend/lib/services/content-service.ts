@@ -1,5 +1,5 @@
 import { apiClient } from '$lib/auth/api-client'
-import { refreshSession } from '$lib/auth/client'
+import { refreshSession } from '$lib/auth/auth-utils'
 
 interface ContentListItem {
   key: string

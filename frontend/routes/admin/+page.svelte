@@ -1,6 +1,6 @@
 <script lang='ts'>
   import type { PageData } from './$types'
-  import { authenticatedFetch } from '$lib/auth/client'
+  import { authenticatedFetch } from '$lib/auth/auth-utils'
 
   export let data: PageData
 
