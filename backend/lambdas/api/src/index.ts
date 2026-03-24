@@ -2,10 +2,12 @@
  * Family Archive - Document AI API - Main Entry Point
  *
  * This is a consolidated API Lambda that routes requests to appropriate handlers.
- * TypeScript version with type-safe routing and repositories.
+ * Uses a declarative Router for type-safe routing with middleware support.
  */
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext, AuthClaims } from './types'
+import { Router } from './lib/router'
+import { requireAuth, requireAdmin, requireApproved, rateLimit } from './lib/middleware'
 import { comments, messages, profile, reactions, media, letters, drafts, contact } from './routes'
 import { ensureProfile } from './lib/user'
 import { log, setCorrelationId, extractCorrelationId } from './lib/logger'
@@ -17,8 +19,74 @@ import { toError, getStatusCode, getUserMessage, AppError } from './lib/errors'
  */
 export const API_VERSION = 'v1'
 
+// ---------------------------------------------------------------------------
+// Declarative route registration
+// ---------------------------------------------------------------------------
+
+const router = new Router()
+
+// Comments
+router.get('/comments/{itemId}', comments.handle)
+router.post('/comments/{itemId}', comments.handle)
+router.put('/comments/{itemId}/{commentId}', comments.handle)
+router.delete('/comments/{itemId}/{commentId}', comments.handle)
+
+// Messages
+router.get('/messages/conversations', messages.handle)
+router.get('/messages/{conversationId}', messages.handle)
+router.post('/messages/conversations', messages.handle)
+router.post('/messages/{conversationId}', messages.handle)
+router.post('/messages/{conversationId}/upload-url', messages.handle)
+router.post('/messages/attachments/upload-url', messages.handle)
+router.put('/messages/{conversationId}/read', messages.handle)
+router.delete('/messages/{conversationId}', messages.handle)
+router.delete('/messages/{conversationId}/{messageId}', messages.handle)
+
+// Profile & Users
+router.get('/profile/{userId}', profile.handle)
+router.put('/profile', profile.handle)
+router.get('/profile/{userId}/comments', profile.handle)
+router.post('/profile/photo/upload-url', profile.handle)
+router.get('/users', profile.handle)
+
+// Reactions
+router.get('/reactions/{commentId}', reactions.handle)
+router.post('/reactions/{commentId}', reactions.handle)
+router.delete('/reactions/{commentId}', reactions.handle)
+
+// Media / Downloads
+router.get('/download/presigned-url', media.handle)
+
+// Drafts / Upload (before generic /letters routes)
+router.post('/letters/upload-request', drafts.handle)
+router.post('/letters/process/{draftId}', drafts.handle)
+
+// Letters
+router.get('/letters', letters.handle)
+router.get('/letters/{date}', letters.handle)
+router.put('/letters/{date}', letters.handle)
+router.get('/letters/{date}/versions', letters.handle)
+router.post('/letters/{date}/revert', letters.handle)
+router.get('/letters/{date}/pdf', letters.handle)
+
+// Contact
+router.post('/contact', contact.handle)
+
+// Admin - Drafts (approved users or admins)
+router.get('/admin/drafts', requireApproved(), drafts.handle)
+router.get('/admin/drafts/{draftId}', requireApproved(), drafts.handle)
+router.delete('/admin/drafts/{draftId}', requireApproved(), drafts.handle)
+router.post('/admin/drafts/{draftId}/publish', requireApproved(), drafts.handle)
+
+// Admin - Comment moderation (admins only)
+router.delete('/admin/comments/{commentId}', requireAdmin(), comments.handle)
+
+// ---------------------------------------------------------------------------
+// Lambda handler
+// ---------------------------------------------------------------------------
+
 /**
- * Main API router - consolidates all API endpoints into a single Lambda
+ * Main API handler - consolidates all API endpoints into a single Lambda
  */
 export async function handler(
   event: APIGatewayProxyEvent
@@ -79,62 +147,8 @@ export async function handler(
   }
 
   try {
-    // Route to appropriate handler based on path
-    if (path.startsWith('/comments')) {
-      return comments.handle(event, context)
-    }
-
-    if (path.startsWith('/messages')) {
-      return messages.handle(event, context)
-    }
-
-    if (path.startsWith('/profile') || path.startsWith('/users')) {
-      return profile.handle(event, context)
-    }
-
-    if (path.startsWith('/reactions')) {
-      return reactions.handle(event, context)
-    }
-
-    if (path.startsWith('/media') || path.startsWith('/pdf') || path.startsWith('/download') || path.startsWith('/upload')) {
-      return media.handle(event, context)
-    }
-
-    // Drafts / Uploads (specific routes before generic /letters)
-    if (path.startsWith('/letters/upload-request') || path.startsWith('/letters/process')) {
-      return drafts.handle(event, context)
-    }
-
-    if (path.startsWith('/letters')) {
-      return letters.handle(event, context)
-    }
-
-    if (path.startsWith('/contact')) {
-      return contact.handle(event, context)
-    }
-
-    if (path.startsWith('/admin/')) {
-      // Draft routes - allow ApprovedUsers (not just Admins)
-      if (path.startsWith('/admin/drafts')) {
-        if (!isApprovedUser && !isAdmin) {
-          return errorResponse(403, 'Approved user access required', requestOrigin)
-        }
-        return drafts.handle(event, context)
-      }
-
-      // Other admin routes - require Admins group
-      if (!isAdmin) {
-        return errorResponse(403, 'Admin access required', requestOrigin)
-      }
-
-      // Admin comment moderation: /admin/comments/{commentId}
-      if (path.startsWith('/admin/comments/')) {
-        return comments.handle(event, context)
-      }
-
-      // Unknown admin route
-      return errorResponse(404, `Admin route not found: ${method} ${path}`, requestOrigin)
-    }
+    const result = await router.handle(event, context)
+    if (result) return result
 
     return errorResponse(404, `Route not found: ${method} ${path}`, requestOrigin)
   } catch (err) {
