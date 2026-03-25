@@ -1,6 +1,4 @@
-import { getApiBaseUrl } from '$lib/utils/api-url'
-
-const API_URL = getApiBaseUrl()
+import { apiClient } from '$lib/auth/api-client'
 
 export interface Letter {
   date: string
@@ -46,16 +44,8 @@ export interface PdfUrlResponse {
   filename: string
 }
 
-async function handleResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}))
-    throw new Error(errorData.error || `Request failed: ${response.status} ${response.statusText}`)
-  }
-  return response.json()
-}
-
 export async function listLetters(
-  authToken: string,
+  _authToken: string,
   limit = 50,
   cursor?: string,
 ): Promise<LettersListResponse> {
@@ -63,29 +53,11 @@ export async function listLetters(
   if (cursor)
     params.set('cursor', cursor)
 
-  const url = `${API_URL}/letters?${params}`
-
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${authToken}`,
-      'Content-Type': 'application/json',
-    },
-  })
-
-  return handleResponse<LettersListResponse>(response)
+  return apiClient.get<LettersListResponse>(`/letters?${params}`)
 }
 
-export async function getLetter(date: string, authToken: string): Promise<Letter> {
-  const response = await fetch(`${API_URL}/letters/${encodeURIComponent(date)}`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${authToken}`,
-      'Content-Type': 'application/json',
-    },
-  })
-
-  return handleResponse<Letter>(response)
+export async function getLetter(date: string, _authToken: string): Promise<Letter> {
+  return apiClient.get<Letter>(`/letters/${encodeURIComponent(date)}`)
 }
 
 export interface UpdateLetterData {
@@ -99,60 +71,36 @@ export interface UpdateLetterData {
 export async function updateLetter(
   date: string,
   data: UpdateLetterData,
-  authToken: string,
+  _authToken: string,
 ): Promise<Letter> {
-  const response = await fetch(`${API_URL}/letters/${encodeURIComponent(date)}`, {
-    method: 'PUT',
-    headers: {
-      'Authorization': `Bearer ${authToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  })
-
-  return handleResponse<Letter>(response)
+  return apiClient.put<Letter>(
+    `/letters/${encodeURIComponent(date)}`,
+    data as unknown as Record<string, unknown>,
+  )
 }
 
-export async function getVersions(date: string, authToken: string): Promise<LetterVersion[]> {
-  const response = await fetch(`${API_URL}/letters/${encodeURIComponent(date)}/versions`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${authToken}`,
-      'Content-Type': 'application/json',
-    },
-  })
-
-  const data = await handleResponse<VersionsResponse>(response)
+export async function getVersions(date: string, _authToken: string): Promise<LetterVersion[]> {
+  const data = await apiClient.get<VersionsResponse>(
+    `/letters/${encodeURIComponent(date)}/versions`,
+  )
   return data.versions
 }
 
 export async function revertToVersion(
   date: string,
   versionTimestamp: string,
-  authToken: string,
+  _authToken: string,
 ): Promise<void> {
-  const response = await fetch(`${API_URL}/letters/${encodeURIComponent(date)}/revert`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${authToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ versionTimestamp }),
-  })
-
-  await handleResponse<{ message: string }>(response)
+  await apiClient.post(
+    `/letters/${encodeURIComponent(date)}/revert`,
+    { versionTimestamp },
+  )
 }
 
-export async function getPdfUrl(date: string, authToken: string): Promise<string> {
-  const response = await fetch(`${API_URL}/letters/${encodeURIComponent(date)}/pdf`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${authToken}`,
-      'Content-Type': 'application/json',
-    },
-  })
-
-  const data = await handleResponse<PdfUrlResponse>(response)
+export async function getPdfUrl(date: string, _authToken: string): Promise<string> {
+  const data = await apiClient.get<PdfUrlResponse>(
+    `/letters/${encodeURIComponent(date)}/pdf`,
+  )
   return data.downloadUrl
 }
 

@@ -49,7 +49,8 @@ frontend/
 ```
 
 **Key patterns:**
-- Services in `lib/services/` handle all API communication
+- Services in `lib/services/` handle all API communication via the shared `apiClient` singleton (`lib/auth/api-client.ts`)
+- Auth utilities in `lib/auth/auth-utils.ts` (token management, session refresh)
 - Auth state managed via Cognito with tokens in stores
 - DaisyUI for component styling, TailwindCSS for utilities
 - MDSvex for markdown rendering in letters
@@ -61,9 +62,9 @@ backend/
 ├── template.yaml              # SAM template - single consolidated definition
 ├── lambdas/
 │   ├── api/src/               # Main API Lambda (consolidated)
-│   │   ├── index.ts           # Entry point, route dispatcher
+│   │   ├── index.ts           # Entry point with declarative Router
 │   │   ├── routes/            # Route handlers (comments, letters, media, messages, profile, reactions)
-│   │   ├── repositories/      # DynamoDB data access (base-repository, comment-repository)
+│   │   ├── repositories/      # DynamoDB data access (base-repository, comment-repository, messaging-repository)
 │   │   └── lib/               # Shared utilities
 │   ├── activity-aggregator/   # DynamoDB stream processor for user stats
 │   ├── letter-processor/      # PDF merge + Gemini AI parsing
@@ -76,6 +77,8 @@ backend/
 
 **Key patterns:**
 - Single consolidated API Lambda handles all REST endpoints
+- Declarative Router class (`lib/router.ts`) with Express-like `router.get()` / `router.post()` pattern and middleware support
+- Repository pattern for DynamoDB access (`base-repository`, `comment-repository`, `messaging-repository`)
 - Background processors triggered by DynamoDB Streams
 - Single-table DynamoDB design (see `docs/DATA_MODEL.md` for key patterns)
 - S3 buckets for letters, media, profile photos with presigned URLs
@@ -87,6 +90,8 @@ backend/
 - `rate-limit.ts` - Atomic rate limiting with DynamoDB (fail-open for availability)
 - `logger.ts` - Structured JSON logging with correlation ID support
 - `responses.ts` - CORS-aware response helpers (fail-closed in production)
+- `router.ts` - Express-like Router with `{param}` support and middleware chains
+- `middleware.ts` - Rate-limit, auth, and admin middleware factories
 
 **Letter processor utilities (`letter-processor/src/lib/`):**
 - `config.ts` - Environment validation with API key format checking

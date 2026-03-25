@@ -1,56 +1,27 @@
 import type {
+  CommentHistoryItem,
   CommentHistoryResponse,
   ProfileApiResponse,
   UpdateProfileRequest,
+  UserProfile,
 } from '$lib/types/profile'
-import { authTokens } from '$lib/auth/auth-store'
-import { getApiBaseUrl } from '$lib/utils/api-url'
-import { get } from 'svelte/store'
+import { apiClient, ApiError } from '$lib/auth/api-client'
 
-const API_BASE = getApiBaseUrl()
+interface CommentHistoryApiResponse {
+  comments?: CommentHistoryItem[]
+  items?: CommentHistoryItem[]
+  lastEvaluatedKey?: string
+}
 
-function getAuthHeader(): Record<string, string> {
-  const tokens = get(authTokens)
-  if (!tokens?.idToken) {
-    throw new Error('Your session has expired. Please log in again.')
-  }
-  return {
-    'Authorization': `Bearer ${tokens.idToken}`,
-    'Content-Type': 'application/json',
-  }
+interface UsersApiResponse {
+  users?: UserProfile[]
+  items?: UserProfile[]
 }
 
 export async function getProfile(userId: string): Promise<ProfileApiResponse> {
   try {
-    const response = await fetch(`${API_BASE}/profile/${encodeURIComponent(userId)}`, {
-      headers: getAuthHeader(),
-    })
+    const data = await apiClient.get<UserProfile>(`/profile/${encodeURIComponent(userId)}`)
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to fetch profile' }))
-
-      // Handle specific error cases
-      if (response.status === 403) {
-        return {
-          success: false,
-          error: 'This profile is private',
-        }
-      }
-
-      if (response.status === 404) {
-        return {
-          success: false,
-          error: 'Profile not found',
-        }
-      }
-
-      return {
-        success: false,
-        error: errorData.error || `HTTP ${response.status}: ${response.statusText}`,
-      }
-    }
-
-    const data = await response.json()
     return {
       success: true,
       data,
@@ -58,30 +29,28 @@ export async function getProfile(userId: string): Promise<ProfileApiResponse> {
   }
   catch (error) {
     console.error('Error fetching profile:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch profile',
+
+    if (error instanceof ApiError) {
+      if (error.status === 403) {
+        return { success: false, error: 'This profile is private' }
+      }
+      if (error.status === 404) {
+        return { success: false, error: 'Profile not found' }
+      }
     }
+
+    const message = error instanceof Error ? error.message : 'Failed to fetch profile'
+    return { success: false, error: message }
   }
 }
 
 export async function updateProfile(updates: UpdateProfileRequest): Promise<ProfileApiResponse> {
   try {
-    const response = await fetch(`${API_BASE}/profile`, {
-      method: 'PUT',
-      headers: getAuthHeader(),
-      body: JSON.stringify(updates),
-    })
+    const data = await apiClient.put<UserProfile>(
+      '/profile',
+      updates as unknown as Record<string, unknown>,
+    )
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to update profile' }))
-      return {
-        success: false,
-        error: errorData.error || `HTTP ${response.status}: ${response.statusText}`,
-      }
-    }
-
-    const data = await response.json()
     return {
       success: true,
       data,
@@ -107,25 +76,13 @@ export async function getCommentHistory(
       params.set('lastEvaluatedKey', lastKey)
     }
 
-    const response = await fetch(
-      `${API_BASE}/profile/${encodeURIComponent(userId)}/comments?${params}`,
-      {
-        headers: getAuthHeader(),
-      },
+    const data = await apiClient.get<CommentHistoryApiResponse>(
+      `/profile/${encodeURIComponent(userId)}/comments?${params}`,
     )
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to fetch comment history' }))
-      return {
-        success: false,
-        error: errorData.error || `HTTP ${response.status}: ${response.statusText}`,
-      }
-    }
-
-    const data = await response.json()
     return {
       success: true,
-      data: data.comments || data.items || [],
+      data: data.comments ?? data.items ?? [],
       lastEvaluatedKey: data.lastEvaluatedKey,
     }
   }
@@ -140,22 +97,11 @@ export async function getCommentHistory(
 
 export async function getAllUsers(): Promise<ProfileApiResponse> {
   try {
-    const response = await fetch(`${API_BASE}/users`, {
-      headers: getAuthHeader(),
-    })
+    const data = await apiClient.get<UsersApiResponse>('/users')
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to fetch users' }))
-      return {
-        success: false,
-        error: errorData.error || `HTTP ${response.status}: ${response.statusText}`,
-      }
-    }
-
-    const data = await response.json()
     return {
       success: true,
-      data: data.users || data.items || data,
+      data: data.users ?? data.items ?? [],
     }
   }
   catch (error) {
@@ -188,27 +134,16 @@ export async function uploadProfilePhoto(file: File): Promise<{ success: boolean
     }
 
     // Get presigned URL from backend
-    const response = await fetch(`${API_BASE}/profile/photo/upload-url`, {
-      method: 'POST',
-      headers: getAuthHeader(),
-      body: JSON.stringify({
+    const data = await apiClient.post<{ uploadUrl: string, photoUrl: string }>(
+      '/profile/photo/upload-url',
+      {
         filename: file.name,
         contentType: file.type,
-      }),
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to get upload URL' }))
-      return {
-        success: false,
-        error: errorData.error || `HTTP ${response.status}: ${response.statusText}`,
-      }
-    }
-
-    const { uploadUrl, photoUrl } = await response.json()
+      },
+    )
 
     // Upload file to S3 using presigned URL
-    const uploadResponse = await fetch(uploadUrl, {
+    const uploadResponse = await fetch(data.uploadUrl, {
       method: 'PUT',
       headers: {
         'Content-Type': file.type,
@@ -225,7 +160,7 @@ export async function uploadProfilePhoto(file: File): Promise<{ success: boolean
 
     return {
       success: true,
-      url: photoUrl,
+      url: data.photoUrl,
     }
   }
   catch (error) {

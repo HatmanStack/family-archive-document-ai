@@ -1,7 +1,5 @@
-import { authStore } from '$lib/auth/auth-store'
-import { refreshSession } from '$lib/auth/client'
-import { getApiBaseUrl } from '$lib/utils/api-url'
-import { get } from 'svelte/store'
+import { apiClient } from '$lib/auth/api-client'
+import { refreshSession } from '$lib/auth/auth-utils'
 
 interface ContentListItem {
   key: string
@@ -10,34 +8,7 @@ interface ContentListItem {
   isDirectory: boolean
 }
 
-async function getAuthToken(): Promise<string | null> {
-  const auth = get(authStore)
-
-  if (!auth.isAuthenticated || !auth.tokens) {
-    try {
-      await refreshSession()
-      const newAuth = get(authStore)
-      if (!newAuth.isAuthenticated || !newAuth.tokens) {
-        return null
-      }
-      return newAuth.tokens.idToken
-    }
-    catch (error) {
-      console.warn('Session refresh failed:', error)
-      return null
-    }
-  }
-
-  return auth.tokens.idToken
-}
-
 export class ContentService {
-  private baseUrl: string
-
-  constructor() {
-    this.baseUrl = getApiBaseUrl()
-  }
-
   async getContent(path: string): Promise<string> {
     let s3Key = path
 
@@ -52,34 +23,17 @@ export class ContentService {
       s3Key = `${s3Key}/+page.svelte.md`
     }
 
-    const response = await fetch(`${this.baseUrl}/pdf-download`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        key: s3Key,
-        type: 'markdown',
-      }),
-    })
+    // getContent uses no auth (public endpoint)
+    const data = await apiClient.post<Record<string, unknown>>(
+      '/pdf-download',
+      { key: s3Key, type: 'markdown' },
+      { requireAuth: false },
+    )
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error(`Content not found: ${path}`)
-      }
-      throw new Error(`Failed to get content: ${response.status}`)
-    }
-
-    const data = await response.json()
-    return data.content || data.body || data
+    return (data.content || data.body || data) as string
   }
 
   async saveContent(path: string, content: string): Promise<boolean> {
-    const token = await getAuthToken()
-    if (!token) {
-      throw new Error('Authentication required to save content')
-    }
-
     let s3Key = path
 
     if (s3Key.startsWith('/')) {
@@ -93,24 +47,27 @@ export class ContentService {
       s3Key = `${s3Key}/+page.svelte.md`
     }
 
-    const response = await fetch(`${this.baseUrl}/pdf-download`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        type: 'markdown',
-        key: s3Key,
-        content,
-      }),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Failed to save content: ${response.status}`)
+    try {
+      await apiClient.post(
+        '/pdf-download',
+        { type: 'markdown', key: s3Key, content },
+      )
+      return true
     }
-
-    return true
+    catch {
+      // Try refreshing session and retry
+      try {
+        await refreshSession()
+        await apiClient.post(
+          '/pdf-download',
+          { type: 'markdown', key: s3Key, content },
+        )
+        return true
+      }
+      catch (error) {
+        throw new Error(`Failed to save content: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
+    }
   }
 
   async listContent(_prefix: string = ''): Promise<ContentListItem[]> {

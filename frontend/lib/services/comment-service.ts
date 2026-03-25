@@ -1,13 +1,10 @@
 import type {
+  Comment,
   CommentApiResponse,
   CreateCommentRequest,
   UpdateCommentRequest,
 } from '$lib/types/comment'
-import { authTokens } from '$lib/auth/auth-store'
-import { getApiBaseUrl } from '$lib/utils/api-url'
-import { get } from 'svelte/store'
-
-const API_BASE = getApiBaseUrl()
+import { apiClient } from '$lib/auth/api-client'
 
 function encodeItemId(itemId: string): string {
   // Decode first in case it's already URL-encoded, then base64
@@ -21,17 +18,6 @@ function encodeItemId(itemId: string): string {
   return btoa(decoded).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 }
 
-function getAuthHeader(): Record<string, string> {
-  const tokens = get(authTokens)
-  if (!tokens?.idToken) {
-    throw new Error('Your session has expired. Please log in again.')
-  }
-  return {
-    'Authorization': `Bearer ${tokens.idToken}`,
-    'Content-Type': 'application/json',
-  }
-}
-
 export async function getComments(
   itemId: string,
   limit: number = 50,
@@ -43,25 +29,15 @@ export async function getComments(
       params.set('lastEvaluatedKey', lastKey)
     }
 
-    const response = await fetch(`${API_BASE}/comments/${encodeItemId(itemId)}?${params}`, {
-      headers: getAuthHeader(),
-    })
+    const data = await apiClient.get<Record<string, unknown>>(
+      `/comments/${encodeItemId(itemId)}?${params}`,
+    )
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to fetch comments' }))
-      return {
-        success: false,
-        error: errorData.error || `HTTP ${response.status}: ${response.statusText}`,
-      }
-    }
-
-    const data = await response.json()
-    // Backend returns { comments: [...], lastEvaluatedKey, count }
     const comments = Array.isArray(data.comments) ? data.comments : (Array.isArray(data.items) ? data.items : [])
     return {
       success: true,
       data: comments,
-      lastEvaluatedKey: data.lastEvaluatedKey,
+      lastEvaluatedKey: data.lastEvaluatedKey as string | undefined,
     }
   }
   catch (error) {
@@ -86,21 +62,11 @@ export async function createComment(
       itemTitle,
     }
 
-    const response = await fetch(`${API_BASE}/comments/${encodeItemId(itemId)}`, {
-      method: 'POST',
-      headers: getAuthHeader(),
-      body: JSON.stringify(body),
-    })
+    const data = await apiClient.post<Comment>(
+      `/comments/${encodeItemId(itemId)}`,
+      body as unknown as Record<string, unknown>,
+    )
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to create comment' }))
-      return {
-        success: false,
-        error: errorData.error || `HTTP ${response.status}: ${response.statusText}`,
-      }
-    }
-
-    const data = await response.json()
     return {
       success: true,
       data,
@@ -125,23 +91,11 @@ export async function updateComment(
       content: text,
     }
 
-    const url = `${API_BASE}/comments/${encodeItemId(itemId)}/${encodeURIComponent(commentId)}`
+    const data = await apiClient.put<Comment>(
+      `/comments/${encodeItemId(itemId)}/${encodeURIComponent(commentId)}`,
+      body as unknown as Record<string, unknown>,
+    )
 
-    const response = await fetch(url, {
-      method: 'PUT',
-      headers: getAuthHeader(),
-      body: JSON.stringify(body),
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to update comment' }))
-      return {
-        success: false,
-        error: errorData.error || `HTTP ${response.status}: ${response.statusText}`,
-      }
-    }
-
-    const data = await response.json()
     return {
       success: true,
       data,
@@ -161,23 +115,10 @@ export async function deleteComment(
   commentId: string,
 ): Promise<CommentApiResponse> {
   try {
-    const response = await fetch(
-      `${API_BASE}/comments/${encodeItemId(itemId)}/${encodeURIComponent(commentId)}`,
-      {
-        method: 'DELETE',
-        headers: getAuthHeader(),
-      },
+    const data = await apiClient.delete<Comment>(
+      `/comments/${encodeItemId(itemId)}/${encodeURIComponent(commentId)}`,
     )
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to delete comment' }))
-      return {
-        success: false,
-        error: errorData.error || `HTTP ${response.status}: ${response.statusText}`,
-      }
-    }
-
-    const data = await response.json()
     return {
       success: true,
       data,
@@ -194,22 +135,9 @@ export async function deleteComment(
 
 export async function adminDeleteComment(commentId: string): Promise<CommentApiResponse> {
   try {
-    // Ensure commentId is URL-encoded
     const encodedCommentId = encodeURIComponent(commentId)
-    const response = await fetch(`${API_BASE}/admin/comments/${encodedCommentId}`, {
-      method: 'DELETE',
-      headers: getAuthHeader(),
-    })
+    const data = await apiClient.delete<Comment>(`/admin/comments/${encodedCommentId}`)
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to delete comment' }))
-      return {
-        success: false,
-        error: errorData.error || `HTTP ${response.status}: ${response.statusText}`,
-      }
-    }
-
-    const data = await response.json()
     return {
       success: true,
       data,

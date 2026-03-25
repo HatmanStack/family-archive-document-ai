@@ -1,7 +1,5 @@
 import { PUBLIC_RAGSTACK_API_KEY, PUBLIC_RAGSTACK_GRAPHQL_URL } from '$env/static/public'
-import { authStore } from '$lib/auth/auth-store'
-import { getApiBaseUrl } from '$lib/utils/api-url'
-import { get } from 'svelte/store'
+import { apiClient } from '$lib/auth/api-client'
 
 export interface MediaItem {
   id: string
@@ -54,7 +52,6 @@ const cache: MediaCache = {
   documents: null,
 }
 
-const API_URL = getApiBaseUrl()
 const PAGE_SIZE = 50
 
 async function ragstackQuery(query: string, variables: Record<string, unknown> = {}): Promise<unknown> {
@@ -103,23 +100,9 @@ function s3UriToKey(s3Uri: string): string {
  * Get a presigned download URL for a RAGStack S3 key via the backend proxy
  */
 async function getPresignedUrl(s3Key: string): Promise<string> {
-  const auth = get(authStore)
-  if (!auth.isAuthenticated || !auth.tokens) {
-    throw new Error('User is not authenticated')
-  }
-
-  const response = await fetch(
-    `${API_URL}/download/presigned-url?key=${encodeURIComponent(s3Key)}&bucket=ragstack`,
-    {
-      headers: { Authorization: `Bearer ${auth.tokens.idToken}` },
-    },
+  const data = await apiClient.get<{ downloadUrl: string }>(
+    `/download/presigned-url?key=${encodeURIComponent(s3Key)}&bucket=ragstack`,
   )
-
-  if (!response.ok) {
-    throw new Error('Failed to get download URL')
-  }
-
-  const data = await response.json()
   return data.downloadUrl
 }
 

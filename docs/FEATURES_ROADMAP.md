@@ -1,62 +1,6 @@
 # Features Roadmap
 
-Deferred technical debt items from the 2026-03-23 audit, plus future feature ideas.
-
-## Deferred Technical Debt
-
-Items identified during the audit pipeline but deferred due to complexity. Grouped by theme.
-
-### TypeScript Migration (MEDIUM)
-
-Migrate the two remaining JavaScript Lambdas to TypeScript. Unblocks `escapeHtml` deduplication and removes unsafe DynamoDB stream event parsing.
-
-- Migrate `backend/lambdas/activity-aggregator/index.js` to TypeScript
-- Migrate `backend/lambdas/notification-processor/index.js` to TypeScript
-- Deduplicate `escapeHtml` (notification-processor copies `validation.ts` implementation)
-- Share entity types from `api/src/types/index.ts` across all Lambdas
-
-### Architecture: Messages Repository Extraction (MEDIUM)
-
-`backend/lambdas/api/src/routes/messages.ts` is a 755-line monolith that inlines all DynamoDB operations. Every other route uses the repository pattern.
-
-- Extract `MessageRepository` extending `BaseRepository`
-- Extract `ConversationRepository` extending `BaseRepository`
-- Route handler becomes request parsing + response formatting only
-
-### Architecture: Type-Safe Router (HIGH)
-
-`backend/lambdas/api/src/index.ts` dispatches routes via string matching. A middleware pattern would centralize auth, rate limiting, and validation.
-
-- Replace `if/else` route dispatch with declarative route definitions
-- Extract composable middleware (auth, rate-limit, validation)
-- TypeScript enforces handler contracts at compile time
-
-### Frontend: HTTP Client Consolidation (MEDIUM)
-
-Two parallel HTTP client patterns exist: `api-client.ts` (class-based with timeouts) and `client.ts` (`authenticatedFetch`). Frontend services use direct `fetch()` without the typed client.
-
-- Consolidate into a single HTTP client
-- Extract shared `apiCall<T>()` helper for frontend services
-- Eliminate duplicated try/catch/console.error pattern across service files
-
-### Type Safety Cleanup (LOW)
-
-- Remove `as unknown as` cast in `comment-repository.ts:84`
-- Remove `as unknown as` cast in `drafts.ts:302`
-- Fix `Reaction` type: `types/index.ts` uses `emoji` while route code uses `reactionType`
-- Fix `UserProfile` type: uses `photoUrl`/`photoKey` while routes use `profilePhotoUrl`
-
-### Performance: Request-Path Optimization (MEDIUM)
-
-- `ensureProfile` runs a DynamoDB read on every authenticated API request (wasted for 99.9% of requests where profile exists)
-- `createMessageInternal` does an N+1 profile fetch (reads sender profile on every message send)
-- `deleteConversation` DynamoDB message query is still unbounded (S3 deletes are batched but the scan is not)
-
-### Minor Documentation Items
-
-- Document `DYNAMODB_TABLE` env var fallback in `.env.example`
-- Update CLAUDE.md repositories description to clarify only base-repository and comment-repository exist
-- Complete FRONTEND.md profile-service import example with `getCommentHistory` and `uploadProfilePhoto`
+Future feature ideas for the Family Archive platform.
 
 ## Future Features
 

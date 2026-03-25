@@ -1,26 +1,13 @@
 import type {
+  Conversation,
   ConversationApiResponse,
   CreateConversationRequest,
+  Message,
   MessageApiResponse,
   SendMessageRequest,
   UploadAttachmentResponse,
 } from '$lib/types/message'
-import { authTokens } from '$lib/auth/auth-store'
-import { getApiBaseUrl } from '$lib/utils/api-url'
-import { get } from 'svelte/store'
-
-const API_BASE = getApiBaseUrl()
-
-function getAuthHeader(): Record<string, string> {
-  const tokens = get(authTokens)
-  if (!tokens?.idToken) {
-    throw new Error('Your session has expired. Please log in again.')
-  }
-  return {
-    'Authorization': `Bearer ${tokens.idToken}`,
-    'Content-Type': 'application/json',
-  }
-}
+import { apiClient } from '$lib/auth/api-client'
 
 export async function getConversations(
   limit: number = 50,
@@ -32,23 +19,14 @@ export async function getConversations(
       params.set('lastEvaluatedKey', lastKey)
     }
 
-    const response = await fetch(`${API_BASE}/messages/conversations?${params}`, {
-      headers: getAuthHeader(),
-    })
+    const data = await apiClient.get<Record<string, unknown>>(
+      `/messages/conversations?${params}`,
+    )
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to fetch conversations' }))
-      return {
-        success: false,
-        error: errorData.error || `HTTP ${response.status}: ${response.statusText}`,
-      }
-    }
-
-    const data = await response.json()
     return {
       success: true,
-      data: data.conversations || data.items || data,
-      lastEvaluatedKey: data.lastEvaluatedKey,
+      data: (data.conversations || data.items || data) as Conversation[],
+      lastEvaluatedKey: data.lastEvaluatedKey as string | undefined,
     }
   }
   catch (error) {
@@ -71,28 +49,16 @@ export async function getMessages(
       params.set('lastEvaluatedKey', lastKey)
     }
 
-    const response = await fetch(
-      `${API_BASE}/messages/${encodeURIComponent(conversationId)}?${params}`,
-      {
-        headers: getAuthHeader(),
-      },
+    const data = await apiClient.get<Record<string, unknown>>(
+      `/messages/${encodeURIComponent(conversationId)}?${params}`,
     )
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to fetch messages' }))
-      return {
-        success: false,
-        error: errorData.error || `HTTP ${response.status}: ${response.statusText}`,
-      }
-    }
-
-    const data = await response.json()
     return {
       success: true,
-      data: data.messages || data.items || data,
-      lastEvaluatedKey: data.lastEvaluatedKey,
-      creatorId: data.creatorId,
-      conversationTitle: data.conversationTitle,
+      data: (data.messages || data.items || data) as Message[],
+      lastEvaluatedKey: data.lastEvaluatedKey as string | undefined,
+      creatorId: data.creatorId as string | undefined,
+      conversationTitle: data.conversationTitle as string | undefined,
     }
   }
   catch (error) {
@@ -116,21 +82,11 @@ export async function createConversation(
       conversationTitle,
     }
 
-    const response = await fetch(`${API_BASE}/messages/conversations`, {
-      method: 'POST',
-      headers: getAuthHeader(),
-      body: JSON.stringify(body),
-    })
+    const data = await apiClient.post<Conversation>(
+      '/messages/conversations',
+      body as unknown as Record<string, unknown>,
+    )
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to create conversation' }))
-      return {
-        success: false,
-        error: errorData.error || `HTTP ${response.status}: ${response.statusText}`,
-      }
-    }
-
-    const data = await response.json()
     return {
       success: true,
       data,
@@ -156,24 +112,11 @@ export async function sendMessage(
       attachments,
     }
 
-    const response = await fetch(
-      `${API_BASE}/messages/${encodeURIComponent(conversationId)}`,
-      {
-        method: 'POST',
-        headers: getAuthHeader(),
-        body: JSON.stringify(body),
-      },
+    const data = await apiClient.post<Message>(
+      `/messages/${encodeURIComponent(conversationId)}`,
+      body as unknown as Record<string, unknown>,
     )
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to send message' }))
-      return {
-        success: false,
-        error: errorData.error || `HTTP ${response.status}: ${response.statusText}`,
-      }
-    }
-
-    const data = await response.json()
     return {
       success: true,
       data,
@@ -190,23 +133,10 @@ export async function sendMessage(
 
 export async function markAsRead(conversationId: string): Promise<ConversationApiResponse> {
   try {
-    const response = await fetch(
-      `${API_BASE}/messages/${encodeURIComponent(conversationId)}/read`,
-      {
-        method: 'PUT',
-        headers: getAuthHeader(),
-      },
+    const data = await apiClient.put<Conversation>(
+      `/messages/${encodeURIComponent(conversationId)}/read`,
     )
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to mark as read' }))
-      return {
-        success: false,
-        error: errorData.error || `HTTP ${response.status}: ${response.statusText}`,
-      }
-    }
-
-    const data = await response.json()
     return {
       success: true,
       data,
@@ -225,23 +155,11 @@ export async function deleteMessage(
   conversationId: string,
   messageId: string,
 ): Promise<MessageApiResponse> {
-  const url = `${API_BASE}/messages/${encodeURIComponent(conversationId)}/${encodeURIComponent(messageId)}`
-
   try {
-    const response = await fetch(url, {
-      method: 'DELETE',
-      headers: getAuthHeader(),
-    })
+    const data = await apiClient.delete<Message>(
+      `/messages/${encodeURIComponent(conversationId)}/${encodeURIComponent(messageId)}`,
+    )
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to delete message' }))
-      return {
-        success: false,
-        error: errorData.error || `HTTP ${response.status}: ${response.statusText}`,
-      }
-    }
-
-    const data = await response.json()
     return {
       success: true,
       data,
@@ -260,23 +178,10 @@ export async function deleteConversation(
   conversationId: string,
 ): Promise<ConversationApiResponse> {
   try {
-    const response = await fetch(
-      `${API_BASE}/messages/${encodeURIComponent(conversationId)}`,
-      {
-        method: 'DELETE',
-        headers: getAuthHeader(),
-      },
+    const data = await apiClient.delete<Conversation>(
+      `/messages/${encodeURIComponent(conversationId)}`,
     )
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to delete conversation' }))
-      return {
-        success: false,
-        error: errorData.error || `HTTP ${response.status}: ${response.statusText}`,
-      }
-    }
-
-    const data = await response.json()
     return {
       success: true,
       data,
@@ -294,28 +199,17 @@ export async function deleteConversation(
 export async function uploadAttachment(file: File): Promise<UploadAttachmentResponse> {
   try {
     // Step 1: Get presigned URL from backend
-    const response = await fetch(`${API_BASE}/messages/attachments/upload-url`, {
-      method: 'POST',
-      headers: getAuthHeader(),
-      body: JSON.stringify({
+    const data = await apiClient.post<{ uploadUrl: string, s3Key: string }>(
+      '/messages/attachments/upload-url',
+      {
         filename: file.name,
         contentType: file.type,
         size: file.size,
-      }),
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to get upload URL' }))
-      return {
-        success: false,
-        error: errorData.error || `HTTP ${response.status}: ${response.statusText}`,
-      }
-    }
-
-    const { uploadUrl, s3Key } = await response.json()
+      },
+    )
 
     // Step 2: Upload file to S3 using presigned URL
-    const uploadResponse = await fetch(uploadUrl, {
+    const uploadResponse = await fetch(data.uploadUrl, {
       method: 'PUT',
       headers: {
         'Content-Type': file.type,
@@ -333,8 +227,8 @@ export async function uploadAttachment(file: File): Promise<UploadAttachmentResp
     return {
       success: true,
       data: {
-        uploadUrl,
-        s3Key,
+        uploadUrl: data.uploadUrl,
+        s3Key: data.s3Key,
       },
     }
   }

@@ -8,6 +8,9 @@ import type { UserProfile } from '../types'
 import { toError } from './errors'
 import { log } from './logger'
 
+/** Users whose GSI1 attributes have been verified this Lambda instance */
+const gsi1VerifiedUsers = new Set<string>()
+
 /**
  * Backfill GSI1 attributes for a profile if missing (read-repair).
  * This handles profiles created before GSI1 was added.
@@ -65,8 +68,16 @@ export async function ensureProfile(
   )
 
   if (result.Item) {
-    // Backfill GSI1 if missing (read-repair for existing profiles)
-    return backfillGSI1IfMissing(result.Item as UserProfile)
+    const profile = result.Item as UserProfile
+    if (gsi1VerifiedUsers.has(userId)) {
+      return profile
+    }
+    const updated = await backfillGSI1IfMissing(profile)
+    // Only cache as verified if backfill actually succeeded (GSI1 keys present)
+    if (updated.GSI1PK && updated.GSI1SK) {
+      gsi1VerifiedUsers.add(userId)
+    }
+    return updated
   }
 
   // Create new profile with GSI1 keys for listing all users
@@ -105,6 +116,7 @@ export async function ensureProfile(
     throw err
   }
 
+  gsi1VerifiedUsers.add(userId)
   return profile
 }
 

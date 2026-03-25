@@ -26,7 +26,7 @@ vi.mock('@aws-sdk/s3-request-presigner', () => ({
   getSignedUrl: vi.fn().mockResolvedValue('https://signed-url.example.com'),
 }))
 
-import { handle } from '../../backend/lambdas/api/src/routes/messages'
+import { listConversations, getMessages, createConversation, sendMessage, generateUploadUrl, markAsRead, deleteConversation, deleteMessage } from '../../backend/lambdas/api/src/routes/messages'
 
 function createMockEvent(overrides: Partial<APIGatewayProxyEvent> = {}): APIGatewayProxyEvent {
   return {
@@ -86,7 +86,7 @@ describe('messages handler', () => {
       ddbMock.on(QueryCommand).resolves({ Items: mockConversations })
 
       const event = createMockEvent()
-      const result = await handle(event, createMockContext())
+      const result = await listConversations(event, createMockContext())
       const body = JSON.parse(result.body)
 
       expect(result.statusCode).toBe(200)
@@ -100,7 +100,7 @@ describe('messages handler', () => {
       ddbMock.on(QueryCommand).resolves({ Items: [] })
 
       const event = createMockEvent()
-      const result = await handle(event, createMockContext())
+      const result = await listConversations(event, createMockContext())
       const body = JSON.parse(result.body)
 
       expect(result.statusCode).toBe(200)
@@ -143,7 +143,7 @@ describe('messages handler', () => {
         }),
       })
 
-      const result = await handle(event, createMockContext())
+      const result = await createConversation(event, createMockContext())
       const body = JSON.parse(result.body)
 
       expect(result.statusCode).toBe(201)
@@ -160,18 +160,8 @@ describe('messages handler', () => {
         body: JSON.stringify({ participantIds: [] }),
       })
 
-      const result = await handle(event, createMockContext())
+      const result = await createConversation(event, createMockContext())
       expect(result.statusCode).toBe(400)
-    })
-  })
-
-  describe('auth checks', () => {
-    it('returns 401 when requesterId is missing', async () => {
-      const event = createMockEvent()
-      const result = await handle(event, createMockContext({ requesterId: '' }))
-
-      expect(result.statusCode).toBe(401)
-      expect(result.headers?.['Access-Control-Allow-Origin']).toBeDefined()
     })
   })
 
@@ -183,7 +173,7 @@ describe('messages handler', () => {
         body: '{invalid json',
       })
 
-      const result = await handle(event, createMockContext())
+      const result = await createConversation(event, createMockContext())
       expect(result.statusCode).toBe(400)
       expect(result.headers?.['Access-Control-Allow-Origin']).toBeDefined()
     })
@@ -196,7 +186,7 @@ describe('messages handler', () => {
         body: '{invalid json',
       })
 
-      const result = await handle(event, createMockContext())
+      const result = await sendMessage(event, createMockContext())
       expect(result.statusCode).toBe(400)
     })
   })
@@ -224,7 +214,7 @@ describe('messages handler', () => {
         queryStringParameters: { limit: '999' },
       })
 
-      await handle(event, createMockContext())
+      await getMessages(event, createMockContext())
 
       const queryCalls = ddbMock.commandCalls(QueryCommand)
       expect(queryCalls.length).toBeGreaterThanOrEqual(1)
@@ -254,7 +244,7 @@ describe('messages handler', () => {
         queryStringParameters: { lastEvaluatedKey: 'not-valid-base64!@#$' },
       })
 
-      const result = await handle(event, createMockContext())
+      const result = await getMessages(event, createMockContext())
       expect(result.statusCode).toBe(400)
       expect(result.headers?.['Access-Control-Allow-Origin']).toBeDefined()
     })
@@ -298,7 +288,7 @@ describe('messages handler', () => {
         pathParameters: { conversationId: 'conv-1' },
       })
 
-      const result = await handle(event, createMockContext())
+      const result = await deleteConversation(event, createMockContext())
 
       expect(result.statusCode).toBe(200)
       const body = JSON.parse(result.body)

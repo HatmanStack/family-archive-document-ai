@@ -1,0 +1,104 @@
+# Feedback - Technical Debt Sweep
+
+## Active Feedback
+
+(No open items.)
+
+## Resolved Feedback
+
+### CODE_REVIEW - Phase 2 - Rate-limit middleware not applied declaratively to message routes
+
+> **Issue:** The `rateLimit()` middleware factory was created in `middleware.ts` but was not used on message routes in `index.ts`. Instead, `messages.ts` had inline `checkRateLimit` blocks.
+
+**Status:** RESOLVED
+**Resolution:** Rate-limit middleware is now applied declaratively in `index.ts` via `rateLimit('message')` and `rateLimit('upload')` on all mutating message routes. All inline `checkRateLimit` calls have been removed from `messages.ts`. The `handle()` dispatcher has been eliminated; individual handler functions are registered directly on the router.
+
+---
+
+### CODE_REVIEW - Phase 2 - messages.ts is 574 LOC, not ~200 as specified
+
+> **Issue:** The internal if/else dispatch within `handle()` duplicated the router's job, and inline rate-limit checks inflated the file size.
+
+**Status:** RESOLVED
+**Resolution:** The `handle()` function and its internal dispatch have been removed. Individual handler functions (`listConversations`, `getMessages`, `createConversation`, `sendMessage`, `generateUploadUrl`, `markAsRead`, `deleteConversation`, `deleteMessage`) are exported and registered directly on the router in `index.ts`. File is now 482 LOC. Tests updated to call individual handlers instead of the removed `handle()` function. Auth checks are now enforced by router middleware, so the auth-specific test was removed from the handler test suite.
+
+---
+
+### CODE_REVIEW - Phase 2 - Misleading comment about N+1 sender profile fix
+
+> **Issue:** Comment said "Pass sender profile from membership context to avoid N+1 re-fetch" but then called `getSenderProfile()` anyway.
+
+**Status:** RESOLVED
+**Resolution:** Comment in `sendMessage` handler (messages.ts line 252) updated to accurately describe behavior: "Fetch sender profile separately (extracted from createMessage for clarity, but still a dedicated DB call -- not derived from membership context)".
+
+---
+
+### PLAN_REVIEW - Iteration 3 - Frontend service count
+
+> **Issue:** Service count says "10" but Tasks 8+9 only cover 9 services.
+
+**Status:** RESOLVED
+**Resolution:** Changed "10" to "9" in Phase 2 success criteria and README overview.
+
+---
+
+### PLAN_REVIEW - Iteration 3 - Phase 2 Task 3 reference signatures
+
+> **Consider:** Reference signatures had optional markers on non-optional params and omitted `remaining`.
+
+**Status:** RESOLVED
+**Resolution:** Fixed `checkRateLimit` return type to `{ allowed: boolean, remaining: number, resetAt: number }`. Fixed `getRetryAfter` param to non-optional `resetAt: number`. Added source line references.
+
+---
+
+### PLAN_REVIEW - Iteration 2 - Phase 0 stale testing section
+
+> **Issue:** Phase 0 "Test files for TS migration" section contradicts Phase 1 Task 10 by describing migration of nonexistent test files.
+
+**Status:** RESOLVED
+**Resolution:** Rewrote Phase 0 section "Test files for TS migration" → "Test files for background Lambdas". Now states no test files exist and new ones will be created in Phase 1 Task 10. Removed all bullet points about `require()` to `import` conversion.
+
+---
+
+### PLAN_REVIEW - Iteration 1 - Phase 1, Task 10
+
+> **Consider:** Task 10 says "modify" test files that don't exist. No test files exist for activity-aggregator or notification-processor. The task must say "Create" and the implementation steps must be rewritten from scratch.
+
+**Status:** RESOLVED
+**Resolution:** Rewrote Task 10 entirely. Changed from "Migrate test files" to "Create test files for migrated Lambdas". Replaced "Files to modify" with "Files to create". Removed all references to converting existing tests. Added detailed implementation steps covering what to test for each Lambda (entity type handling, notification preferences, email sending, mock setup).
+
+---
+
+### PLAN_REVIEW - Iteration 1 - README Token Estimates
+
+> **Consider:** README says Phase 1 is ~50,000 and Phase 2 is ~35,000 but Phase-1.md says ~40,000 and Phase-2.md says ~60,000. Both pairs must be reconciled.
+
+**Status:** RESOLVED
+**Resolution:** Updated README Phase Summary table to match the phase files: Phase 1 = ~40,000 tokens, Phase 2 = ~60,000 tokens. Phase files are authoritative.
+
+---
+
+### PLAN_REVIEW - Iteration 1 - Phase 2, Task 3
+
+> **Consider:** The `rateLimitResponse` parameter order is not confirmed for a zero-context engineer.
+
+**Status:** RESOLVED
+**Resolution:** Added a "Reference signatures" section to Task 3 documenting the exact signatures of `checkRateLimit`, `getRetryAfter`, `rateLimitResponse`, and `errorResponse` with parameter types and source locations.
+
+---
+
+### PLAN_REVIEW - Iteration 1 - Phase 2, Task 9
+
+> **Consider:** `search-service.ts` is listed in "Files to modify" but then the special cases section says "Leave as-is". This is contradictory.
+
+**Status:** RESOLVED
+**Resolution:** Removed `search-service.ts` from the "Files to modify" list. Updated the goal description to say "remaining 8 services" (not 9). Removed the search-service special case bullet since the file is no longer listed.
+
+---
+
+### PLAN_REVIEW - Iteration 1 - Phase 1, Tasks 8-9
+
+> **Consider:** The delete step ordering for JS→TS migration could be clearer about files coexisting briefly.
+
+**Status:** RESOLVED (no change needed)
+**Resolution:** The steps already list "Read JS file" → "Create TS file" → "Delete JS file" in sequential order. The engineer follows steps in order, so files coexist only during the creation step. No ambiguity in practice.

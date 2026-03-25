@@ -71,8 +71,8 @@ export class BaseRepository {
   /**
    * Put an item (create or replace)
    */
-  async putItem(
-    item: Record<string, unknown>,
+  async putItem<T extends Record<string, unknown>>(
+    item: T,
     options: PutOptions = {}
   ): Promise<void> {
     const params: PutCommandInput = {

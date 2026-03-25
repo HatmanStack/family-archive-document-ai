@@ -296,7 +296,7 @@ async function handlePublish(
   if (!parsed) {
     return errorResponse(400, 'Invalid JSON body', requestOrigin)
   }
-  const body = parsed as unknown as PublishData
+  const body = parsed as PublishData
 
   const { finalData } = body
   if (!finalData || !finalData.date || !finalData.title || !finalData.content) {

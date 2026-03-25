@@ -1,6 +1,9 @@
-const { DynamoDBClient } = require('@aws-sdk/client-dynamodb')
-const { SESClient, SendEmailCommand } = require('@aws-sdk/client-ses')
-const { DynamoDBDocumentClient, GetCommand } = require('@aws-sdk/lib-dynamodb')
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
+import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses'
+import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb'
+import type { DynamoDBStreamEvent, DynamoDBRecord } from 'aws-lambda'
+import { escapeHtml } from '../shared/html-utils'
+import { SHARED_PREFIX, type StreamMessageImage, type StreamCommentImage } from '../shared/types'
 
 const dynamoClient = new DynamoDBClient({})
 const docClient = DynamoDBDocumentClient.from(dynamoClient)
@@ -10,65 +13,70 @@ const TABLE_NAME = process.env.TABLE_NAME
 const SES_FROM_EMAIL = process.env.SES_FROM_EMAIL
 const BASE_URL = process.env.BASE_URL || 'http://localhost:5173'
 
-const PREFIX = {
-  USER: 'USER#',
-}
 const SK_PROFILE = 'PROFILE'
 
-exports.handler = async (event) => {
+interface UserProfileRecord {
+  email?: string
+  contactEmail?: string
+  notifyOnMessage?: boolean
+  notifyOnComment?: boolean
+}
+
+export async function handler(event: DynamoDBStreamEvent): Promise<{ statusCode: number; body: string }> {
   for (const record of event.Records) {
     try {
       if (record.eventName === 'INSERT') {
         await processInsertEvent(record)
       }
-    }
-    catch (err) {
-      console.error(`Error processing record: ${err.message}`)
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err))
+      console.error(`Error processing record: ${error.message}`)
     }
   }
 
   return { statusCode: 200, body: 'Notifications processed' }
 }
 
-async function processInsertEvent(record) {
-  const newImage = record.dynamodb.NewImage
-  const entityType = newImage.entityType?.S
+async function processInsertEvent(record: DynamoDBRecord): Promise<void> {
+  const newImage = record.dynamodb?.NewImage
+  if (!newImage) return
+
+  const entityType = (newImage as Record<string, { S?: string }>).entityType?.S
 
   if (entityType === 'MESSAGE') {
-    await processMessageNotification(newImage)
-  }
-  else if (entityType === 'COMMENT') {
-    await processCommentNotification(newImage)
+    await processMessageNotification(newImage as unknown as StreamMessageImage)
+  } else if (entityType === 'COMMENT') {
+    await processCommentNotification(newImage as unknown as StreamCommentImage)
   }
 }
 
-async function getUserProfile(userId) {
+async function getUserProfile(userId: string): Promise<UserProfileRecord | null> {
   try {
     const result = await docClient.send(new GetCommand({
       TableName: TABLE_NAME,
       Key: {
-        PK: `${PREFIX.USER}${userId}`,
+        PK: `${SHARED_PREFIX.USER}${userId}`,
         SK: SK_PROFILE,
       },
     }))
-    return result.Item
-  }
-  catch (err) {
-    console.error(`Error fetching user profile for ${userId}: ${err.message}`)
+    return (result.Item as UserProfileRecord) || null
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error(String(err))
+    console.error(`Error fetching user profile for ${userId}: ${error.message}`)
     return null
   }
 }
 
-function getNotificationEmail(profile) {
+function getNotificationEmail(profile: UserProfileRecord | null): string | undefined {
   return profile?.contactEmail || profile?.email
 }
 
-async function processMessageNotification(newImage) {
-  const conversationId = newImage.conversationId?.S
+async function processMessageNotification(newImage: StreamMessageImage): Promise<void> {
   const senderId = newImage.senderId?.S
   const senderName = newImage.senderName?.S || 'Someone'
   const messageText = newImage.messageText?.S || ''
   const participants = newImage.participants?.SS || []
+  const conversationId = newImage.conversationId?.S
 
   if (!senderId || participants.length === 0) {
     return
@@ -120,14 +128,14 @@ async function processMessageNotification(newImage) {
       `
 
       await sendEmail(email, subject, bodyHtml)
-    }
-    catch (err) {
-      console.error(`Error sending message notification to ${recipientId}: ${err.message}`)
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err))
+      console.error(`Error sending message notification to ${recipientId}: ${error.message}`)
     }
   }
 }
 
-async function processCommentNotification(newImage) {
+async function processCommentNotification(newImage: StreamCommentImage): Promise<void> {
   const itemId = newImage.itemId?.S
   const itemType = newImage.itemType?.S || 'letter'
   const commenterId = newImage.userId?.S
@@ -136,7 +144,7 @@ async function processCommentNotification(newImage) {
   const itemTitle = newImage.itemTitle?.S || 'an item'
 
   // Get list of previous commenters from the comment record
-  const previousCommenters = newImage.previousCommenters?.L?.map(item => item.S) || []
+  const previousCommenters = (newImage.previousCommenters?.L?.map(item => item.S).filter((s): s is string => !!s)) || []
 
   if (!commenterId) {
     return
@@ -146,7 +154,7 @@ async function processCommentNotification(newImage) {
     return
   }
 
-  const notifiedUsers = new Set()
+  const notifiedUsers = new Set<string>()
 
   // Build the item URL based on type
   const itemUrl = itemType === 'media'
@@ -201,28 +209,14 @@ async function processCommentNotification(newImage) {
 
       await sendEmail(email, subject, bodyHtml)
       notifiedUsers.add(previousUserId)
-    }
-    catch (err) {
-      console.error(`Error sending notification to ${previousUserId}: ${err.message}`)
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err))
+      console.error(`Error sending notification to ${previousUserId}: ${error.message}`)
     }
   }
-
 }
 
-// Canonical implementation: backend/lambdas/api/src/lib/validation.ts#escapeHtml
-// TODO(tech-debt): Deduplicate when notification-processor is migrated to TypeScript
-// or a shared package is created. See: docs/plans/2026-03-15-audit-family-archive/health-audit.md finding #9
-function escapeHtml(text) {
-  if (!text) return ''
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;')
-}
-
-function maskEmail(email) {
+export function maskEmail(email: string): string {
   if (!email || typeof email !== 'string')
     return '[invalid]'
   const parts = email.split('@')
@@ -233,7 +227,7 @@ function maskEmail(email) {
   return `${masked}@${parts[1]}`
 }
 
-async function sendEmail(toEmail, subject, bodyHtml) {
+export async function sendEmail(toEmail: string, subject: string, bodyHtml: string): Promise<boolean> {
   try {
     await sesClient.send(new SendEmailCommand({
       Source: SES_FROM_EMAIL,
@@ -244,12 +238,9 @@ async function sendEmail(toEmail, subject, bodyHtml) {
       },
     }))
     return true
-  }
-  catch (err) {
-    console.error(`Error sending email to ${maskEmail(toEmail)}: ${err.message}`)
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error(String(err))
+    console.error(`Error sending email to ${maskEmail(toEmail)}: ${error.message}`)
     return false
   }
 }
-
-// Also export sendEmail for testing
-exports.sendEmail = sendEmail

@@ -5,6 +5,36 @@ All notable changes to Family Archive - Document AI will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-03-25
+
+### Added
+- Declarative Router class with Express-like `router.get()` / `router.post()` pattern and middleware chains
+- MessagingRepository encapsulating all 17 DynamoDB messaging operations
+- Rate-limit, auth, and admin middleware factories for declarative per-route application
+- Shared `backend/lambdas/shared/` module with cross-Lambda types and `escapeHtml` utility
+- Structured `ApiError` class in frontend API client with HTTP status property
+- Unit tests for Router, MessagingRepository, and migrated Lambda handlers
+
+### Changed
+- Migrated activity-aggregator and notification-processor from JavaScript to TypeScript with esbuild bundling
+- Consolidated 10 frontend services onto shared `apiClient` singleton with centralized auth
+- Renamed `lib/auth/client.ts` to `lib/auth/auth-utils.ts` (all imports updated)
+- Router matches against `event.path` and populates `pathParameters` from regex capture groups
+- Replaced dynamic `uuid` import with static top-level import in MessagingRepository
+- Frontend service layer uses concrete response interfaces instead of `Record<string, unknown>`
+
+### Fixed
+- Router path parameter extraction now works with proxy+ resources
+- `requireAdmin` / `requireApproved` middleware return 401 for unauthenticated callers before checking roles
+- `requireAuth()` middleware added to all message routes for defense-in-depth
+- Route param `{draftId}` corrected to `{uploadId}` to match SAM template
+- Activity-aggregator updates guarded with `ConditionExpression` to prevent phantom profile rows
+- GSI1 backfill cache only marks users verified when backfill actually succeeds
+- `previousCommenters` in notification-processor filtered for undefined entries
+- Profile service uses `ApiError.status` instead of fragile string matching for 403/404 detection
+- Frontend service type parameters added to all `apiClient` calls (17 TypeScript errors resolved)
+- MessagingRepository test table name mismatch in `fetchUserNames` mock responses
+
 ## [1.3.0] - 2026-03-23
 
 ### Added

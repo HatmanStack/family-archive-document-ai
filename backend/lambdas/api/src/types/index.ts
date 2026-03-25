@@ -49,8 +49,8 @@ export interface UserProfile extends BaseEntity {
   email?: string
   displayName?: string
   bio?: string
-  photoUrl?: string
-  photoKey?: string
+  profilePhotoUrl?: string
+  profilePhotoKey?: string
   isPrivate?: boolean
   groups?: string
   GSI1PK?: string
@@ -91,7 +91,7 @@ export interface Reaction extends BaseEntity {
   itemId: string
   commentId: string
   userId: string
-  emoji: string
+  reactionType: string
 }
 
 export interface Letter extends BaseEntity {
