@@ -56,19 +56,33 @@ async function processInsertEvent(record: DynamoDBRecord): Promise<void> {
 }
 
 async function incrementCommentCount(userId: string): Promise<void> {
-  await docClient.send(new UpdateCommand({
-    TableName: USER_PROFILES_TABLE,
-    Key: userProfileKey(userId),
-    UpdateExpression: 'ADD commentCount :inc',
-    ExpressionAttributeValues: { ':inc': 1 },
-  }))
+  try {
+    await docClient.send(new UpdateCommand({
+      TableName: USER_PROFILES_TABLE,
+      Key: userProfileKey(userId),
+      UpdateExpression: 'ADD commentCount :inc',
+      ExpressionAttributeValues: { ':inc': 1 },
+      ConditionExpression: 'attribute_exists(PK)',
+    }))
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error(String(err))
+    if (error.name === 'ConditionalCheckFailedException') return // profile doesn't exist, skip
+    throw err
+  }
 }
 
 async function updateLastActive(userId: string): Promise<void> {
-  await docClient.send(new UpdateCommand({
-    TableName: USER_PROFILES_TABLE,
-    Key: userProfileKey(userId),
-    UpdateExpression: 'SET lastActive = :now',
-    ExpressionAttributeValues: { ':now': new Date().toISOString() },
-  }))
+  try {
+    await docClient.send(new UpdateCommand({
+      TableName: USER_PROFILES_TABLE,
+      Key: userProfileKey(userId),
+      UpdateExpression: 'SET lastActive = :now',
+      ExpressionAttributeValues: { ':now': new Date().toISOString() },
+      ConditionExpression: 'attribute_exists(PK)',
+    }))
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error(String(err))
+    if (error.name === 'ConditionalCheckFailedException') return // profile doesn't exist, skip
+    throw err
+  }
 }

@@ -32,15 +32,15 @@ router.put('/comments/{itemId}/{commentId}', comments.handle)
 router.delete('/comments/{itemId}/{commentId}', comments.handle)
 
 // Messages
-router.get('/messages/conversations', messages.listConversations)
-router.get('/messages/{conversationId}', messages.getMessages)
-router.post('/messages/conversations', rateLimit('message'), messages.createConversation)
-router.post('/messages/{conversationId}', rateLimit('message'), messages.sendMessage)
-router.post('/messages/{conversationId}/upload-url', rateLimit('upload'), messages.generateUploadUrl)
-router.post('/messages/attachments/upload-url', rateLimit('upload'), messages.generateUploadUrl)
-router.put('/messages/{conversationId}/read', rateLimit('message'), messages.markAsRead)
-router.delete('/messages/{conversationId}', rateLimit('message'), messages.deleteConversation)
-router.delete('/messages/{conversationId}/{messageId}', rateLimit('message'), messages.deleteMessage)
+router.get('/messages/conversations', requireAuth(), messages.listConversations)
+router.get('/messages/{conversationId}', requireAuth(), messages.getMessages)
+router.post('/messages/conversations', requireAuth(), rateLimit('message'), messages.createConversation)
+router.post('/messages/{conversationId}', requireAuth(), rateLimit('message'), messages.sendMessage)
+router.post('/messages/{conversationId}/upload-url', requireAuth(), rateLimit('upload'), messages.generateUploadUrl)
+router.post('/messages/attachments/upload-url', requireAuth(), rateLimit('upload'), messages.generateUploadUrl)
+router.put('/messages/{conversationId}/read', requireAuth(), rateLimit('message'), messages.markAsRead)
+router.delete('/messages/{conversationId}', requireAuth(), rateLimit('message'), messages.deleteConversation)
+router.delete('/messages/{conversationId}/{messageId}', requireAuth(), rateLimit('message'), messages.deleteMessage)
 
 // Profile & Users
 router.get('/profile/{userId}', profile.handle)
@@ -59,7 +59,7 @@ router.get('/download/presigned-url', media.handle)
 
 // Drafts / Upload (before generic /letters routes)
 router.post('/letters/upload-request', drafts.handle)
-router.post('/letters/process/{draftId}', drafts.handle)
+router.post('/letters/process/{uploadId}', drafts.handle)
 
 // Letters
 router.get('/letters', letters.handle)

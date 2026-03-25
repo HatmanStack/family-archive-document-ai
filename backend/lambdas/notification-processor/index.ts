@@ -144,7 +144,7 @@ async function processCommentNotification(newImage: StreamCommentImage): Promise
   const itemTitle = newImage.itemTitle?.S || 'an item'
 
   // Get list of previous commenters from the comment record
-  const previousCommenters = newImage.previousCommenters?.L?.map(item => item.S) || []
+  const previousCommenters = (newImage.previousCommenters?.L?.map(item => item.S).filter((s): s is string => !!s)) || []
 
   if (!commenterId) {
     return

@@ -73,7 +73,10 @@ export async function ensureProfile(
       return profile
     }
     const updated = await backfillGSI1IfMissing(profile)
-    gsi1VerifiedUsers.add(userId)
+    // Only cache as verified if backfill actually succeeded (GSI1 keys present)
+    if (updated.GSI1PK && updated.GSI1SK) {
+      gsi1VerifiedUsers.add(userId)
+    }
     return updated
   }
 

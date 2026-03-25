@@ -14,6 +14,9 @@ import {
   DeleteCommand,
 } from '@aws-sdk/lib-dynamodb'
 
+// Set TABLE_NAME before importing repository (BaseRepository reads it at construction time)
+process.env.TABLE_NAME = process.env.TABLE_NAME || 'test-table'
+
 const ddbMock = mockClient(DynamoDBDocumentClient)
 
 import { MessagingRepository } from '../../backend/lambdas/api/src/repositories/messaging-repository'

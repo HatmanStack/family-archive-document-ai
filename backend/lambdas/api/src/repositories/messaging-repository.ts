@@ -134,14 +134,7 @@ export class MessagingRepository extends BaseRepository {
     userId: string,
     conversationId: string
   ): Promise<ConversationMember | null> {
-    const result = await this.docClient.send(new GetCommand({
-      TableName: this.tableName,
-      Key: keys.userConversation(userId, conversationId),
-    }))
-
-    if (!result.Item) return null
-
-    return result.Item as unknown as ConversationMember
+    return this.getItem<ConversationMember>(keys.userConversation(userId, conversationId))
   }
 
   /**
@@ -473,13 +466,7 @@ export class MessagingRepository extends BaseRepository {
    * Get conversation metadata.
    */
   async getConversationMeta(conversationId: string): Promise<ConversationMeta | null> {
-    const result = await this.docClient.send(new GetCommand({
-      TableName: this.tableName,
-      Key: keys.conversationMeta(conversationId),
-    }))
-
-    if (!result.Item) return null
-    return result.Item as unknown as ConversationMeta
+    return this.getItem<ConversationMeta>(keys.conversationMeta(conversationId))
   }
 }
 
