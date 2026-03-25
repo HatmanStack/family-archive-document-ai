@@ -100,7 +100,7 @@ export async function handler(
   const requestOrigin = event.headers?.['Origin'] || event.headers?.['origin']
 
   const method = event.httpMethod
-  const rawPath = event.resource || event.path
+  const rawPath = event.path || event.resource
 
   // Strip version prefix if present (supports /v1/... format)
   const path = rawPath.replace(/^\/v1/, '') || '/'

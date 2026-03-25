@@ -46,7 +46,7 @@ describe('Router', () => {
 
     router.get('/letters', handler)
 
-    const event = createMockEvent({ httpMethod: 'GET', resource: '/letters' })
+    const event = createMockEvent({ httpMethod: 'GET', path: '/letters' })
     const result = await router.handle(event, mockContext)
 
     expect(handler).toHaveBeenCalledWith(event, mockContext)
@@ -59,7 +59,7 @@ describe('Router', () => {
 
     router.post('/letters', handler)
 
-    const event = createMockEvent({ httpMethod: 'GET', resource: '/letters' })
+    const event = createMockEvent({ httpMethod: 'GET', path: '/letters' })
     const result = await router.handle(event, mockContext)
 
     expect(handler).not.toHaveBeenCalled()
@@ -74,14 +74,13 @@ describe('Router', () => {
 
     const event = createMockEvent({
       httpMethod: 'GET',
-      resource: '/messages/{conversationId}',
       path: '/messages/abc123',
-      pathParameters: { conversationId: 'abc123' },
     })
     const result = await router.handle(event, mockContext)
 
     expect(handler).toHaveBeenCalled()
     expect(result).toEqual(okResponse)
+    expect(event.pathParameters).toEqual({ conversationId: 'abc123' })
   })
 
   it('middleware that returns a response short-circuits the handler', async () => {
@@ -96,7 +95,7 @@ describe('Router', () => {
 
     router.get('/letters', middleware, handler)
 
-    const event = createMockEvent({ httpMethod: 'GET', resource: '/letters' })
+    const event = createMockEvent({ httpMethod: 'GET', path: '/letters' })
     const result = await router.handle(event, mockContext)
 
     expect(middleware).toHaveBeenCalled()
@@ -111,7 +110,7 @@ describe('Router', () => {
 
     router.get('/letters', middleware, handler)
 
-    const event = createMockEvent({ httpMethod: 'GET', resource: '/letters' })
+    const event = createMockEvent({ httpMethod: 'GET', path: '/letters' })
     const result = await router.handle(event, mockContext)
 
     expect(middleware).toHaveBeenCalled()
@@ -137,7 +136,7 @@ describe('Router', () => {
 
     router.get('/letters', middleware1, middleware2, handler)
 
-    const event = createMockEvent({ httpMethod: 'GET', resource: '/letters' })
+    const event = createMockEvent({ httpMethod: 'GET', path: '/letters' })
     await router.handle(event, mockContext)
 
     expect(callOrder).toEqual(['m1', 'm2', 'handler'])
@@ -149,7 +148,7 @@ describe('Router', () => {
 
     router.get('/letters', handler)
 
-    const event = createMockEvent({ httpMethod: 'GET', resource: '/unknown' })
+    const event = createMockEvent({ httpMethod: 'GET', path: '/unknown' })
     const result = await router.handle(event, mockContext)
 
     expect(handler).not.toHaveBeenCalled()
@@ -164,7 +163,7 @@ describe('Router', () => {
 
     const event = createMockEvent({
       httpMethod: 'GET',
-      resource: '/v1/letters',
+      path: '/v1/letters',
     })
     const result = await router.handle(event, mockContext)
 

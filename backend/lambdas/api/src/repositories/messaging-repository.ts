@@ -16,6 +16,7 @@ import { BaseRepository } from './base-repository'
 import { docClient, TABLE_NAME, batchWriteWithRetry } from '../lib/database'
 import { keys, PREFIX } from '../lib/keys'
 import { validatePaginationKey, parsePageLimit } from '../lib/validation'
+import { v4 as uuidv4 } from 'uuid'
 import { log } from '../lib/logger'
 
 interface Attachment {
@@ -242,11 +243,11 @@ export class MessagingRepository extends BaseRepository {
     attachments: Attachment[] = []
   ): Promise<MessageRecord> {
     const timestamp = new Date().toISOString()
-    const { v4: uuidv4 } = await import('uuid')
     const messageId = `${timestamp}#${uuidv4()}`
 
-    const message = {
-      ...keys.message(conversationId, messageId),
+    const messageKeys = keys.message(conversationId, messageId)
+    const messageRecord: MessageRecord = {
+      ...messageKeys,
       entityType: 'MESSAGE',
       messageId,
       conversationId,
@@ -257,15 +258,17 @@ export class MessagingRepository extends BaseRepository {
       attachments,
       createdAt: timestamp,
       conversationType,
-      participants: new Set(participantIds),
     }
 
     await this.docClient.send(new PutCommand({
       TableName: this.tableName,
-      Item: message,
+      Item: {
+        ...messageRecord,
+        participants: new Set(participantIds),
+      },
     }))
 
-    return message as unknown as MessageRecord
+    return messageRecord
   }
 
   /**

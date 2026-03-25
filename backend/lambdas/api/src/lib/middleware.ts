@@ -53,6 +53,9 @@ export function requireAdmin() {
     _event: APIGatewayProxyEvent,
     context: RequestContext
   ): Promise<APIGatewayProxyResult | null> => {
+    if (!context.requesterId) {
+      return errorResponse(401, 'Authentication required', context.requestOrigin)
+    }
     if (!context.isAdmin) {
       return errorResponse(403, 'Admin access required', context.requestOrigin)
     }
@@ -68,6 +71,9 @@ export function requireApproved() {
     _event: APIGatewayProxyEvent,
     context: RequestContext
   ): Promise<APIGatewayProxyResult | null> => {
+    if (!context.requesterId) {
+      return errorResponse(401, 'Authentication required', context.requestOrigin)
+    }
     if (!context.isApprovedUser && !context.isAdmin) {
       return errorResponse(403, 'Approved user access required', context.requestOrigin)
     }

@@ -91,12 +91,21 @@ export class Router {
     context: RequestContext
   ): Promise<APIGatewayProxyResult | null> {
     const method = event.httpMethod as HttpMethod
-    const rawPath = event.resource || event.path
+    const rawPath = event.path || event.resource
     const path = rawPath.replace(/^\/v1/, '') || '/'
 
     for (const route of this.routes) {
       if (route.method !== method) continue
-      if (!route.regex.test(path)) continue
+      const match = route.regex.exec(path)
+      if (!match) continue
+
+      // Populate pathParameters from capture groups
+      if (route.paramNames.length > 0) {
+        event.pathParameters = event.pathParameters || {}
+        for (let i = 0; i < route.paramNames.length; i++) {
+          event.pathParameters[route.paramNames[i]] = decodeURIComponent(match[i + 1])
+        }
+      }
 
       // Run middleware chain
       for (const middleware of route.middlewares) {
