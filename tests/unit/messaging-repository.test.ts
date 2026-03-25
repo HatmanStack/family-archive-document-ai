@@ -14,14 +14,14 @@ import {
   DeleteCommand,
 } from '@aws-sdk/lib-dynamodb'
 
-// Set TABLE_NAME before importing repository (BaseRepository reads it at construction time)
-process.env.TABLE_NAME = process.env.TABLE_NAME || 'test-table'
-
 const ddbMock = mockClient(DynamoDBDocumentClient)
+
+// Use explicit table name for repo construction — must match mock Responses keys
+const TEST_TABLE = 'test-table'
 
 import { MessagingRepository } from '../../backend/lambdas/api/src/repositories/messaging-repository'
 
-const repo = new MessagingRepository()
+const repo = new MessagingRepository(TEST_TABLE)
 
 beforeEach(() => {
   ddbMock.reset()
@@ -171,7 +171,7 @@ describe('MessagingRepository', () => {
     it('returns names from batch get', async () => {
       ddbMock.on(BatchGetCommand).resolves({
         Responses: {
-          '': [
+          [TEST_TABLE]: [
             { PK: 'USER#user-1', displayName: 'Alice' },
             { PK: 'USER#user-2', displayName: 'Bob' },
           ],
@@ -191,7 +191,7 @@ describe('MessagingRepository', () => {
     it('returns Anonymous for missing users', async () => {
       ddbMock.on(BatchGetCommand).resolves({
         Responses: {
-          '': [
+          [TEST_TABLE]: [
             { PK: 'USER#user-1', displayName: 'Alice' },
           ],
         },
