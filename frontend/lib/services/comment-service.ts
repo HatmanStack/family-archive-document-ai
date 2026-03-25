@@ -1,4 +1,5 @@
 import type {
+  Comment,
   CommentApiResponse,
   CreateCommentRequest,
   UpdateCommentRequest,
@@ -61,7 +62,7 @@ export async function createComment(
       itemTitle,
     }
 
-    const data = await apiClient.post(
+    const data = await apiClient.post<Comment>(
       `/comments/${encodeItemId(itemId)}`,
       body as unknown as Record<string, unknown>,
     )
@@ -90,7 +91,7 @@ export async function updateComment(
       content: text,
     }
 
-    const data = await apiClient.put(
+    const data = await apiClient.put<Comment>(
       `/comments/${encodeItemId(itemId)}/${encodeURIComponent(commentId)}`,
       body as unknown as Record<string, unknown>,
     )
@@ -114,7 +115,7 @@ export async function deleteComment(
   commentId: string,
 ): Promise<CommentApiResponse> {
   try {
-    const data = await apiClient.delete(
+    const data = await apiClient.delete<Comment>(
       `/comments/${encodeItemId(itemId)}/${encodeURIComponent(commentId)}`,
     )
 
@@ -135,7 +136,7 @@ export async function deleteComment(
 export async function adminDeleteComment(commentId: string): Promise<CommentApiResponse> {
   try {
     const encodedCommentId = encodeURIComponent(commentId)
-    const data = await apiClient.delete(`/admin/comments/${encodedCommentId}`)
+    const data = await apiClient.delete<Comment>(`/admin/comments/${encodedCommentId}`)
 
     return {
       success: true,

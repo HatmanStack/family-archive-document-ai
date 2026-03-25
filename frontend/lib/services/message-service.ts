@@ -1,6 +1,8 @@
 import type {
+  Conversation,
   ConversationApiResponse,
   CreateConversationRequest,
+  Message,
   MessageApiResponse,
   SendMessageRequest,
   UploadAttachmentResponse,
@@ -23,7 +25,7 @@ export async function getConversations(
 
     return {
       success: true,
-      data: data.conversations || data.items || data,
+      data: (data.conversations || data.items || data) as Conversation[],
       lastEvaluatedKey: data.lastEvaluatedKey as string | undefined,
     }
   }
@@ -53,7 +55,7 @@ export async function getMessages(
 
     return {
       success: true,
-      data: data.messages || data.items || data,
+      data: (data.messages || data.items || data) as Message[],
       lastEvaluatedKey: data.lastEvaluatedKey as string | undefined,
       creatorId: data.creatorId as string | undefined,
       conversationTitle: data.conversationTitle as string | undefined,
@@ -80,7 +82,7 @@ export async function createConversation(
       conversationTitle,
     }
 
-    const data = await apiClient.post(
+    const data = await apiClient.post<Conversation>(
       '/messages/conversations',
       body as unknown as Record<string, unknown>,
     )
@@ -110,7 +112,7 @@ export async function sendMessage(
       attachments,
     }
 
-    const data = await apiClient.post(
+    const data = await apiClient.post<Message>(
       `/messages/${encodeURIComponent(conversationId)}`,
       body as unknown as Record<string, unknown>,
     )
@@ -131,7 +133,7 @@ export async function sendMessage(
 
 export async function markAsRead(conversationId: string): Promise<ConversationApiResponse> {
   try {
-    const data = await apiClient.put(
+    const data = await apiClient.put<Conversation>(
       `/messages/${encodeURIComponent(conversationId)}/read`,
     )
 
@@ -154,7 +156,7 @@ export async function deleteMessage(
   messageId: string,
 ): Promise<MessageApiResponse> {
   try {
-    const data = await apiClient.delete(
+    const data = await apiClient.delete<Message>(
       `/messages/${encodeURIComponent(conversationId)}/${encodeURIComponent(messageId)}`,
     )
 
@@ -176,7 +178,7 @@ export async function deleteConversation(
   conversationId: string,
 ): Promise<ConversationApiResponse> {
   try {
-    const data = await apiClient.delete(
+    const data = await apiClient.delete<Conversation>(
       `/messages/${encodeURIComponent(conversationId)}`,
     )
 

@@ -1,4 +1,4 @@
-import type { ReactionApiResponse } from '$lib/types/comment'
+import type { Reaction, ReactionApiResponse } from '$lib/types/comment'
 import { apiClient } from '$lib/auth/api-client'
 
 export async function getReactions(commentId: string): Promise<ReactionApiResponse> {
@@ -9,7 +9,7 @@ export async function getReactions(commentId: string): Promise<ReactionApiRespon
 
     return {
       success: true,
-      data: data.items || data,
+      data: (data.items || data) as Reaction[],
     }
   }
   catch (error) {
@@ -23,7 +23,7 @@ export async function getReactions(commentId: string): Promise<ReactionApiRespon
 
 export async function toggleReaction(commentId: string, itemId: string): Promise<ReactionApiResponse> {
   try {
-    const data = await apiClient.post(
+    const data = await apiClient.post<Reaction>(
       `/reactions/${encodeURIComponent(commentId)}`,
       { itemId, reactionType: 'like' },
     )

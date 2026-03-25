@@ -1,13 +1,15 @@
 import type {
+  CommentHistoryItem,
   CommentHistoryResponse,
   ProfileApiResponse,
   UpdateProfileRequest,
+  UserProfile,
 } from '$lib/types/profile'
 import { apiClient } from '$lib/auth/api-client'
 
 export async function getProfile(userId: string): Promise<ProfileApiResponse> {
   try {
-    const data = await apiClient.get(`/profile/${encodeURIComponent(userId)}`)
+    const data = await apiClient.get<UserProfile>(`/profile/${encodeURIComponent(userId)}`)
 
     return {
       success: true,
@@ -33,7 +35,7 @@ export async function getProfile(userId: string): Promise<ProfileApiResponse> {
 
 export async function updateProfile(updates: UpdateProfileRequest): Promise<ProfileApiResponse> {
   try {
-    const data = await apiClient.put(
+    const data = await apiClient.put<UserProfile>(
       '/profile',
       updates as unknown as Record<string, unknown>,
     )
@@ -69,7 +71,7 @@ export async function getCommentHistory(
 
     return {
       success: true,
-      data: data.comments || data.items || [],
+      data: (data.comments || data.items || []) as CommentHistoryItem[],
       lastEvaluatedKey: data.lastEvaluatedKey as string | undefined,
     }
   }
@@ -88,7 +90,7 @@ export async function getAllUsers(): Promise<ProfileApiResponse> {
 
     return {
       success: true,
-      data: data.users || data.items || data,
+      data: (data.users || data.items || data) as UserProfile[],
     }
   }
   catch (error) {
