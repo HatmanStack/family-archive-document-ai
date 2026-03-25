@@ -3,6 +3,15 @@ import { cognitoConfig } from './cognito-config'
 
 const DEFAULT_TIMEOUT = 30_000 // 30 seconds
 
+export class ApiError extends Error {
+  status: number
+  constructor(status: number, message: string) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+  }
+}
+
 export interface ApiRequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
   body?: Record<string, unknown>
@@ -86,7 +95,7 @@ export class ApiClient {
           }
         }
 
-        throw new Error(errorMessage)
+        throw new ApiError(response.status, errorMessage)
       }
 
       // Handle non-JSON responses (e.g., 204 No Content, text responses)

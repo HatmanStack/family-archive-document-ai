@@ -5,7 +5,18 @@ import type {
   UpdateProfileRequest,
   UserProfile,
 } from '$lib/types/profile'
-import { apiClient } from '$lib/auth/api-client'
+import { apiClient, ApiError } from '$lib/auth/api-client'
+
+interface CommentHistoryApiResponse {
+  comments?: CommentHistoryItem[]
+  items?: CommentHistoryItem[]
+  lastEvaluatedKey?: string
+}
+
+interface UsersApiResponse {
+  users?: UserProfile[]
+  items?: UserProfile[]
+}
 
 export async function getProfile(userId: string): Promise<ProfileApiResponse> {
   try {
@@ -19,16 +30,16 @@ export async function getProfile(userId: string): Promise<ProfileApiResponse> {
   catch (error) {
     console.error('Error fetching profile:', error)
 
+    if (error instanceof ApiError) {
+      if (error.status === 403) {
+        return { success: false, error: 'This profile is private' }
+      }
+      if (error.status === 404) {
+        return { success: false, error: 'Profile not found' }
+      }
+    }
+
     const message = error instanceof Error ? error.message : 'Failed to fetch profile'
-
-    // Handle specific error cases from error message
-    if (message.includes('403')) {
-      return { success: false, error: 'This profile is private' }
-    }
-    if (message.includes('404')) {
-      return { success: false, error: 'Profile not found' }
-    }
-
     return { success: false, error: message }
   }
 }
@@ -65,14 +76,14 @@ export async function getCommentHistory(
       params.set('lastEvaluatedKey', lastKey)
     }
 
-    const data = await apiClient.get<Record<string, unknown>>(
+    const data = await apiClient.get<CommentHistoryApiResponse>(
       `/profile/${encodeURIComponent(userId)}/comments?${params}`,
     )
 
     return {
       success: true,
-      data: (data.comments || data.items || []) as CommentHistoryItem[],
-      lastEvaluatedKey: data.lastEvaluatedKey as string | undefined,
+      data: data.comments ?? data.items ?? [],
+      lastEvaluatedKey: data.lastEvaluatedKey,
     }
   }
   catch (error) {
@@ -86,11 +97,11 @@ export async function getCommentHistory(
 
 export async function getAllUsers(): Promise<ProfileApiResponse> {
   try {
-    const data = await apiClient.get<Record<string, unknown>>('/users')
+    const data = await apiClient.get<UsersApiResponse>('/users')
 
     return {
       success: true,
-      data: (data.users || data.items || data) as UserProfile[],
+      data: data.users ?? data.items ?? [],
     }
   }
   catch (error) {

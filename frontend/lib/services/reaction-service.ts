@@ -1,15 +1,24 @@
 import type { Reaction, ReactionApiResponse } from '$lib/types/comment'
 import { apiClient } from '$lib/auth/api-client'
 
+interface ReactionsApiResponse {
+  items?: Reaction[]
+  reactions?: Reaction[]
+}
+
 export async function getReactions(commentId: string): Promise<ReactionApiResponse> {
   try {
-    const data = await apiClient.get<Record<string, unknown>>(
+    const payload = await apiClient.get<ReactionsApiResponse | Reaction[]>(
       `/reactions/${encodeURIComponent(commentId)}`,
     )
 
+    const reactions = Array.isArray(payload)
+      ? payload
+      : payload.items ?? payload.reactions ?? []
+
     return {
       success: true,
-      data: (data.items || data) as Reaction[],
+      data: reactions,
     }
   }
   catch (error) {
