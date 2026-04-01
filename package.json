@@ -38,7 +38,7 @@
     ]
   },
   "devDependencies": {
-    "@aws-sdk/client-ses": "^3.1012.0",
+    "@aws-sdk/client-ses": "^3.1022.0",
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-conventional": "^20.5.0",
     "@playwright/test": "^1.58.2",
