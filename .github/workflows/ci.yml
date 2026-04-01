@@ -14,12 +14,17 @@ on:
       - '*.md'
       - '.claude/**'
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   NODE_VERSION: '24'
 
 jobs:
   changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       frontend: ${{ steps.filter.outputs.frontend }}
       backend: ${{ steps.filter.outputs.backend }}
@@ -40,6 +45,7 @@ jobs:
   check:
     name: Lint, Type Check & Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     needs: changes
     if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true'
     env:
@@ -85,6 +91,7 @@ jobs:
   status-check:
     name: All Checks Passed
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: [check]
     if: always()
     steps:
