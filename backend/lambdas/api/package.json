@@ -22,8 +22,8 @@
     "@types/aws-lambda": "^8.10.161",
     "@types/node": "^25.5.0",
     "@types/sanitize-html": "^2.16.1",
-    "@types/uuid": "^10.0.0",
+    "@types/uuid": "^11.0.0",
     "aws-lambda": "^1.0.7",
-    "typescript": "^5.7.0"
+    "typescript": "^6.0.2"
   }
 }
