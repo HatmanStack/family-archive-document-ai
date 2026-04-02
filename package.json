@@ -6,12 +6,21 @@
   "author": "Galliart Family",
   "license": "UNLICENSED",
   "_securityNotes": {
-    "auditStatus": "9 moderate vulnerabilities (esbuild) - DEV SERVER ONLY",
-    "esbuildNote": "GHSA-67mh-4wv8-2f99: esbuild <=0.24.2 allows cross-origin requests to dev server. Does NOT affect production builds. Fix requires Svelte 5 + Vite 6+ migration.",
-    "lastAudit": "2025-12-16",
+    "auditStatus": "0 vulnerabilities",
+    "lastAudit": "2026-04-01",
     "resolved": [
-      "sharp CVE-2023-4863 (HIGH)",
-      "cookie GHSA-pxg6-pf52-xh8x (MODERATE)"
+      "sharp CVE-2023-4863 (HIGH) - override to ^0.33.5",
+      "cookie GHSA-pxg6-pf52-xh8x (MODERATE) - override to ^0.7.2",
+      "serialize-javascript GHSA-5c6j-r48x-rmvq (HIGH) - override to ^7.0.5",
+      "serialize-javascript GHSA-qj8w-gfj5-8c6v (HIGH) - override to ^7.0.5",
+      "brace-expansion GHSA-f886-m6hf-6m8v (MODERATE) - npm audit fix",
+      "flatted GHSA-25h7-pfq9-p65f (HIGH) - npm audit fix",
+      "flatted GHSA-rf6f-7fwh-wjgh (HIGH) - npm audit fix",
+      "path-to-regexp GHSA-j3q9-mxjg-w52f (HIGH) - npm audit fix",
+      "path-to-regexp GHSA-27v5-c462-wpq7 (HIGH) - npm audit fix",
+      "picomatch GHSA-3v7f-55p6-f55p (HIGH) - npm audit fix",
+      "picomatch GHSA-c2c7-rcm5-vvqj (HIGH) - npm audit fix",
+      "yaml GHSA-48c2-rrv3-qjmp (MODERATE) - npm audit fix"
     ]
   },
   "workspaces": [
@@ -57,10 +66,13 @@
   },
   "overrides": {
     "@opentelemetry/api": "^1.9.0",
-    "cookie": "^0.7.2",
+    "@sveltejs/kit": {
+      "cookie": "^0.7.2"
+    },
+    "serialize-javascript": "^7.0.5",
     "sharp": "^0.33.5"
   },
   "dependencies": {
-    "remark-footnotes": "~5.0.0"
+    "remark-footnotes": "~4.0.1"
   }
 }
