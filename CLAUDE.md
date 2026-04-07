@@ -127,6 +127,14 @@ Copy `.env.example` to `.env` and configure:
 - `PUBLIC_API_GATEWAY_URL` - Backend API endpoint
 - `PUBLIC_RAGSTACK_*` - Optional RAGStack integration for AI search/chat
 
+## Pre-commit hook
+
+Husky runs `lint-staged` on every commit. Staged frontend files
+(`*.ts`, `*.tsx`, `*.js`, `*.svelte`) are linted with
+`eslint --max-warnings 0`. Do not bypass the hook with `git commit --no-verify`;
+the same lint job runs in CI and a bypassed commit will fail the PR check.
+If a hook fails, fix the lint error and create a new commit.
+
 ## CI Pipeline
 
 GitHub Actions runs on push/PR to main:

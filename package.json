@@ -43,7 +43,7 @@
     "prepare": "husky || true"
   },
   "lint-staged": {
-    "frontend/**/*.{ts,svelte}": [
+    "frontend/**/*.{ts,tsx,js,svelte}": [
       "bash -c 'cd frontend && npx eslint --max-warnings 0'"
     ]
   },
