@@ -29,9 +29,9 @@ Estimated tokens: 25k.
 
 **Verification checklist:**
 
-- [ ] All four flags on
-- [ ] No new `@ts-ignore`
-- [ ] Lint and tests green
+- [x] All four flags on
+- [x] No new `@ts-ignore`
+- [x] Lint and tests green
 
 **Commit:** `chore(ts): enable strict tsconfig flags across workspaces`
 
@@ -53,9 +53,9 @@ Estimated tokens: 25k.
 
 **Verification checklist:**
 
-- [ ] Rules present and active
-- [ ] `npm run lint` green
-- [ ] A deliberate violation in a scratch file fails lint (manual smoke)
+- [x] Rules present and active
+- [x] `npm run lint` green
+- [x] A deliberate violation in a scratch file fails lint (manual smoke)
 
 **Commit:** `chore(lint): add guardrail rules for router, presign, and typed errors`
 
@@ -75,9 +75,9 @@ Estimated tokens: 25k.
 
 **Verification checklist:**
 
-- [ ] CI job present and required
-- [ ] `knip.json` ignore list documented
-- [ ] CI green on the PR
+- [x] CI job present and required
+- [x] `knip.json` ignore list documented
+- [x] CI green on the PR
 
 **Commit:** `ci: add knip job to enforce zero unused exports`
 
@@ -95,8 +95,8 @@ Estimated tokens: 25k.
 
 **Verification checklist:**
 
-- [ ] Job present and required
-- [ ] CI green
+- [x] Job present and required
+- [x] CI green
 
 **Commit:** `ci: fail builds on high or critical npm audit findings`
 
@@ -116,9 +116,9 @@ Estimated tokens: 25k.
 
 **Verification checklist:**
 
-- [ ] Hook installed
-- [ ] `lint-staged` config present
-- [ ] Hook fires on a sample commit
+- [x] Hook installed
+- [x] `lint-staged` config present
+- [x] Hook fires on a sample commit
 
 **Commit:** `chore(hooks): add pre-commit lint-staged hook`
 
