@@ -1,21 +1,19 @@
 /**
- * Tests for comments route handler
+ * Tests for comments route handlers
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mockClient } from 'aws-sdk-client-mock'
-import { DynamoDBDocumentClient, QueryCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import { DynamoDBDocumentClient, QueryCommand, PutCommand, UpdateCommand, GetCommand } from '@aws-sdk/lib-dynamodb'
 import type { APIGatewayProxyEvent } from 'aws-lambda'
 
 const ddbMock = mockClient(DynamoDBDocumentClient)
 
-// Mock rate-limit module to control rate limiting in tests
 vi.mock('../../backend/lambdas/api/src/lib/rate-limit', () => ({
   checkRateLimit: vi.fn().mockResolvedValue({ allowed: true }),
   getRetryAfter: vi.fn().mockReturnValue(60),
 }))
 
-import { handle } from '../../backend/lambdas/api/src/routes/comments'
-import { checkRateLimit } from '../../backend/lambdas/api/src/lib/rate-limit'
+import { listComments, createComment, editComment, deleteComment, adminDeleteComment } from '../../backend/lambdas/api/src/routes/comments'
 import { MAX_COMMENT_LENGTH } from '../../backend/lambdas/api/src/lib/constants'
 
 function createMockEvent(overrides: Partial<APIGatewayProxyEvent> = {}): APIGatewayProxyEvent {
@@ -23,7 +21,7 @@ function createMockEvent(overrides: Partial<APIGatewayProxyEvent> = {}): APIGate
     httpMethod: 'GET',
     resource: '/comments/{itemId}',
     path: '/comments/dGVzdC1pdGVt',
-    pathParameters: { itemId: 'dGVzdC1pdGVt' }, // base64url encoded 'test-item'
+    pathParameters: { itemId: 'dGVzdC1pdGVt' },
     queryStringParameters: null,
     headers: { Origin: 'https://example.com' },
     body: null,
@@ -50,127 +48,103 @@ function createMockContext(overrides = {}) {
 
 beforeEach(() => {
   ddbMock.reset()
-  vi.mocked(checkRateLimit).mockResolvedValue({ allowed: true, resetAt: 0 })
 })
 
-describe('comments handler', () => {
-  describe('GET /comments/{itemId}', () => {
+describe('comments handlers', () => {
+  describe('listComments', () => {
     it('returns comments array with 200', async () => {
-      const mockComments = [
-        { PK: 'COMMENT#test-item', SK: '2024-01-01T00:00:00.000Z#c1', entityType: 'COMMENT', content: 'Hello', commentId: 'c1', authorId: 'user-1', isDeleted: false },
-      ]
-
-      ddbMock.on(QueryCommand).resolves({ Items: mockComments })
-
-      const event = createMockEvent()
-      const result = await handle(event, createMockContext())
-      const body = JSON.parse(result.body)
-
-      expect(result.statusCode).toBe(200)
-      expect(body.comments).toBeDefined()
-      expect(result.headers?.['Access-Control-Allow-Origin']).toBeDefined()
-    })
-
-    it('returns 401 when requesterId is missing', async () => {
-      const event = createMockEvent()
-      const result = await handle(event, createMockContext({ requesterId: '' }))
-
-      expect(result.statusCode).toBe(401)
-      expect(result.headers?.['Access-Control-Allow-Origin']).toBeDefined()
-    })
-
-    it('returns 400 when itemId is missing', async () => {
-      const event = createMockEvent({
-        pathParameters: {},
+      ddbMock.on(QueryCommand).resolves({
+        Items: [
+          { PK: 'COMMENT#test-item', SK: '2024-01-01T00:00:00.000Z#c1', entityType: 'COMMENT', content: 'Hello', commentId: 'c1', authorId: 'user-1', isDeleted: false },
+        ],
       })
-      const result = await handle(event, createMockContext())
+      const result = await listComments(createMockEvent(), createMockContext())
+      expect(result.statusCode).toBe(200)
+      const body = JSON.parse(result.body)
+      expect(body.comments).toBeDefined()
+    })
 
+    it('returns 400 when itemId missing', async () => {
+      const result = await listComments(createMockEvent({ pathParameters: {} }), createMockContext())
       expect(result.statusCode).toBe(400)
     })
 
-    it('should reject malformed pagination keys from repository layer', async () => {
-      const event = createMockEvent({
-        queryStringParameters: { lastEvaluatedKey: 'not-valid-base64!!!' },
-      })
-      const result = await handle(event, createMockContext())
+    it('rejects malformed pagination keys', async () => {
+      const result = await listComments(
+        createMockEvent({ queryStringParameters: { lastEvaluatedKey: 'not-valid-base64!!!' } }),
+        createMockContext()
+      )
       expect(result.statusCode).toBe(400)
     })
   })
 
-  describe('POST /comments/{itemId}', () => {
+  describe('createComment', () => {
     it('creates comment and returns 201', async () => {
-      const mockComment = {
-        commentId: 'c-new',
-        itemId: 'test-item',
-        content: 'New comment',
-        authorId: 'user-123',
-        createdAt: '2024-01-01T00:00:00.000Z',
-      }
-
-      // Mock the PutCommand for creating the comment
       ddbMock.on(PutCommand).resolves({})
-      // Mock the UpdateCommand for incrementing comment count
       ddbMock.on(UpdateCommand).resolves({})
-
-      const event = createMockEvent({
-        httpMethod: 'POST',
-        resource: '/comments/{itemId}',
-        body: JSON.stringify({ content: 'New comment' }),
-      })
-      const result = await handle(event, createMockContext())
-      const body = JSON.parse(result.body)
-
+      const result = await createComment(
+        createMockEvent({ httpMethod: 'POST', body: JSON.stringify({ content: 'New comment' }) }),
+        createMockContext()
+      )
       expect(result.statusCode).toBe(201)
+      const body = JSON.parse(result.body)
       expect(body.content).toBe('New comment')
-      expect(result.headers?.['Access-Control-Allow-Origin']).toBeDefined()
     })
 
-    it('returns 429 when rate limited', async () => {
-      vi.mocked(checkRateLimit).mockResolvedValueOnce({ allowed: false, resetAt: Date.now() + 60000 })
-
-      const event = createMockEvent({
-        httpMethod: 'POST',
-        resource: '/comments/{itemId}',
-        body: JSON.stringify({ content: 'New comment' }),
-      })
-      const result = await handle(event, createMockContext())
-
-      expect(result.statusCode).toBe(429)
-      expect(result.headers?.['Access-Control-Allow-Origin']).toBeDefined()
-    })
-
-    it('returns 400 for invalid content length', async () => {
-      const event = createMockEvent({
-        httpMethod: 'POST',
-        resource: '/comments/{itemId}',
-        body: JSON.stringify({ content: '' }),
-      })
-      const result = await handle(event, createMockContext())
-
+    it('returns 400 for empty content', async () => {
+      const result = await createComment(
+        createMockEvent({ httpMethod: 'POST', body: JSON.stringify({ content: '' }) }),
+        createMockContext()
+      )
       expect(result.statusCode).toBe(400)
     })
 
     it('returns 400 when content exceeds MAX_COMMENT_LENGTH', async () => {
-      const event = createMockEvent({
-        httpMethod: 'POST',
-        resource: '/comments/{itemId}',
-        body: JSON.stringify({ content: 'x'.repeat(MAX_COMMENT_LENGTH + 1) }),
-      })
-      const result = await handle(event, createMockContext())
-
+      const result = await createComment(
+        createMockEvent({ httpMethod: 'POST', body: JSON.stringify({ content: 'x'.repeat(MAX_COMMENT_LENGTH + 1) }) }),
+        createMockContext()
+      )
       expect(result.statusCode).toBe(400)
       const body = JSON.parse(result.body)
       expect(body.error).toContain(String(MAX_COMMENT_LENGTH))
     })
 
     it('returns 400 for invalid JSON body', async () => {
-      const event = createMockEvent({
-        httpMethod: 'POST',
-        resource: '/comments/{itemId}',
-        body: '{invalid json',
-      })
-      const result = await handle(event, createMockContext())
+      const result = await createComment(
+        createMockEvent({ httpMethod: 'POST', body: '{invalid json' }),
+        createMockContext()
+      )
+      expect(result.statusCode).toBe(400)
+    })
+  })
 
+  describe('editComment', () => {
+    it('returns 400 when params missing', async () => {
+      const result = await editComment(
+        createMockEvent({ httpMethod: 'PUT', pathParameters: {}, body: JSON.stringify({ content: 'edited' }) }),
+        createMockContext()
+      )
+      expect(result.statusCode).toBe(400)
+    })
+  })
+
+  describe('deleteComment', () => {
+    it('returns 404 when comment not found', async () => {
+      ddbMock.on(GetCommand).resolves({ Item: undefined })
+      const result = await deleteComment(
+        createMockEvent({ httpMethod: 'DELETE', pathParameters: { itemId: 'dGVzdC1pdGVt', commentId: 'c1' } }),
+        createMockContext()
+      )
+      expect(result.statusCode).toBe(404)
+    })
+  })
+
+  describe('adminDeleteComment', () => {
+    it('returns 400 when itemId missing in body', async () => {
+      const result = await adminDeleteComment(
+        createMockEvent({ httpMethod: 'DELETE', pathParameters: { commentId: 'c1' }, body: JSON.stringify({}) }),
+        createMockContext({ isAdmin: true })
+      )
       expect(result.statusCode).toBe(400)
     })
   })

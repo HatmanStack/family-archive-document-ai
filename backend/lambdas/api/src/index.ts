@@ -26,10 +26,10 @@ export const API_VERSION = 'v1'
 const router = new Router()
 
 // Comments
-router.get('/comments/{itemId}', comments.handle)
-router.post('/comments/{itemId}', comments.handle)
-router.put('/comments/{itemId}/{commentId}', comments.handle)
-router.delete('/comments/{itemId}/{commentId}', comments.handle)
+router.get('/comments/{itemId}', comments.listComments)
+router.post('/comments/{itemId}', requireAuth(), rateLimit('comment'), comments.createComment)
+router.put('/comments/{itemId}/{commentId}', requireAuth(), comments.editComment)
+router.delete('/comments/{itemId}/{commentId}', requireAuth(), comments.deleteComment)
 
 // Messages
 router.get('/messages/conversations', requireAuth(), messages.listConversations)
@@ -79,7 +79,7 @@ router.delete('/admin/drafts/{draftId}', requireApproved(), drafts.handle)
 router.post('/admin/drafts/{draftId}/publish', requireApproved(), drafts.handle)
 
 // Admin - Comment moderation (admins only)
-router.delete('/admin/comments/{commentId}', requireAdmin(), comments.handle)
+router.delete('/admin/comments/{commentId}', requireAdmin(), comments.adminDeleteComment)
 
 // ---------------------------------------------------------------------------
 // Lambda handler

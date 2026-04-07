@@ -1,13 +1,14 @@
 /**
- * Comments route handler
+ * Comments route handlers
+ *
+ * Each function is registered individually on the router in index.ts.
  */
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext } from '../types'
 import { commentRepository } from '../repositories'
-import { successResponse, errorResponse, rateLimitResponse } from '../lib/responses'
+import { successResponse, errorResponse } from '../lib/responses'
 import { sanitizeText, validateContentLength, parseRequestBody, parsePageLimit } from '../lib/validation'
 import { MAX_COMMENT_LENGTH, MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE } from '../lib/constants'
-import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 import { log } from '../lib/logger'
 import { toError, AppError, getStatusCode, getUserMessage } from '../lib/errors'
 
@@ -23,55 +24,13 @@ function decodeItemId(encoded: string): string {
 }
 
 /**
- * Main comments route handler
+ * GET /comments/{itemId}
  */
-export async function handle(
+export async function listComments(
   event: APIGatewayProxyEvent,
   context: RequestContext
 ): Promise<APIGatewayProxyResult> {
-  const { requesterId, requesterEmail, isAdmin, requestOrigin } = context
-
-  if (!requesterId) {
-    return errorResponse(401, 'Unauthorized: Missing user context', requestOrigin)
-  }
-
-  const method = event.httpMethod
-  const resource = event.resource
-
-  // Strip /v1 prefix if present
-  const normalizedResource = resource.replace(/^\/v1/, '')
-
-  if (method === 'GET' && normalizedResource === '/comments/{itemId}') {
-    return listComments(event, requesterId, requestOrigin)
-  }
-
-  if (method === 'POST' && normalizedResource === '/comments/{itemId}') {
-    return createComment(event, requesterId, requesterEmail, requestOrigin)
-  }
-
-  if (method === 'PUT' && normalizedResource === '/comments/{itemId}/{commentId}') {
-    return editComment(event, requesterId, isAdmin, requestOrigin)
-  }
-
-  if (method === 'DELETE' && normalizedResource === '/comments/{itemId}/{commentId}') {
-    return deleteComment(event, requesterId, isAdmin, requestOrigin)
-  }
-
-  if (method === 'DELETE' && normalizedResource === '/admin/comments/{commentId}') {
-    return adminDeleteComment(event, isAdmin, requestOrigin)
-  }
-
-  return errorResponse(404, 'Route not found', requestOrigin)
-}
-
-/**
- * List comments for an item
- */
-async function listComments(
-  event: APIGatewayProxyEvent,
-  _requesterId: string,
-  requestOrigin?: string
-): Promise<APIGatewayProxyResult> {
+  const { requestOrigin } = context
   const rawItemId = event.pathParameters?.itemId
   const limit = parsePageLimit(event.queryStringParameters?.limit, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE)
   const lastEvaluatedKey = event.queryStringParameters?.lastEvaluatedKey
@@ -105,23 +64,13 @@ async function listComments(
 }
 
 /**
- * Create a new comment
+ * POST /comments/{itemId}
  */
-async function createComment(
+export async function createComment(
   event: APIGatewayProxyEvent,
-  requesterId: string,
-  requesterEmail?: string,
-  requestOrigin?: string
+  context: RequestContext
 ): Promise<APIGatewayProxyResult> {
-  // Rate limit check
-  const rateLimit = await checkRateLimit(requesterId, 'comment')
-  if (!rateLimit.allowed) {
-    return rateLimitResponse(
-      getRetryAfter(rateLimit.resetAt),
-      'Rate limit exceeded. Please try again later.',
-      requestOrigin
-    )
-  }
+  const { requesterId, requesterEmail, requestOrigin } = context
 
   const rawItemId = event.pathParameters?.itemId
   if (!rawItemId) {
@@ -144,7 +93,7 @@ async function createComment(
     const comment = await commentRepository.create({
       itemId,
       content,
-      authorId: requesterId,
+      authorId: requesterId!,
       authorEmail: requesterEmail,
     })
 
@@ -158,14 +107,13 @@ async function createComment(
 }
 
 /**
- * Edit an existing comment
+ * PUT /comments/{itemId}/{commentId}
  */
-async function editComment(
+export async function editComment(
   event: APIGatewayProxyEvent,
-  requesterId: string,
-  isAdmin: boolean,
-  requestOrigin?: string
+  context: RequestContext
 ): Promise<APIGatewayProxyResult> {
+  const { requesterId, isAdmin, requestOrigin } = context
   const rawItemId = event.pathParameters?.itemId
   const commentId = event.pathParameters?.commentId
 
@@ -186,13 +134,11 @@ async function editComment(
   }
 
   try {
-    // Get existing comment to verify ownership
     const existing = await commentRepository.getById(itemId, commentId)
     if (!existing) {
       return errorResponse(404, 'Comment not found', requestOrigin)
     }
 
-    // Check ownership (unless admin)
     if (!isAdmin && existing.authorId !== requesterId) {
       return errorResponse(403, 'You can only edit your own comments', requestOrigin)
     }
@@ -214,14 +160,13 @@ async function editComment(
 }
 
 /**
- * Delete a comment (soft delete)
+ * DELETE /comments/{itemId}/{commentId}
  */
-async function deleteComment(
+export async function deleteComment(
   event: APIGatewayProxyEvent,
-  requesterId: string,
-  isAdmin: boolean,
-  requestOrigin?: string
+  context: RequestContext
 ): Promise<APIGatewayProxyResult> {
+  const { requesterId, isAdmin, requestOrigin } = context
   const rawItemId = event.pathParameters?.itemId
   const commentId = event.pathParameters?.commentId
 
@@ -232,13 +177,11 @@ async function deleteComment(
   const itemId = decodeItemId(rawItemId)
 
   try {
-    // Get existing comment to verify ownership
     const existing = await commentRepository.getById(itemId, commentId)
     if (!existing) {
       return errorResponse(404, 'Comment not found', requestOrigin)
     }
 
-    // Check ownership (unless admin)
     if (!isAdmin && existing.authorId !== requesterId) {
       return errorResponse(403, 'You can only delete your own comments', requestOrigin)
     }
@@ -255,24 +198,18 @@ async function deleteComment(
 }
 
 /**
- * Admin hard delete a comment
+ * DELETE /admin/comments/{commentId}
  */
-async function adminDeleteComment(
+export async function adminDeleteComment(
   event: APIGatewayProxyEvent,
-  isAdmin: boolean,
-  requestOrigin?: string
+  context: RequestContext
 ): Promise<APIGatewayProxyResult> {
-  if (!isAdmin) {
-    return errorResponse(403, 'Admin access required', requestOrigin)
-  }
-
+  const { requestOrigin } = context
   const commentId = event.pathParameters?.commentId
   if (!commentId) {
     return errorResponse(400, 'Missing commentId parameter', requestOrigin)
   }
 
-  // For admin delete, we need to find the comment first
-  // This requires knowing the itemId, which should be passed in the request
   const body = parseRequestBody(event.body)
   if (!body) {
     return errorResponse(400, 'Invalid JSON body', requestOrigin)
