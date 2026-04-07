@@ -15,7 +15,7 @@ npm run build                  # Production build
 
 # Testing
 npm test                       # Run unit tests (Vitest)
-npm test -- tests/unit/profile-handler.test.js  # Run single test file
+npm test -- tests/unit/profile-handler.test.ts  # Run single test file
 npm run test:e2e               # Playwright E2E tests
 npm run test:load              # Artillery load tests
 
