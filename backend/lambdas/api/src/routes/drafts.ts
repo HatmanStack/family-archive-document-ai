@@ -18,7 +18,7 @@ import { parseRequestBody, validatePaginationKey, parsePageLimit } from '../lib/
 import { s3Client } from '../lib/s3-utils'
 import { toError, hasErrorName } from '../lib/errors'
 import { getRequesterId } from '../lib/user'
-import { MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE } from '../lib/constants'
+import { MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE, PRESIGNED_URL_EXPIRY_SECONDS } from '../lib/constants'
 
 const lambdaClient = new LambdaClient({})
 
@@ -70,7 +70,7 @@ export async function uploadRequest(
       ContentType: type,
     })
 
-    const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 })
+    const url = await getSignedUrl(s3Client, command, { expiresIn: PRESIGNED_URL_EXPIRY_SECONDS })
     urls.push({ url, key, index: i })
   }
 

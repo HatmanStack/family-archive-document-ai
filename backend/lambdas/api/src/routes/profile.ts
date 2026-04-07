@@ -13,7 +13,7 @@ import { docClient, TABLE_NAME, ARCHIVE_BUCKET } from '../lib/database'
 import { keys, PREFIX } from '../lib/keys'
 import { successResponse, errorResponse, rateLimitResponse } from '../lib/responses'
 import { validateUserId, sanitizeText, validateLimit, parseRequestBody, validatePaginationKey, parsePageLimit } from '../lib/validation'
-import { MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE } from '../lib/constants'
+import { MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE, PRESIGNED_UPLOAD_URL_EXPIRY_SECONDS, ALLOWED_PROFILE_PHOTO_TYPES } from '../lib/constants'
 import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 import { log } from '../lib/logger'
 import { toError } from '../lib/errors'
@@ -289,8 +289,7 @@ export async function getPhotoUploadUrl(
     return errorResponse(400, 'Missing filename', requestOrigin)
   }
 
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-  if (!contentType || !allowedTypes.includes(contentType)) {
+  if (!contentType || !(ALLOWED_PROFILE_PHOTO_TYPES as readonly string[]).includes(contentType)) {
     return errorResponse(400, 'Invalid content type', requestOrigin)
   }
 
@@ -305,7 +304,7 @@ export async function getPhotoUploadUrl(
       ContentType: contentType,
     })
 
-    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 900 })
+    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: PRESIGNED_UPLOAD_URL_EXPIRY_SECONDS })
     const photoUrl = `https://${ARCHIVE_BUCKET}.s3.${process.env.AWS_REGION || 'us-west-2'}.amazonaws.com/${key}`
 
     return successResponse({ uploadUrl, photoUrl }, 200, requestOrigin)

@@ -22,8 +22,11 @@ vi.mock('../../backend/lambdas/api/src/lib/s3-utils', () => ({
 }))
 
 // Mock S3 presigning to avoid real calls
+const { getSignedUrlMock } = vi.hoisted(() => ({
+  getSignedUrlMock: vi.fn().mockResolvedValue('https://signed-url.example.com'),
+}))
 vi.mock('@aws-sdk/s3-request-presigner', () => ({
-  getSignedUrl: vi.fn().mockResolvedValue('https://signed-url.example.com'),
+  getSignedUrl: getSignedUrlMock,
 }))
 
 import { listConversations, getMessages, createConversation, sendMessage, generateUploadUrl, markAsRead, deleteConversation, deleteMessage } from '../../backend/lambdas/api/src/routes/messages'
@@ -62,6 +65,8 @@ beforeEach(() => {
   ddbMock.reset()
   mockS3Send.mockReset()
   mockS3Send.mockResolvedValue({})
+  getSignedUrlMock.mockClear()
+  getSignedUrlMock.mockResolvedValue('https://signed-url.example.com')
 })
 
 describe('messages handler', () => {
@@ -220,6 +225,57 @@ describe('messages handler', () => {
       expect(queryCalls.length).toBeGreaterThanOrEqual(1)
       const queryInput = queryCalls[0].args[0].input
       expect(queryInput.Limit).toBe(100)
+    })
+  })
+
+  describe('presign batching', () => {
+    it('signs each unique attachment once and each unique sender photo once', async () => {
+      // Membership check
+      ddbMock.on(GetCommand).resolves({
+        Item: {
+          PK: 'USER#user-123',
+          SK: 'CONV#conv-1',
+          entityType: 'CONVERSATION_MEMBER',
+          conversationId: 'conv-1',
+          participantIds: new Set(['user-123', 'user-456']),
+          creatorId: 'user-123',
+        },
+      })
+
+      // 5 messages from 2 senders, sharing 2 unique attachment keys
+      const messages = [
+        { senderId: 'user-123', senderPhotoUrl: 'photo-a', attachments: [{ s3Key: 'k1' }] },
+        { senderId: 'user-123', senderPhotoUrl: 'photo-a', attachments: [{ s3Key: 'k1' }] },
+        { senderId: 'user-456', senderPhotoUrl: 'photo-b', attachments: [{ s3Key: 'k2' }] },
+        { senderId: 'user-456', senderPhotoUrl: 'photo-b', attachments: [{ s3Key: 'k2' }] },
+        { senderId: 'user-123', senderPhotoUrl: 'photo-a', attachments: [] },
+      ].map((m, i) => ({
+        PK: 'CONV#conv-1',
+        SK: `MSG#msg-${i}`,
+        entityType: 'MESSAGE',
+        messageId: `msg-${i}`,
+        conversationId: 'conv-1',
+        senderName: 'Tester',
+        messageText: 'hi',
+        createdAt: '2024-01-01T00:00:00Z',
+        conversationType: 'group',
+        ...m,
+      }))
+
+      ddbMock.on(QueryCommand).resolves({ Items: messages })
+
+      const event = createMockEvent({
+        httpMethod: 'GET',
+        resource: '/messages/{conversationId}',
+        pathParameters: { conversationId: 'conv-1' },
+      })
+
+      const result = await getMessages(event, createMockContext())
+      expect(result.statusCode).toBe(200)
+
+      // 2 unique attachments + 2 unique sender photos = 4 presign calls,
+      // not 5 messages * (1 attachment + 1 photo) = 10.
+      expect(getSignedUrlMock).toHaveBeenCalledTimes(4)
     })
   })
 
