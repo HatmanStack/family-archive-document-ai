@@ -6,19 +6,19 @@ import { BaseRepository } from './base-repository'
 import { keys, PREFIX } from '../lib/keys'
 import type { Comment, PaginatedResult } from '../types'
 
-export interface CreateCommentInput {
+interface CreateCommentInput {
   itemId: string
   content: string
   authorId: string
   authorEmail?: string
 }
 
-export interface ListCommentsOptions {
+interface ListCommentsOptions {
   limit?: number
   lastEvaluatedKey?: string | null
 }
 
-export class CommentRepository extends BaseRepository {
+class CommentRepository extends BaseRepository {
   /**
    * List comments for an item
    */

@@ -34,23 +34,6 @@ export function validateLimit(
 }
 
 /**
- * Validate a comment ID format (timestamp#uuid)
- */
-export function validateCommentId(
-  commentId: string | undefined | null
-): boolean {
-  if (!commentId || typeof commentId !== 'string') return false
-  // Format: ISO timestamp # UUID
-  const parts = commentId.split('#')
-  if (parts.length !== 2) return false
-  // Check timestamp is valid ISO date
-  const timestamp = Date.parse(parts[0])
-  if (isNaN(timestamp)) return false
-  // Check UUID
-  return UUID_PATTERN.test(parts[1])
-}
-
-/**
  * Sanitize text content (remove HTML/scripts)
  */
 export function sanitizeText(text: string | undefined | null): string {
@@ -59,39 +42,6 @@ export function sanitizeText(text: string | undefined | null): string {
     allowedTags: [], // Strip all HTML
     allowedAttributes: {},
   }).trim()
-}
-
-/**
- * Sanitize content with basic formatting (bold, italic, links)
- */
-export function sanitizeContent(text: string | undefined | null): string {
-  if (!text) return ''
-  return sanitizeHtml(text, {
-    allowedTags: ['b', 'i', 'em', 'strong', 'a', 'p', 'br'],
-    allowedAttributes: {
-      a: ['href', 'target', 'rel'],
-    },
-    transformTags: {
-      a: (tagName, attribs) => ({
-        tagName,
-        attribs: {
-          ...attribs,
-          target: '_blank',
-          rel: 'noopener noreferrer',
-        },
-      }),
-    },
-  }).trim()
-}
-
-/**
- * Validate email format
- */
-export function validateEmail(email: string | undefined | null): boolean {
-  if (!email || typeof email !== 'string') return false
-  // Basic email regex
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailPattern.test(email)
 }
 
 /**

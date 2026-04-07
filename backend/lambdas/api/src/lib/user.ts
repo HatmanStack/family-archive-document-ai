@@ -119,21 +119,3 @@ export async function ensureProfile(
   gsi1VerifiedUsers.add(userId)
   return profile
 }
-
-/**
- * Get a user profile by ID
- */
-export async function getProfile(
-  userId: string
-): Promise<UserProfile | null> {
-  const key = keys.userProfile(userId)
-
-  const result = await docClient.send(
-    new GetCommand({
-      TableName: TABLE_NAME,
-      Key: key,
-    })
-  )
-
-  return (result.Item as UserProfile) || null
-}
