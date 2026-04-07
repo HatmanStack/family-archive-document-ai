@@ -128,17 +128,17 @@ export async function handler(
     isApprovedUser,
   })
 
-  // Auto-create profile for approved users on first request
+  // Auto-create profile for approved users on first request.
+  // ensureProfile is fail-open: transient errors are logged and swallowed
+  // so they don't 500 the request.
   if (requesterId) {
     try {
       await ensureProfile(requesterId, requesterEmail, requesterGroups)
     } catch (err) {
-      const error = toError(err)
-      log.error('ensure_profile_failed', {
+      log.warn('ensure_profile_failed', {
         requesterId,
-        error: error.message,
+        error: toError(err).message,
       })
-      return errorResponse(500, 'Failed to initialize user profile', requestOrigin)
     }
   }
 
