@@ -1,5 +1,7 @@
 /**
- * Media route handler
+ * Media route handlers
+ *
+ * Each function is registered individually on the router in index.ts.
  */
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext } from '../types'
@@ -13,30 +15,13 @@ import { log } from '../lib/logger'
 import { toError } from '../lib/errors'
 
 /**
- * Main media route handler
+ * GET /download/presigned-url
  */
-export async function handle(
+export async function getDownloadUrl(
   event: APIGatewayProxyEvent,
   context: RequestContext
 ): Promise<APIGatewayProxyResult> {
-  const { requesterId, requestOrigin } = context
-
-  if (!requesterId) {
-    return errorResponse(401, 'Unauthorized: Missing user context', requestOrigin)
-  }
-
-  const method = event.httpMethod
-  const resource = event.resource
-  const normalizedResource = resource.replace(/^\/v1/, '')
-
-  if (method === 'GET' && normalizedResource === '/download/presigned-url') {
-    return getDownloadUrl(event, requestOrigin)
-  }
-
-  return errorResponse(404, 'Route not found', requestOrigin)
-}
-
-async function getDownloadUrl(event: APIGatewayProxyEvent, requestOrigin?: string): Promise<APIGatewayProxyResult> {
+  const { requestOrigin } = context
   const rawKey = event.queryStringParameters?.key
   const bucket = event.queryStringParameters?.bucket
 
@@ -44,7 +29,6 @@ async function getDownloadUrl(event: APIGatewayProxyEvent, requestOrigin?: strin
     return errorResponse(400, 'Missing key parameter', requestOrigin)
   }
 
-  // Decode the key to catch URL-encoded path traversal attempts (e.g., %2e%2e)
   let key: string
   try {
     key = decodeURIComponent(rawKey)
@@ -56,20 +40,17 @@ async function getDownloadUrl(event: APIGatewayProxyEvent, requestOrigin?: strin
     return errorResponse(400, 'Invalid key', requestOrigin)
   }
 
-  // Determine which bucket to use
   let targetBucket: string
   if (bucket === 'ragstack') {
     if (!RAGSTACK_BUCKET) {
       return errorResponse(500, 'RAGStack storage is not configured', requestOrigin)
     }
-    // RAGStack bucket: allow input/ and content/ prefixes
     const allowedPrefixes = ['input/', 'content/']
     if (!allowedPrefixes.some(prefix => key.startsWith(prefix))) {
       return errorResponse(403, 'Access denied to this resource', requestOrigin)
     }
     targetBucket = RAGSTACK_BUCKET
   } else {
-    // Archive bucket: allow media/, letters/, temp/ prefixes
     const allowedPrefixes = ['media/', 'letters/', 'temp/']
     if (!allowedPrefixes.some(prefix => key.startsWith(prefix))) {
       return errorResponse(403, 'Access denied to this resource', requestOrigin)

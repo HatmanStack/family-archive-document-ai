@@ -56,7 +56,7 @@ router.post('/reactions/{commentId}', reactions.handle)
 router.delete('/reactions/{commentId}', reactions.handle)
 
 // Media / Downloads
-router.get('/download/presigned-url', media.handle)
+router.get('/download/presigned-url', requireAuth(), media.getDownloadUrl)
 
 // Drafts / Upload (before generic /letters routes)
 router.post('/letters/upload-request', requireAuth(), rateLimit('upload'), drafts.uploadRequest)
