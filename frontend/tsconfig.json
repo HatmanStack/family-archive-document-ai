@@ -6,6 +6,8 @@
     "allowJs": true,
     "checkJs": true,
     "strict": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
     "sourceMap": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": false,
