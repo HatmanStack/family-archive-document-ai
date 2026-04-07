@@ -105,7 +105,7 @@ SvelteKit provides hot module replacement (HMR). Changes to `.svelte` files upda
 
 ### Test Structure
 
-```
+```text
 tests/
 ├── unit/                    # Vitest unit tests
 │   ├── errors.test.js
@@ -216,32 +216,51 @@ npm run check
 
 The API Lambda uses a consolidated handler pattern:
 
-```
-backend/lambdas/api/src/
-├── index.ts           # Main handler, route dispatch
-├── routes/            # Route handlers
-│   ├── index.ts      # Route dispatcher (not a handler)
-│   ├── comments.ts   # Comment CRUD with soft delete
-│   ├── contact.ts    # Contact form via SES
-│   ├── drafts.ts     # Letter draft upload/processing
-│   ├── letters.ts    # Letter CRUD, versioning
-│   ├── media.ts      # Media download with presigned URLs
-│   ├── messages.ts   # Conversations, DMs
-│   ├── profile.ts    # User profiles, photos
-│   └── reactions.ts  # Comment reactions
-├── lib/               # Shared utilities
-│   ├── errors.ts     # Typed error classes
-│   ├── responses.ts  # HTTP responses
-│   ├── validation.ts # Input validation
-│   ├── rate-limit.ts # Rate limiting
-│   ├── logger.ts     # Structured logging
-│   ├── keys.ts       # DynamoDB keys
-│   ├── database.ts   # DB client
-│   ├── constants.ts  # Shared constants
-│   ├── user.ts       # User management
-│   └── s3-utils.ts   # S3 helpers
-└── types/             # TypeScript types
-    └── index.ts
+```text
+backend/lambdas/
+├── api/src/
+│   ├── index.ts             # Entry point with declarative Router
+│   ├── routes/              # Route handlers (functions registered on router)
+│   │   ├── comments.ts      # Comment CRUD with soft delete
+│   │   ├── contact.ts       # Contact form via SES
+│   │   ├── drafts.ts        # Letter draft upload/processing
+│   │   ├── letters.ts       # Letter CRUD, versioning
+│   │   ├── media.ts         # Media download with presigned URLs
+│   │   ├── messages.ts      # Conversations, DMs
+│   │   ├── profile.ts       # User profiles, photos
+│   │   └── reactions.ts     # Comment reactions
+│   ├── repositories/        # DynamoDB data access (repository pattern)
+│   │   ├── base-repository.ts
+│   │   ├── comment-repository.ts
+│   │   └── messaging-repository.ts
+│   ├── lib/                 # Shared utilities
+│   │   ├── router.ts        # Declarative Router
+│   │   ├── middleware.ts    # Rate-limit, auth, admin middleware
+│   │   ├── errors.ts        # Typed error classes
+│   │   ├── responses.ts     # CORS-aware responses
+│   │   ├── validation.ts    # Input validation
+│   │   ├── rate-limit.ts    # Rate limiting
+│   │   ├── logger.ts        # Structured logging
+│   │   ├── keys.ts          # DynamoDB keys
+│   │   ├── database.ts      # DB client
+│   │   ├── constants.ts     # Shared constants
+│   │   ├── user.ts          # User management
+│   │   ├── s3-utils.ts      # Shared S3 client
+│   │   ├── s3-presign.ts    # Presigned URL helpers
+│   │   ├── concurrency.ts   # Bounded concurrency helpers
+│   │   └── path-utils.ts    # Path sanitization
+│   └── types/               # TypeScript types
+├── letter-processor/src/
+│   ├── index.ts             # Letter processing handler
+│   └── lib/
+│       ├── config.ts        # Env validation
+│       ├── retry.ts         # Exponential backoff
+│       ├── concurrency.ts   # Bounded concurrency
+│       ├── logger.ts        # Structured logging
+│       └── errors.ts        # Typed errors
+└── shared/                  # Cross-Lambda shared code
+    ├── html-utils.ts        # escapeHtml and friends
+    └── types.ts             # Shared types
 ```
 
 ### Local Lambda Testing
@@ -283,7 +302,7 @@ sam deploy --guided
 
 Follow conventional commits:
 
-```
+```text
 feat: Add comment reactions
 fix: Resolve rate limit race condition
 docs: Update API reference
