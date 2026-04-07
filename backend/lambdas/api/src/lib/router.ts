@@ -6,6 +6,7 @@
  */
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext } from '../types'
+import { stripVersionPrefix } from './path-utils'
 
 export type RouteHandler = (
   event: APIGatewayProxyEvent,
@@ -92,7 +93,7 @@ export class Router {
   ): Promise<APIGatewayProxyResult | null> {
     const method = event.httpMethod as HttpMethod
     const rawPath = event.path || event.resource
-    const path = rawPath.replace(/^\/v1/, '') || '/'
+    const path = stripVersionPrefix(rawPath)
 
     for (const route of this.routes) {
       if (route.method !== method) continue

@@ -13,6 +13,7 @@ import { ensureProfile } from './lib/user'
 import { log, setCorrelationId, extractCorrelationId } from './lib/logger'
 import { errorResponse } from './lib/responses'
 import { toError, getStatusCode, getUserMessage, AppError } from './lib/errors'
+import { stripVersionPrefix } from './lib/path-utils'
 
 /**
  * Current API version
@@ -43,11 +44,11 @@ router.delete('/messages/{conversationId}', requireAuth(), rateLimit('message'),
 router.delete('/messages/{conversationId}/{messageId}', requireAuth(), rateLimit('message'), messages.deleteMessage)
 
 // Profile & Users
-router.get('/profile/{userId}', profile.handle)
-router.put('/profile', profile.handle)
-router.get('/profile/{userId}/comments', profile.handle)
-router.post('/profile/photo/upload-url', profile.handle)
-router.get('/users', profile.handle)
+router.get('/profile/{userId}', requireAuth(), profile.getProfile)
+router.put('/profile', requireAuth(), profile.updateProfile)
+router.get('/profile/{userId}/comments', requireAuth(), profile.getUserComments)
+router.post('/profile/photo/upload-url', requireAuth(), profile.getPhotoUploadUrl)
+router.get('/users', requireAuth(), profile.listUsers)
 
 // Reactions
 router.get('/reactions/{commentId}', reactions.handle)
@@ -103,7 +104,7 @@ export async function handler(
   const rawPath = event.path || event.resource
 
   // Strip version prefix if present (supports /v1/... format)
-  const path = rawPath.replace(/^\/v1/, '') || '/'
+  const path = stripVersionPrefix(rawPath)
 
   // Extract auth context
   const claims = (event.requestContext?.authorizer?.claims || {}) as AuthClaims

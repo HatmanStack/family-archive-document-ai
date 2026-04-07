@@ -1,5 +1,7 @@
 /**
- * Profile route handler
+ * Profile route handlers
+ *
+ * Each function is registered individually on the router in index.ts.
  */
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext } from '../types'
@@ -26,51 +28,13 @@ interface FamilyRelationship {
 }
 
 /**
- * Main profile route handler
+ * GET /profile/{userId}
  */
-export async function handle(
+export async function getProfile(
   event: APIGatewayProxyEvent,
   context: RequestContext
 ): Promise<APIGatewayProxyResult> {
-  const { requesterId, requesterEmail, isAdmin, requestOrigin } = context
-
-  if (!requesterId) {
-    return errorResponse(401, 'Unauthorized: Missing user context', requestOrigin)
-  }
-
-  const method = event.httpMethod
-  const resource = event.resource
-  const normalizedResource = resource.replace(/^\/v1/, '')
-
-  if (method === 'GET' && normalizedResource === '/profile/{userId}') {
-    return getProfile(event, requesterId, isAdmin, requestOrigin)
-  }
-
-  if (method === 'PUT' && normalizedResource === '/profile') {
-    return updateProfile(event, requesterId, requesterEmail, requestOrigin)
-  }
-
-  if (method === 'GET' && normalizedResource === '/profile/{userId}/comments') {
-    return getUserComments(event, requesterId, isAdmin, requestOrigin)
-  }
-
-  if (method === 'POST' && normalizedResource === '/profile/photo/upload-url') {
-    return getPhotoUploadUrl(event, requesterId, requestOrigin)
-  }
-
-  if (method === 'GET' && normalizedResource === '/users') {
-    return listUsers(event, requestOrigin)
-  }
-
-  return errorResponse(404, 'Route not found', requestOrigin)
-}
-
-async function getProfile(
-  event: APIGatewayProxyEvent,
-  requesterId: string,
-  isAdmin: boolean,
-  requestOrigin?: string
-): Promise<APIGatewayProxyResult> {
+  const { requesterId, isAdmin, requestOrigin } = context
   const userId = event.pathParameters?.userId
 
   if (!userId) {
@@ -125,13 +89,15 @@ async function getProfile(
   }
 }
 
-async function updateProfile(
+/**
+ * PUT /profile
+ */
+export async function updateProfile(
   event: APIGatewayProxyEvent,
-  requesterId: string,
-  requesterEmail?: string,
-  requestOrigin?: string
+  context: RequestContext
 ): Promise<APIGatewayProxyResult> {
-  const rateLimit = await checkRateLimit(requesterId, 'default')
+  const { requesterId, requesterEmail, requestOrigin } = context
+  const rateLimit = await checkRateLimit(requesterId!, 'default')
   if (!rateLimit.allowed) {
     return rateLimitResponse(getRetryAfter(rateLimit.resetAt), 'Rate limit exceeded', requestOrigin)
   }
@@ -141,19 +107,16 @@ async function updateProfile(
     return errorResponse(400, 'Invalid JSON in request body', requestOrigin)
   }
 
-  // Sanitize inputs
   if (body.bio) body.bio = sanitizeText(body.bio)
   if (body.displayName) body.displayName = sanitizeText(body.displayName)
   if (body.familyRelationship) body.familyRelationship = sanitizeText(body.familyRelationship)
 
-  // Validate theme
   if (body.theme !== undefined) {
     if (typeof body.theme !== 'string' || body.theme.length > 50 || !/^[a-z0-9-]*$/.test(body.theme)) {
       return errorResponse(400, 'Invalid theme value', requestOrigin)
     }
   }
 
-  // Validate familyRelationships
   if (body.familyRelationships !== undefined) {
     if (!Array.isArray(body.familyRelationships)) {
       return errorResponse(400, 'familyRelationships must be an array', requestOrigin)
@@ -195,7 +158,7 @@ async function updateProfile(
   try {
     const existingResult = await docClient.send(new GetCommand({
       TableName: TABLE_NAME,
-      Key: keys.userProfile(requesterId),
+      Key: keys.userProfile(requesterId!),
     }))
 
     const now = new Date().toISOString()
@@ -206,7 +169,6 @@ async function updateProfile(
     ]
 
     if (existingResult.Item) {
-      // Update existing profile
       const updateParts: string[] = ['lastActive = :now']
       const expressionValues: Record<string, unknown> = { ':now': now }
 
@@ -219,15 +181,14 @@ async function updateProfile(
 
       await docClient.send(new UpdateCommand({
         TableName: TABLE_NAME,
-        Key: keys.userProfile(requesterId),
+        Key: keys.userProfile(requesterId!),
         UpdateExpression: `SET ${updateParts.join(', ')}`,
         ExpressionAttributeValues: expressionValues,
       }))
     } else {
-      // Create new profile with GSI1 keys for listing all users
       const profile: Record<string, unknown> = {
-        ...keys.userProfile(requesterId),
-        ...keys.userProfileGSI1(requesterId),
+        ...keys.userProfile(requesterId!),
+        ...keys.userProfileGSI1(requesterId!),
         entityType: 'USER_PROFILE',
         userId: requesterId,
         email: requesterEmail,
@@ -257,12 +218,14 @@ async function updateProfile(
   }
 }
 
-async function getUserComments(
+/**
+ * GET /profile/{userId}/comments
+ */
+export async function getUserComments(
   event: APIGatewayProxyEvent,
-  requesterId: string,
-  isAdmin: boolean,
-  requestOrigin?: string
+  context: RequestContext
 ): Promise<APIGatewayProxyResult> {
+  const { requesterId, isAdmin, requestOrigin } = context
   const userId = event.pathParameters?.userId
   const limit = validateLimit(event.queryStringParameters?.limit)
 
@@ -274,7 +237,6 @@ async function getUserComments(
     return errorResponse(400, 'Invalid userId format', requestOrigin)
   }
 
-  // Only allow viewing own comments or if admin
   if (userId !== requesterId && !isAdmin) {
     return errorResponse(403, 'You can only view your own comments', requestOrigin)
   }
@@ -307,11 +269,14 @@ async function getUserComments(
   }
 }
 
-async function getPhotoUploadUrl(
+/**
+ * POST /profile/photo/upload-url
+ */
+export async function getPhotoUploadUrl(
   event: APIGatewayProxyEvent,
-  requesterId: string,
-  requestOrigin?: string
+  context: RequestContext
 ): Promise<APIGatewayProxyResult> {
+  const { requesterId, requestOrigin } = context
   const body = parseRequestBody(event.body)
   if (!body) {
     return errorResponse(400, 'Invalid JSON in request body', requestOrigin)
@@ -348,7 +313,14 @@ async function getPhotoUploadUrl(
   }
 }
 
-async function listUsers(event: APIGatewayProxyEvent, requestOrigin?: string): Promise<APIGatewayProxyResult> {
+/**
+ * GET /users
+ */
+export async function listUsers(
+  event: APIGatewayProxyEvent,
+  context: RequestContext
+): Promise<APIGatewayProxyResult> {
+  const { requestOrigin } = context
   try {
     const limit = parsePageLimit(event.queryStringParameters?.limit, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE)
     const cursor = event.queryStringParameters?.cursor

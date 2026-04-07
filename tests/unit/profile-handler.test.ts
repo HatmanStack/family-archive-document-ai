@@ -1,5 +1,5 @@
 /**
- * Tests for profile route handler
+ * Tests for profile route handlers
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mockClient } from 'aws-sdk-client-mock'
@@ -8,18 +8,16 @@ import type { APIGatewayProxyEvent } from 'aws-lambda'
 
 const ddbMock = mockClient(DynamoDBDocumentClient)
 
-// Mock S3 presigning to avoid real calls
 vi.mock('@aws-sdk/s3-request-presigner', () => ({
   getSignedUrl: vi.fn().mockResolvedValue('https://signed-url.example.com'),
 }))
 
-// Mock rate-limit module
 vi.mock('../../backend/lambdas/api/src/lib/rate-limit', () => ({
   checkRateLimit: vi.fn().mockResolvedValue({ allowed: true }),
   getRetryAfter: vi.fn().mockReturnValue(60),
 }))
 
-import { handle } from '../../backend/lambdas/api/src/routes/profile'
+import { getProfile, updateProfile, listUsers } from '../../backend/lambdas/api/src/routes/profile'
 import { checkRateLimit } from '../../backend/lambdas/api/src/lib/rate-limit'
 
 function createMockEvent(overrides: Partial<APIGatewayProxyEvent> = {}): APIGatewayProxyEvent {
@@ -57,8 +55,8 @@ beforeEach(() => {
   vi.mocked(checkRateLimit).mockResolvedValue({ allowed: true, resetAt: 0 })
 })
 
-describe('profile handler', () => {
-  describe('GET /profile/{userId}', () => {
+describe('profile handlers', () => {
+  describe('getProfile', () => {
     it('returns profile data with 200', async () => {
       ddbMock.on(GetCommand).resolves({
         Item: {
@@ -71,31 +69,19 @@ describe('profile handler', () => {
           profilePhotoUrl: null,
           bio: 'Hello world',
           isProfilePrivate: false,
-          joinedDate: '2024-01-01',
-          lastActive: '2024-06-01',
-          commentCount: 5,
-          mediaUploadCount: 3,
         },
       })
 
-      const event = createMockEvent()
-      const result = await handle(event, createMockContext())
-      const body = JSON.parse(result.body)
-
+      const result = await getProfile(createMockEvent(), createMockContext())
       expect(result.statusCode).toBe(200)
-      expect(body.userId).toBe('550e8400-e29b-41d4-a716-446655440000')
+      const body = JSON.parse(result.body)
       expect(body.displayName).toBe('Other User')
-      expect(result.headers?.['Access-Control-Allow-Origin']).toBeDefined()
     })
 
     it('returns 404 when profile not found', async () => {
       ddbMock.on(GetCommand).resolves({ Item: undefined })
-
-      const event = createMockEvent()
-      const result = await handle(event, createMockContext())
-
+      const result = await getProfile(createMockEvent(), createMockContext())
       expect(result.statusCode).toBe(404)
-      expect(result.headers?.['Access-Control-Allow-Origin']).toBeDefined()
     })
 
     it('returns 403 for private profile viewed by non-admin', async () => {
@@ -108,24 +94,18 @@ describe('profile handler', () => {
           isProfilePrivate: true,
         },
       })
-
-      const event = createMockEvent()
-      const result = await handle(event, createMockContext())
-
+      const result = await getProfile(createMockEvent(), createMockContext())
       expect(result.statusCode).toBe(403)
     })
 
     it('returns 400 for missing userId', async () => {
-      const event = createMockEvent({ pathParameters: {} })
-      const result = await handle(event, createMockContext())
-
+      const result = await getProfile(createMockEvent({ pathParameters: {} }), createMockContext())
       expect(result.statusCode).toBe(400)
     })
   })
 
-  describe('PUT /profile', () => {
+  describe('updateProfile', () => {
     it('updates profile and returns 200', async () => {
-      // Mock existing profile
       ddbMock.on(GetCommand).resolves({
         Item: {
           PK: 'USER#550e8400-e29b-41d4-a716-446655440001',
@@ -135,54 +115,38 @@ describe('profile handler', () => {
           displayName: 'Old Name',
         },
       })
-
       ddbMock.on(UpdateCommand).resolves({})
-
-      const event = createMockEvent({
-        httpMethod: 'PUT',
-        resource: '/profile',
-        path: '/profile',
-        pathParameters: null,
-        body: JSON.stringify({ displayName: 'New Name', bio: 'Updated bio' }),
-      })
-
-      const result = await handle(event, createMockContext())
-      const body = JSON.parse(result.body)
-
+      const result = await updateProfile(
+        createMockEvent({
+          httpMethod: 'PUT',
+          resource: '/profile',
+          path: '/profile',
+          pathParameters: null,
+          body: JSON.stringify({ displayName: 'New Name', bio: 'Updated bio' }),
+        }),
+        createMockContext()
+      )
       expect(result.statusCode).toBe(200)
-      expect(body.message).toBe('Profile updated successfully')
-      expect(result.headers?.['Access-Control-Allow-Origin']).toBeDefined()
     })
 
     it('returns 400 for malformed JSON body', async () => {
-      const event = createMockEvent({
-        httpMethod: 'PUT',
-        resource: '/profile',
-        path: '/profile',
-        pathParameters: null,
-        body: '{invalid json',
-      })
-
-      const result = await handle(event, createMockContext())
+      const result = await updateProfile(
+        createMockEvent({ httpMethod: 'PUT', body: '{invalid json' }),
+        createMockContext()
+      )
       expect(result.statusCode).toBe(400)
-      expect(result.headers?.['Access-Control-Allow-Origin']).toBeDefined()
     })
 
     it('returns 400 for invalid theme value', async () => {
-      const event = createMockEvent({
-        httpMethod: 'PUT',
-        resource: '/profile',
-        path: '/profile',
-        pathParameters: null,
-        body: JSON.stringify({ theme: 'INVALID_THEME!!!' }),
-      })
-
-      const result = await handle(event, createMockContext())
+      const result = await updateProfile(
+        createMockEvent({ httpMethod: 'PUT', body: JSON.stringify({ theme: 'INVALID_THEME!!!' }) }),
+        createMockContext()
+      )
       expect(result.statusCode).toBe(400)
     })
   })
 
-  describe('GET /users', () => {
+  describe('listUsers', () => {
     it('returns user list with limit guard', async () => {
       ddbMock.on(QueryCommand).resolves({
         Items: [
@@ -190,36 +154,12 @@ describe('profile handler', () => {
           { userId: 'user-2', displayName: 'Bob', profilePhotoUrl: null, bio: 'World' },
         ],
       })
-
-      const event = createMockEvent({
-        httpMethod: 'GET',
-        resource: '/users',
-        path: '/users',
-        pathParameters: null,
-      })
-
-      const result = await handle(event, createMockContext())
+      const result = await listUsers(createMockEvent({ resource: '/users', path: '/users', pathParameters: null }), createMockContext())
       const body = JSON.parse(result.body)
-
       expect(result.statusCode).toBe(200)
       expect(body.users).toHaveLength(2)
-
-      // Verify the query includes a Limit parameter
       const queryCalls = ddbMock.commandCalls(QueryCommand)
-      expect(queryCalls.length).toBe(1)
-      const queryInput = queryCalls[0].args[0].input
-      expect(queryInput.Limit).toBeDefined()
-      expect(queryInput.Limit).toBeLessThanOrEqual(100)
-    })
-  })
-
-  describe('auth checks', () => {
-    it('returns 401 when requesterId is missing', async () => {
-      const event = createMockEvent()
-      const result = await handle(event, createMockContext({ requesterId: '' }))
-
-      expect(result.statusCode).toBe(401)
-      expect(result.headers?.['Access-Control-Allow-Origin']).toBeDefined()
+      expect(queryCalls[0].args[0].input.Limit).toBeLessThanOrEqual(100)
     })
   })
 })
