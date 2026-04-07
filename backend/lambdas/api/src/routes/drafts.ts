@@ -17,6 +17,7 @@ import { log } from '../lib/logger'
 import { parseRequestBody, validatePaginationKey, parsePageLimit } from '../lib/validation'
 import { s3Client } from '../lib/s3-utils'
 import { toError, hasErrorName } from '../lib/errors'
+import { getRequesterId } from '../lib/user'
 import { MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE } from '../lib/constants'
 
 const lambdaClient = new LambdaClient({})
@@ -83,7 +84,8 @@ export async function processUpload(
   event: APIGatewayProxyEvent,
   context: RequestContext
 ): Promise<APIGatewayProxyResult> {
-  const { requesterId, requestOrigin } = context
+  const { requestOrigin } = context
+  const requesterId = getRequesterId(context)
   const uploadId = event.pathParameters?.uploadId
   if (!uploadId) {
     return errorResponse(400, 'Missing or invalid uploadId', requestOrigin)
@@ -227,7 +229,8 @@ export async function publishDraft(
   event: APIGatewayProxyEvent,
   context: RequestContext
 ): Promise<APIGatewayProxyResult> {
-  const { requesterId, requestOrigin } = context
+  const { requestOrigin } = context
+  const requesterId = getRequesterId(context)
   const draftId = event.pathParameters?.draftId
   if (!draftId) {
     return errorResponse(400, 'Missing or invalid draftId', requestOrigin)

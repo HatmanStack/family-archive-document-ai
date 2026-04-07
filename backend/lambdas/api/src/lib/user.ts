@@ -4,9 +4,22 @@
 import { GetCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { docClient, TABLE_NAME } from './database'
 import { keys } from './keys'
-import type { UserProfile } from '../types'
-import { toError } from './errors'
+import type { RequestContext, UserProfile } from '../types'
+import { AuthenticationError, toError } from './errors'
 import { log } from './logger'
+
+/**
+ * Returns the authenticated requester id from a RequestContext.
+ * Throws AuthenticationError if missing. Routes registered behind the default
+ * `requireAuth` middleware should never see a missing id, but this helper
+ * provides a typed guarantee in place of `userId!` non-null assertions.
+ */
+export function getRequesterId(context: RequestContext): string {
+  if (!context.requesterId) {
+    throw new AuthenticationError('Missing user context')
+  }
+  return context.requesterId
+}
 
 /** Users whose GSI1 attributes have been verified this Lambda instance */
 const gsi1VerifiedUsers = new Set<string>()

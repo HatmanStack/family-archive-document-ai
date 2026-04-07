@@ -11,6 +11,7 @@ import { sanitizeText, validateContentLength, parseRequestBody, parsePageLimit }
 import { MAX_COMMENT_LENGTH, MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE } from '../lib/constants'
 import { log } from '../lib/logger'
 import { toError, AppError, getStatusCode, getUserMessage } from '../lib/errors'
+import { getRequesterId } from '../lib/user'
 
 /**
  * Decode base64url itemId from URL path
@@ -70,7 +71,8 @@ export async function createComment(
   event: APIGatewayProxyEvent,
   context: RequestContext
 ): Promise<APIGatewayProxyResult> {
-  const { requesterId, requesterEmail, requestOrigin } = context
+  const { requesterEmail, requestOrigin } = context
+  const requesterId = getRequesterId(context)
 
   const rawItemId = event.pathParameters?.itemId
   if (!rawItemId) {
@@ -93,7 +95,7 @@ export async function createComment(
     const comment = await commentRepository.create({
       itemId,
       content,
-      authorId: requesterId!,
+      authorId: requesterId,
       authorEmail: requesterEmail,
     })
 

@@ -21,6 +21,7 @@ import { toError } from '../lib/errors'
 import { parseRequestBody, parsePageLimit } from '../lib/validation'
 import { MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE } from '../lib/constants'
 import { messagingRepository } from '../repositories'
+import { getRequesterId } from '../lib/user'
 
 interface Attachment {
   s3Key?: string
@@ -30,11 +31,12 @@ interface Attachment {
 }
 
 export async function listConversations(event: APIGatewayProxyEvent, context: RequestContext): Promise<APIGatewayProxyResult> {
-  const { requesterId: userId, requestOrigin } = context
+  const { requestOrigin } = context
+  const userId = getRequesterId(context)
   const lastEvaluatedKey = event.queryStringParameters?.lastEvaluatedKey
 
   try {
-    const result = await messagingRepository.listConversationsForUser(userId!, lastEvaluatedKey)
+    const result = await messagingRepository.listConversationsForUser(userId, lastEvaluatedKey)
 
     const conversations = result.conversations.map(item => ({
       conversationId: item.conversationId,
@@ -62,7 +64,8 @@ export async function listConversations(event: APIGatewayProxyEvent, context: Re
 }
 
 export async function getMessages(event: APIGatewayProxyEvent, context: RequestContext): Promise<APIGatewayProxyResult> {
-  const { requesterId: userId, requestOrigin } = context
+  const { requestOrigin } = context
+  const userId = getRequesterId(context)
   const conversationId = event.pathParameters?.conversationId
   const limit = parsePageLimit(event.queryStringParameters?.limit, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE)
   const lastEvaluatedKey = event.queryStringParameters?.lastEvaluatedKey
@@ -72,7 +75,7 @@ export async function getMessages(event: APIGatewayProxyEvent, context: RequestC
   }
 
   try {
-    const memberCheck = await messagingRepository.getConversationMembership(userId!, conversationId)
+    const memberCheck = await messagingRepository.getConversationMembership(userId, conversationId)
 
     if (!memberCheck) {
       return errorResponse(403, 'You are not a participant in this conversation', requestOrigin)
@@ -134,7 +137,8 @@ export async function getMessages(event: APIGatewayProxyEvent, context: RequestC
 }
 
 export async function createConversation(event: APIGatewayProxyEvent, context: RequestContext): Promise<APIGatewayProxyResult> {
-  const { requesterId: userId, requestOrigin } = context
+  const { requestOrigin } = context
+  const userId = getRequesterId(context)
   const body = parseRequestBody(event.body)
   if (!body) {
     return errorResponse(400, 'Invalid JSON in request body', requestOrigin)
@@ -160,8 +164,8 @@ export async function createConversation(event: APIGatewayProxyEvent, context: R
     }
   }
 
-  if (!participantIds.includes(userId!)) {
-    participantIds.push(userId!)
+  if (!participantIds.includes(userId)) {
+    participantIds.push(userId)
   }
 
   try {
@@ -177,16 +181,16 @@ export async function createConversation(event: APIGatewayProxyEvent, context: R
       conversationType,
       participantIds,
       participantNames,
-      userId!,
+      userId,
       conversationTitle as string | undefined
     )
 
     let message = null
     if (messageText) {
-      const senderProfile = await messagingRepository.getSenderProfile(userId!)
+      const senderProfile = await messagingRepository.getSenderProfile(userId)
       const messageRecord = await messagingRepository.createMessage(
         conversationId,
-        userId!,
+        userId,
         senderProfile,
         messageText as string,
         participantIds,
@@ -216,7 +220,8 @@ export async function createConversation(event: APIGatewayProxyEvent, context: R
 }
 
 export async function sendMessage(event: APIGatewayProxyEvent, context: RequestContext): Promise<APIGatewayProxyResult> {
-  const { requesterId: userId, requestOrigin } = context
+  const { requestOrigin } = context
+  const userId = getRequesterId(context)
   const conversationId = event.pathParameters?.conversationId
   const body = parseRequestBody(event.body)
   if (!body) {
@@ -240,7 +245,7 @@ export async function sendMessage(event: APIGatewayProxyEvent, context: RequestC
   }
 
   try {
-    const membership = await messagingRepository.getConversationMembership(userId!, conversationId)
+    const membership = await messagingRepository.getConversationMembership(userId, conversationId)
 
     if (!membership) {
       return errorResponse(403, 'You are not a participant in this conversation', requestOrigin)
@@ -251,18 +256,18 @@ export async function sendMessage(event: APIGatewayProxyEvent, context: RequestC
 
     // Fetch sender profile separately (extracted from createMessage for clarity,
     // but still a dedicated DB call -- not derived from membership context)
-    const senderProfile = await messagingRepository.getSenderProfile(userId!)
+    const senderProfile = await messagingRepository.getSenderProfile(userId)
 
     const messageRecord = await messagingRepository.createMessage(
       conversationId,
-      userId!,
+      userId,
       senderProfile,
       messageText as string,
       participantIds,
       conversationType,
       attachments as Attachment[]
     )
-    await messagingRepository.updateConversationMembers(conversationId, userId!, participantIds)
+    await messagingRepository.updateConversationMembers(conversationId, userId, participantIds)
 
     // Sign attachment URLs for response
     const attachmentsWithUrls = await Promise.all(
@@ -307,7 +312,8 @@ const ALLOWED_ATTACHMENT_TYPES = new Set([
 ])
 
 export async function generateUploadUrl(event: APIGatewayProxyEvent, context: RequestContext): Promise<APIGatewayProxyResult> {
-  const { requesterId: userId, requestOrigin } = context
+  const { requestOrigin } = context
+  const userId = getRequesterId(context)
   const body = parseRequestBody(event.body)
   if (!body) {
     return errorResponse(400, 'Invalid JSON in request body', requestOrigin)
@@ -341,7 +347,8 @@ export async function generateUploadUrl(event: APIGatewayProxyEvent, context: Re
 }
 
 export async function markAsRead(event: APIGatewayProxyEvent, context: RequestContext): Promise<APIGatewayProxyResult> {
-  const { requesterId: userId, requestOrigin } = context
+  const { requestOrigin } = context
+  const userId = getRequesterId(context)
   const conversationId = event.pathParameters?.conversationId
 
   if (!conversationId) {
@@ -349,7 +356,7 @@ export async function markAsRead(event: APIGatewayProxyEvent, context: RequestCo
   }
 
   try {
-    await messagingRepository.markConversationRead(userId!, conversationId)
+    await messagingRepository.markConversationRead(userId, conversationId)
 
     return successResponse({ message: 'Conversation marked as read' }, 200, requestOrigin)
   } catch (err) {
@@ -363,7 +370,8 @@ export async function markAsRead(event: APIGatewayProxyEvent, context: RequestCo
 }
 
 export async function deleteConversation(event: APIGatewayProxyEvent, context: RequestContext): Promise<APIGatewayProxyResult> {
-  const { requesterId: userId, requestOrigin } = context
+  const { requestOrigin } = context
+  const userId = getRequesterId(context)
   let conversationId: string
   try {
     conversationId = decodeURIComponent(event.pathParameters?.conversationId || '')
@@ -387,7 +395,7 @@ export async function deleteConversation(event: APIGatewayProxyEvent, context: R
       }
       participantIds = Array.from(meta.participantIds || [])
     } else {
-      const membership = await messagingRepository.getConversationMembership(userId!, conversationId)
+      const membership = await messagingRepository.getConversationMembership(userId, conversationId)
 
       if (!membership) {
         return errorResponse(404, 'Conversation not found', requestOrigin)
@@ -428,7 +436,8 @@ export async function deleteConversation(event: APIGatewayProxyEvent, context: R
 }
 
 export async function deleteMessage(event: APIGatewayProxyEvent, context: RequestContext): Promise<APIGatewayProxyResult> {
-  const { requesterId: userId, requestOrigin } = context
+  const { requestOrigin } = context
+  const userId = getRequesterId(context)
   let conversationId: string
   let messageId: string
   try {

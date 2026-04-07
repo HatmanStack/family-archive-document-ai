@@ -18,6 +18,7 @@ import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 import { log } from '../lib/logger'
 import { toError } from '../lib/errors'
 import { s3Client, signPhotoUrl } from '../lib/s3-utils'
+import { getRequesterId } from '../lib/user'
 
 interface FamilyRelationship {
   id: string
@@ -96,8 +97,9 @@ export async function updateProfile(
   event: APIGatewayProxyEvent,
   context: RequestContext
 ): Promise<APIGatewayProxyResult> {
-  const { requesterId, requesterEmail, requestOrigin } = context
-  const rateLimit = await checkRateLimit(requesterId!, 'default')
+  const { requesterEmail, requestOrigin } = context
+  const requesterId = getRequesterId(context)
+  const rateLimit = await checkRateLimit(requesterId, 'default')
   if (!rateLimit.allowed) {
     return rateLimitResponse(getRetryAfter(rateLimit.resetAt), 'Rate limit exceeded', requestOrigin)
   }
@@ -158,7 +160,7 @@ export async function updateProfile(
   try {
     const existingResult = await docClient.send(new GetCommand({
       TableName: TABLE_NAME,
-      Key: keys.userProfile(requesterId!),
+      Key: keys.userProfile(requesterId),
     }))
 
     const now = new Date().toISOString()
@@ -181,14 +183,14 @@ export async function updateProfile(
 
       await docClient.send(new UpdateCommand({
         TableName: TABLE_NAME,
-        Key: keys.userProfile(requesterId!),
+        Key: keys.userProfile(requesterId),
         UpdateExpression: `SET ${updateParts.join(', ')}`,
         ExpressionAttributeValues: expressionValues,
       }))
     } else {
       const profile: Record<string, unknown> = {
-        ...keys.userProfile(requesterId!),
-        ...keys.userProfileGSI1(requesterId!),
+        ...keys.userProfile(requesterId),
+        ...keys.userProfileGSI1(requesterId),
         entityType: 'USER_PROFILE',
         userId: requesterId,
         email: requesterEmail,

@@ -3,6 +3,10 @@
  *
  * This is a consolidated API Lambda that routes requests to appropriate handlers.
  * Uses a declarative Router for type-safe routing with middleware support.
+ *
+ * Authentication is enforced by default for all routes via the router's
+ * defaultMiddleware. Public endpoints opt out by registering with `publicGet`
+ * or `publicPost`.
  */
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext, AuthClaims } from './types'
@@ -24,54 +28,54 @@ export const API_VERSION = 'v1'
 // Declarative route registration
 // ---------------------------------------------------------------------------
 
-const router = new Router()
+const router = new Router({ defaultMiddleware: [requireAuth()] })
 
 // Comments
 router.get('/comments/{itemId}', comments.listComments)
-router.post('/comments/{itemId}', requireAuth(), rateLimit('comment'), comments.createComment)
-router.put('/comments/{itemId}/{commentId}', requireAuth(), comments.editComment)
-router.delete('/comments/{itemId}/{commentId}', requireAuth(), comments.deleteComment)
+router.post('/comments/{itemId}', rateLimit('comment'), comments.createComment)
+router.put('/comments/{itemId}/{commentId}', comments.editComment)
+router.delete('/comments/{itemId}/{commentId}', comments.deleteComment)
 
 // Messages
-router.get('/messages/conversations', requireAuth(), messages.listConversations)
-router.get('/messages/{conversationId}', requireAuth(), messages.getMessages)
-router.post('/messages/conversations', requireAuth(), rateLimit('message'), messages.createConversation)
-router.post('/messages/{conversationId}', requireAuth(), rateLimit('message'), messages.sendMessage)
-router.post('/messages/{conversationId}/upload-url', requireAuth(), rateLimit('upload'), messages.generateUploadUrl)
-router.post('/messages/attachments/upload-url', requireAuth(), rateLimit('upload'), messages.generateUploadUrl)
-router.put('/messages/{conversationId}/read', requireAuth(), rateLimit('message'), messages.markAsRead)
-router.delete('/messages/{conversationId}', requireAuth(), rateLimit('message'), messages.deleteConversation)
-router.delete('/messages/{conversationId}/{messageId}', requireAuth(), rateLimit('message'), messages.deleteMessage)
+router.get('/messages/conversations', messages.listConversations)
+router.get('/messages/{conversationId}', messages.getMessages)
+router.post('/messages/conversations', rateLimit('message'), messages.createConversation)
+router.post('/messages/{conversationId}', rateLimit('message'), messages.sendMessage)
+router.post('/messages/{conversationId}/upload-url', rateLimit('upload'), messages.generateUploadUrl)
+router.post('/messages/attachments/upload-url', rateLimit('upload'), messages.generateUploadUrl)
+router.put('/messages/{conversationId}/read', rateLimit('message'), messages.markAsRead)
+router.delete('/messages/{conversationId}', rateLimit('message'), messages.deleteConversation)
+router.delete('/messages/{conversationId}/{messageId}', rateLimit('message'), messages.deleteMessage)
 
 // Profile & Users
-router.get('/profile/{userId}', requireAuth(), profile.getProfile)
-router.put('/profile', requireAuth(), profile.updateProfile)
-router.get('/profile/{userId}/comments', requireAuth(), profile.getUserComments)
-router.post('/profile/photo/upload-url', requireAuth(), profile.getPhotoUploadUrl)
-router.get('/users', requireAuth(), profile.listUsers)
+router.get('/profile/{userId}', profile.getProfile)
+router.put('/profile', profile.updateProfile)
+router.get('/profile/{userId}/comments', profile.getUserComments)
+router.post('/profile/photo/upload-url', profile.getPhotoUploadUrl)
+router.get('/users', profile.listUsers)
 
 // Reactions
-router.get('/reactions/{commentId}', requireAuth(), reactions.getReactions)
-router.post('/reactions/{commentId}', requireAuth(), reactions.toggleReaction)
-router.delete('/reactions/{commentId}', requireAuth(), reactions.toggleReaction)
+router.get('/reactions/{commentId}', reactions.getReactions)
+router.post('/reactions/{commentId}', reactions.toggleReaction)
+router.delete('/reactions/{commentId}', reactions.toggleReaction)
 
 // Media / Downloads
-router.get('/download/presigned-url', requireAuth(), media.getDownloadUrl)
+router.get('/download/presigned-url', media.getDownloadUrl)
 
 // Drafts / Upload (before generic /letters routes)
-router.post('/letters/upload-request', requireAuth(), rateLimit('upload'), drafts.uploadRequest)
-router.post('/letters/process/{uploadId}', requireAuth(), rateLimit('upload'), drafts.processUpload)
+router.post('/letters/upload-request', rateLimit('upload'), drafts.uploadRequest)
+router.post('/letters/process/{uploadId}', rateLimit('upload'), drafts.processUpload)
 
 // Letters
 router.get('/letters', letters.listLetters)
 router.get('/letters/{date}', letters.getLetter)
-router.put('/letters/{date}', requireAuth(), letters.updateLetter)
+router.put('/letters/{date}', letters.updateLetter)
 router.get('/letters/{date}/versions', letters.getVersions)
-router.post('/letters/{date}/revert', requireAuth(), letters.revertToVersion)
+router.post('/letters/{date}/revert', letters.revertToVersion)
 router.get('/letters/{date}/pdf', letters.getPdfUrl)
 
-// Contact
-router.post('/contact', contact.submitContact)
+// Contact (public - no auth required)
+router.publicPost('/contact', contact.submitContact)
 
 // Admin - Drafts (approved users or admins)
 router.get('/admin/drafts', requireApproved(), drafts.listDrafts)

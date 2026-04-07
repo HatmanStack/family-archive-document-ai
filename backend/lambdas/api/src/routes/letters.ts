@@ -16,6 +16,7 @@ import { successResponse, errorResponse } from '../lib/responses'
 import { log } from '../lib/logger'
 import { validatePaginationKey, parsePageLimit } from '../lib/validation'
 import { toError } from '../lib/errors'
+import { getRequesterId } from '../lib/user'
 
 function isValidDate(date: string | undefined): boolean {
   if (!date || typeof date !== 'string') return false
@@ -125,7 +126,8 @@ export async function updateLetter(
   event: APIGatewayProxyEvent,
   context: RequestContext
 ): Promise<APIGatewayProxyResult> {
-  const { requesterId, requestOrigin } = context
+  const { requestOrigin } = context
+  const requesterId = getRequesterId(context)
   const date = event.pathParameters?.date
 
   let body: { content?: string; title?: string; author?: string; description?: string }
@@ -248,7 +250,8 @@ export async function revertToVersion(
   event: APIGatewayProxyEvent,
   context: RequestContext
 ): Promise<APIGatewayProxyResult> {
-  const { requesterId, requestOrigin } = context
+  const { requestOrigin } = context
+  const requesterId = getRequesterId(context)
   const date = event.pathParameters?.date
 
   let body: { timestamp?: string }

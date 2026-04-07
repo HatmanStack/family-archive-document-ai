@@ -11,6 +11,7 @@ import { keys, PREFIX } from '../lib/keys'
 import { successResponse, errorResponse } from '../lib/responses'
 import { log } from '../lib/logger'
 import { toError } from '../lib/errors'
+import { getRequesterId } from '../lib/user'
 
 /**
  * POST /reactions/{commentId} and DELETE /reactions/{commentId}
@@ -19,7 +20,8 @@ export async function toggleReaction(
   event: APIGatewayProxyEvent,
   context: RequestContext
 ): Promise<APIGatewayProxyResult> {
-  const { requesterId: userId, requestOrigin } = context
+  const { requestOrigin } = context
+  const userId = getRequesterId(context)
   const rawCommentId = event.pathParameters?.commentId
   if (!rawCommentId) {
     return errorResponse(400, 'Missing commentId parameter', requestOrigin)
@@ -75,7 +77,7 @@ export async function toggleReaction(
     }
 
     const actualItemId = (foundComment.itemId as string) || foundCommentKey.PK.replace(PREFIX.COMMENT, '')
-    const reactionKey = keys.reaction(actualItemId, commentId, userId!)
+    const reactionKey = keys.reaction(actualItemId, commentId, userId)
 
     const existingReaction = await docClient.send(new GetCommand({
       TableName: TABLE_NAME,
