@@ -43,10 +43,10 @@ Estimated tokens: 35k.
 
 **Verification checklist:**
 
-- [ ] `+page.svelte` is under 250 LOC
-- [ ] No `setInterval` or `URL.createObjectURL` in `+page.svelte`
-- [ ] Each subcomponent has a single responsibility
-- [ ] `npm run lint` and `npm test` green
+- [x] `+page.svelte` is under 250 LOC
+- [x] No `setInterval` or `URL.createObjectURL` in `+page.svelte`
+- [x] Each subcomponent has a single responsibility
+- [x] `npm run lint` and `npm test` green
 - [ ] Manual smoke: upload, search, caption, modal, navigation all work
 
 **Commit:** `refactor(gallery): decompose +page.svelte into focused subcomponents`
@@ -75,9 +75,9 @@ settings, and photo upload into subcomponents.
 
 **Verification checklist:**
 
-- [ ] `+page.svelte` is under 200 LOC
-- [ ] Each subcomponent owns its own validation
-- [ ] `npm run lint` and `npm test` green
+- [x] `+page.svelte` is under 200 LOC
+- [x] Each subcomponent owns its own validation
+- [x] `npm run lint` and `npm test` green
 - [ ] Manual smoke: edit profile, add/remove relationship, upload photo,
       toggle notifications
 
