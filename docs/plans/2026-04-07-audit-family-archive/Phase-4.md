@@ -29,9 +29,9 @@ Estimated tokens: 30k.
 
 **Verification checklist:**
 
-- [ ] At least one test per verb
-- [ ] At least one 4xx error path per verb
-- [ ] Tests run under `npm test`
+- [x]At least one test per verb
+- [x]At least one 4xx error path per verb
+- [x]Tests run under `npm test`
 
 **Commit:** `test(api): add integration coverage for letters route`
 
@@ -61,9 +61,9 @@ One commit per route file.
 
 **Verification checklist:**
 
-- [ ] Spec runs under `npm run test:e2e`
-- [ ] Polling timeout configurable via env var
-- [ ] Skips cleanly when `RAGSTACK_*` is unset (mock mode)
+- [x]Spec runs under `npm run test:e2e`
+- [x]Polling timeout configurable via env var
+- [x]Skips cleanly when `RAGSTACK_*` is unset (mock mode)
 
 **Commit:** `test(e2e): add letter upload pipeline smoke test`
 
@@ -82,8 +82,8 @@ One commit per route file.
 
 **Verification checklist:**
 
-- [ ] File renders in markdown
-- [ ] markdownlint-clean (Phase 7 will enforce this in CI)
+- [x]File renders in markdown
+- [x]markdownlint-clean (Phase 7 will enforce this in CI)
 
 **Commit:** `docs(tests): document test pyramid and aws-sdk-client-mock pattern`
 
