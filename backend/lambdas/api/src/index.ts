@@ -51,9 +51,9 @@ router.post('/profile/photo/upload-url', requireAuth(), profile.getPhotoUploadUr
 router.get('/users', requireAuth(), profile.listUsers)
 
 // Reactions
-router.get('/reactions/{commentId}', reactions.handle)
-router.post('/reactions/{commentId}', reactions.handle)
-router.delete('/reactions/{commentId}', reactions.handle)
+router.get('/reactions/{commentId}', requireAuth(), reactions.getReactions)
+router.post('/reactions/{commentId}', requireAuth(), reactions.toggleReaction)
+router.delete('/reactions/{commentId}', requireAuth(), reactions.toggleReaction)
 
 // Media / Downloads
 router.get('/download/presigned-url', requireAuth(), media.getDownloadUrl)

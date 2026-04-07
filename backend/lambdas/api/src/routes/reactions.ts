@@ -1,5 +1,7 @@
 /**
- * Reactions route handler
+ * Reactions route handlers
+ *
+ * Each function is registered individually on the router in index.ts.
  */
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext } from '../types'
@@ -11,42 +13,13 @@ import { log } from '../lib/logger'
 import { toError } from '../lib/errors'
 
 /**
- * Main reactions route handler
+ * POST /reactions/{commentId} and DELETE /reactions/{commentId}
  */
-export async function handle(
+export async function toggleReaction(
   event: APIGatewayProxyEvent,
   context: RequestContext
 ): Promise<APIGatewayProxyResult> {
-  const { requesterId, requestOrigin } = context
-
-  if (!requesterId) {
-    return errorResponse(401, 'Unauthorized: Missing user context', requestOrigin)
-  }
-
-  const method = event.httpMethod
-  const resource = event.resource
-  const normalizedResource = resource.replace(/^\/v1/, '')
-
-  if (method === 'POST' && normalizedResource === '/reactions/{commentId}') {
-    return toggleReaction(event, requesterId, requestOrigin)
-  }
-
-  if (method === 'GET' && normalizedResource === '/reactions/{commentId}') {
-    return getReactions(event, requestOrigin)
-  }
-
-  if (method === 'DELETE' && normalizedResource === '/reactions/{commentId}') {
-    return toggleReaction(event, requesterId, requestOrigin)
-  }
-
-  return errorResponse(404, 'Route not found', requestOrigin)
-}
-
-async function toggleReaction(
-  event: APIGatewayProxyEvent,
-  userId: string,
-  requestOrigin?: string
-): Promise<APIGatewayProxyResult> {
+  const { requesterId: userId, requestOrigin } = context
   const rawCommentId = event.pathParameters?.commentId
   if (!rawCommentId) {
     return errorResponse(400, 'Missing commentId parameter', requestOrigin)
@@ -84,7 +57,6 @@ async function toggleReaction(
     let foundComment: Record<string, unknown> | null = null
     let foundCommentKey: { PK: string; SK: string } | null = null
 
-    // Find the comment first
     for (const tryItemId of itemIdVariants) {
       const tryKey = keys.comment(tryItemId, commentId)
       const result = await docClient.send(new GetCommand({
@@ -103,16 +75,14 @@ async function toggleReaction(
     }
 
     const actualItemId = (foundComment.itemId as string) || foundCommentKey.PK.replace(PREFIX.COMMENT, '')
-    const reactionKey = keys.reaction(actualItemId, commentId, userId)
+    const reactionKey = keys.reaction(actualItemId, commentId, userId!)
 
-    // Check if reaction exists
     const existingReaction = await docClient.send(new GetCommand({
       TableName: TABLE_NAME,
       Key: reactionKey,
     }))
 
     if (existingReaction.Item) {
-      // Remove reaction
       try {
         await docClient.send(new TransactWriteCommand({
           TransactItems: [
@@ -146,7 +116,6 @@ async function toggleReaction(
 
       return successResponse({ liked: false, message: 'Reaction removed' }, 200, requestOrigin)
     } else {
-      // Add reaction
       const now = new Date().toISOString()
 
       try {
@@ -194,7 +163,14 @@ async function toggleReaction(
   }
 }
 
-async function getReactions(event: APIGatewayProxyEvent, requestOrigin?: string): Promise<APIGatewayProxyResult> {
+/**
+ * GET /reactions/{commentId}
+ */
+export async function getReactions(
+  event: APIGatewayProxyEvent,
+  context: RequestContext
+): Promise<APIGatewayProxyResult> {
+  const { requestOrigin } = context
   const commentId = event.pathParameters?.commentId
   const itemId = event.queryStringParameters?.itemId
 

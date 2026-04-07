@@ -14,7 +14,12 @@ vi.mock('../../backend/lambdas/api/src/lib/rate-limit', () => ({
   getRetryAfter: vi.fn().mockReturnValue(60),
 }))
 
-import { handle } from '../../backend/lambdas/api/src/routes/reactions'
+import { toggleReaction, getReactions } from '../../backend/lambdas/api/src/routes/reactions'
+
+async function handle(event: APIGatewayProxyEvent, context: ReturnType<typeof createMockContext>) {
+  if (event.httpMethod === 'GET') return getReactions(event, context)
+  return toggleReaction(event, context)
+}
 
 function createMockEvent(overrides: Partial<APIGatewayProxyEvent> = {}): APIGatewayProxyEvent {
   return {
@@ -112,14 +117,6 @@ describe('reactions handler', () => {
       expect(result.statusCode).toBe(200)
       expect(body.liked).toBe(false)
       expect(body.message).toBe('Reaction removed')
-    })
-
-    it('returns 401 for unauthenticated requests', async () => {
-      const event = createMockEvent()
-      const result = await handle(event, createMockContext({ requesterId: '' }))
-
-      expect(result.statusCode).toBe(401)
-      expect(result.headers?.['Access-Control-Allow-Origin']).toBeDefined()
     })
 
     it('returns 400 for missing commentId', async () => {
@@ -319,17 +316,4 @@ describe('reactions handler', () => {
     })
   })
 
-  describe('route not found', () => {
-    it('returns 404 for unknown route', async () => {
-      const event = createMockEvent({
-        httpMethod: 'PUT',
-        resource: '/reactions/{commentId}',
-      })
-      const result = await handle(event, createMockContext())
-
-      expect(result.statusCode).toBe(404)
-      const body = JSON.parse(result.body)
-      expect(body.error).toBe('Route not found')
-    })
-  })
 })
