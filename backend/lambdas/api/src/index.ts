@@ -63,12 +63,12 @@ router.post('/letters/upload-request', drafts.handle)
 router.post('/letters/process/{uploadId}', drafts.handle)
 
 // Letters
-router.get('/letters', letters.handle)
-router.get('/letters/{date}', letters.handle)
-router.put('/letters/{date}', letters.handle)
-router.get('/letters/{date}/versions', letters.handle)
-router.post('/letters/{date}/revert', letters.handle)
-router.get('/letters/{date}/pdf', letters.handle)
+router.get('/letters', letters.listLetters)
+router.get('/letters/{date}', letters.getLetter)
+router.put('/letters/{date}', requireAuth(), letters.updateLetter)
+router.get('/letters/{date}/versions', letters.getVersions)
+router.post('/letters/{date}/revert', requireAuth(), letters.revertToVersion)
+router.get('/letters/{date}/pdf', letters.getPdfUrl)
 
 // Contact
 router.post('/contact', contact.handle)
