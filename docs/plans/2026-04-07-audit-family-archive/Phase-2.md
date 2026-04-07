@@ -48,10 +48,10 @@ registered in `index.ts`.
 
 **Verification checklist:**
 
-- [ ] No `handle` export in `comments.ts`
-- [ ] No `event.resource` switch in `comments.ts`
-- [ ] All comment endpoints registered in `index.ts`
-- [ ] New unit tests cover happy + 1 error path per verb
+- [x] No `handle` export in `comments.ts`
+- [x] No `event.resource` switch in `comments.ts`
+- [x] All comment endpoints registered in `index.ts`
+- [x] New unit tests cover happy + 1 error path per verb
 
 **Commit:** `refactor(api): migrate comments routes to declarative router`
 
@@ -70,9 +70,9 @@ Same pattern as Task 2.1 for `profile.ts`. Pay attention to the duplicated
 
 **Verification checklist:**
 
-- [ ] `handle` removed
-- [ ] `stripVersionPrefix` used in both `index.ts` and former `profile.ts` code path
-- [ ] Tests green and new tests added per verb
+- [x] `handle` removed
+- [x] `stripVersionPrefix` used in both `index.ts` and former `profile.ts` code path
+- [x] Tests green and new tests added per verb
 
 **Commit:** `refactor(api): migrate profile routes and extract stripVersionPrefix`
 
@@ -127,9 +127,9 @@ endpoints opt out via an explicit allow list.
 
 **Verification checklist:**
 
-- [ ] No `userId!` assertions remain under `routes/`
-- [ ] Public allow list is short and explicit
-- [ ] Existing unit tests pass; new test verifies a public route bypasses auth
+- [x] No `userId!` assertions remain under `routes/`
+- [x] Public allow list is short and explicit
+- [x] Existing unit tests pass; new test verifies a public route bypasses auth
       and a private route 401s without auth
 
 **Commit:** `feat(api): default requireAuth middleware with explicit public allowlist`
@@ -156,9 +156,9 @@ audits.
 
 **Verification checklist:**
 
-- [ ] Bounded cache (size + TTL)
-- [ ] Failure path no longer 500s the request
-- [ ] Test for hit, miss, eviction, transient failure
+- [x] Bounded cache (size + TTL)
+- [x] Failure path no longer 500s the request
+- [x] Test for hit, miss, eviction, transient failure
 
 **Commit:** `perf(api): cache ensureProfile for warm Lambda invocations`
 
