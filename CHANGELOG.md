@@ -5,6 +5,52 @@ All notable changes to Family Archive - Document AI will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-04-07
+
+Audit remediation cycle from plan `2026-04-07-audit-family-archive`,
+covering health, evaluation, and documentation audits in seven phases.
+
+### Added
+
+- `lib/s3-presign.ts`, `lib/concurrency.ts`, and `lib/path-utils.ts` in the
+  API Lambda for shared presigning, bounded concurrency, and path safety
+- `concurrency.ts`, `logger.ts`, and `errors.ts` in the letter-processor
+  `lib/` for parity with the API Lambda
+- Repository pattern documentation across `ARCHITECTURE.md`,
+  `DEVELOPMENT.md`, and `CLAUDE.md`
+- `POST /messages/attachments/upload-url` documented in `API_REFERENCE.md`
+- Markdown lint (`markdownlint-cli2`) and link check (`lychee`) jobs in CI
+
+### Changed
+
+- All route files migrated to per-verb handler functions on the declarative
+  `Router`; the legacy inner `handle(event, context)` switch dispatchers and
+  path-prefix dispatch are gone
+- `requireAuth()` is now a default router middleware; public endpoints opt
+  out via an explicit allow list
+- Control flow uses typed error `instanceof` checks instead of
+  `error.message.includes(...)`; all `unknown` errors flow through `toError()`
+- Frontend god-components in gallery and profile decomposed into focused
+  subcomponents under `lib/components/gallery/` and `lib/components/profile/`
+- Documentation reconciled with code: `auth-utils.ts` (not `client.ts`),
+  Svelte 5 syntax in examples, accurate Cognito User Pool description,
+  `LOG_LEVEL` documented under the API Lambda, region examples
+  standardized on `us-west-2`
+
+### Fixed
+
+- Dead `CommentRepository` and other unused exports removed in subtractive
+  cleanup phase before later refactors
+- Vite CVE addressed via dependency upgrade
+- Doc drift, gaps, and stale code examples flagged in `doc-audit.md`
+  resolved
+
+### Removed
+
+- Obsolete `/media/*`, `/pdf/*`, `/upload/*` prefix-dispatch pseudocode
+  from `ARCHITECTURE.md`
+- References to `lib/auth/client.ts` from `FRONTEND.md`
+
 ## [1.4.0] - 2026-03-25
 
 ### Added
