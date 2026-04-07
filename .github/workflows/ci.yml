@@ -112,16 +112,40 @@ jobs:
       - name: Run knip
         run: npm run knip
 
+  audit:
+    name: npm audit (high+critical)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true'
+    # Fails on any high or critical vulnerability at the repo root or in
+    # frontend/. Dependabot raises automatic PRs for upgrades; merge those
+    # rather than disabling this gate. When an upstream fix is unavailable,
+    # add an override in package.json with a CVE reference in
+    # _securityNotes.resolved before re-running.
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Audit root
+        run: npm audit --audit-level=high
+      - name: Audit frontend
+        run: cd frontend && npm audit --audit-level=high
+
   status-check:
     name: All Checks Passed
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [check]
+    needs: [check, audit]
     if: always()
     steps:
       - name: Verify
         run: |
-          results=("${{ needs.check.result }}")
+          results=("${{ needs.check.result }}" "${{ needs.audit.result }}")
           for result in "${results[@]}"; do
             if [[ "$result" != "success" && "$result" != "skipped" ]]; then
               echo "One or more checks failed: $result"
