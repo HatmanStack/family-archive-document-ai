@@ -18,6 +18,9 @@ import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { Readable } from 'stream'
 import { mergeFiles } from './pdf-utils'
 import { parseLetter } from './gemini'
+import { mapWithConcurrency } from './lib/concurrency'
+import { log } from './lib/logger'
+import { toError } from './lib/errors'
 import type { ProcessorEvent, ProcessorResult, FileInput } from './types'
 
 const s3 = new S3Client({})
@@ -107,54 +110,60 @@ export async function handler(event: ProcessorEvent): Promise<ProcessorResult> {
       )
     }
 
-    // 2. Download files with size tracking
-    const files: FileInput[] = []
+    // 2. Download files in parallel with bounded concurrency.
+    // Per-file (10 MB) and total (50 MB) caps are enforced after each download
+    // completes; aborts if either cap would be exceeded.
+    const DOWNLOAD_CONCURRENCY = 5
     let totalSize = 0
 
-    for (const obj of objects) {
-      const res = await s3.send(
-        new GetObjectCommand({ Bucket: ARCHIVE_BUCKET, Key: obj.Key })
-      )
-
-      if (!res.Body) {
-        throw new Error(`Empty body for object: ${ARCHIVE_BUCKET}/${obj.Key}`)
-      }
-
-      const buffer = await streamToBuffer(res.Body as Readable)
-
-      // Validate individual file size
-      if (buffer.length > MAX_FILE_SIZE_BYTES) {
-        const sizeMB = (buffer.length / (1024 * 1024)).toFixed(2)
-        const limitMB = (MAX_FILE_SIZE_BYTES / (1024 * 1024)).toFixed(0)
-        throw new Error(
-          `File ${obj.Key} is too large: ${sizeMB} MB exceeds ${limitMB} MB limit. ` +
-            'Please reduce the file size and try again.'
+    const downloaded = await mapWithConcurrency(
+      objects,
+      DOWNLOAD_CONCURRENCY,
+      async (obj): Promise<FileInput> => {
+        const res = await s3.send(
+          new GetObjectCommand({ Bucket: ARCHIVE_BUCKET, Key: obj.Key })
         )
+
+        if (!res.Body) {
+          throw new Error(`Empty body for object: ${ARCHIVE_BUCKET}/${obj.Key}`)
+        }
+
+        const buffer = await streamToBuffer(res.Body as Readable)
+
+        if (buffer.length > MAX_FILE_SIZE_BYTES) {
+          const sizeMB = (buffer.length / (1024 * 1024)).toFixed(2)
+          const limitMB = (MAX_FILE_SIZE_BYTES / (1024 * 1024)).toFixed(0)
+          throw new Error(
+            `File ${obj.Key} is too large: ${sizeMB} MB exceeds ${limitMB} MB limit. ` +
+              'Please reduce the file size and try again.'
+          )
+        }
+
+        // Cumulative size cap. Mutating shared `totalSize` is safe here:
+        // JavaScript is single-threaded so the read+write is atomic per file.
+        totalSize += buffer.length
+        if (totalSize > MAX_TOTAL_SIZE_BYTES) {
+          const totalMB = (totalSize / (1024 * 1024)).toFixed(2)
+          const limitMB = (MAX_TOTAL_SIZE_BYTES / (1024 * 1024)).toFixed(0)
+          throw new Error(
+            `Total upload size ${totalMB} MB exceeds ${limitMB} MB limit. ` +
+              'Please reduce the total file size and try again.'
+          )
+        }
+
+        const type = getMimeType(obj.Key!)
+        if (!SUPPORTED_MIME_TYPES.includes(type)) {
+          throw new Error(
+            `Unsupported file type for ${obj.Key}: ${type}. ` +
+              `Supported types: ${SUPPORTED_MIME_TYPES.join(', ')}`
+          )
+        }
+
+        return { buffer, type }
       }
+    )
 
-      // Track cumulative size
-      totalSize += buffer.length
-      if (totalSize > MAX_TOTAL_SIZE_BYTES) {
-        const totalMB = (totalSize / (1024 * 1024)).toFixed(2)
-        const limitMB = (MAX_TOTAL_SIZE_BYTES / (1024 * 1024)).toFixed(0)
-        throw new Error(
-          `Total upload size ${totalMB} MB exceeds ${limitMB} MB limit. ` +
-            'Please reduce the total file size and try again.'
-        )
-      }
-
-      const type = getMimeType(obj.Key!)
-
-      // Reject unsupported file types early rather than silently dropping
-      if (!SUPPORTED_MIME_TYPES.includes(type)) {
-        throw new Error(
-          `Unsupported file type for ${obj.Key}: ${type}. ` +
-            `Supported types: ${SUPPORTED_MIME_TYPES.join(', ')}`
-        )
-      }
-
-      files.push({ buffer, type })
-    }
+    const files: FileInput[] = downloaded
 
     // 3. Merge into single PDF
     const combinedPdf = await mergeFiles(files)
@@ -194,7 +203,8 @@ export async function handler(event: ProcessorEvent): Promise<ProcessorResult> {
 
     return { status: 'success', uploadId }
   } catch (error) {
-    console.error('Processing failed:', error)
+    const err = toError(error)
+    log.error('letter_processing_failed', { uploadId, error: err.message })
 
     // Try to save error status to DynamoDB, but don't mask the original error
     try {
@@ -208,15 +218,17 @@ export async function handler(event: ProcessorEvent): Promise<ProcessorResult> {
             GSI1SK: `DRAFT#${uploadId}`,
             entityType: 'DRAFT_LETTER',
             status: 'ERROR',
-            error: (error as Error).message,
+            error: err.message,
             createdAt: new Date().toISOString(),
             requesterId,
           },
         })
       )
     } catch (ddbError) {
-      // Log DynamoDB failure but don't mask the original processing error
-      console.error('Failed to record error status in DynamoDB:', ddbError)
+      log.error('error_status_write_failed', {
+        uploadId,
+        error: toError(ddbError).message,
+      })
     }
 
     // Always rethrow the original error
