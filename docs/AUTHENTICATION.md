@@ -4,7 +4,7 @@ Family Archive - Document AI uses Amazon Cognito for authentication with JWT tok
 
 ## Overview
 
-```
+```text
 User → Cognito (login) → JWT Token → API Gateway → Lambda
                                          ↓
                               Validate + Extract Claims
@@ -22,11 +22,16 @@ User → Cognito (login) → JWT Token → API Gateway → Lambda
 
 ### User Pool Configuration
 
-The SAM template creates a Cognito User Pool with:
-- Email as username
-- Required attributes: email
-- Password policy: 8+ chars, mixed case, numbers, symbols
-- Email verification required
+The SAM template (`backend/template.yaml`) creates a Cognito User Pool with
+the following verbatim configuration:
+
+- `UsernameAttributes: [email]` (email as username)
+- `AutoVerifiedAttributes: [email]` (email verification on sign-up)
+- Schema requires `email` (mutable), `name` is optional and mutable
+- Password policy: `MinimumLength: 8`, `RequireLowercase: true`,
+  `RequireNumbers: true`, `RequireUppercase: true`, `RequireSymbols: false`
+- Account recovery: verified email only
+- Branded verification email subject and message
 
 ### Environment Variables
 
@@ -85,7 +90,7 @@ To enable "Sign in with Google":
 
 #### Step 4: Deploy with Google OAuth
 Run `npm run deploy` and provide Google credentials when prompted:
-```
+```text
 Enable Google OAuth? (y/n): y
 Google Client ID: {paste your Client ID}
 Google Client Secret: {paste your Client Secret}
@@ -125,8 +130,8 @@ Cognito automatically configures the identity provider and attribute mapping (em
 For demo purposes, enable one-click guest login:
 
 ```bash
-PUBLIC_GUEST_EMAIL=guest@example.com
-PUBLIC_GUEST_PASSWORD=GuestPassword123!
+PUBLIC_GUEST_EMAIL=guest@showcase.demo
+PUBLIC_GUEST_PASSWORD=GuestDemo123!
 ```
 
 ## JWT Token Structure
@@ -206,11 +211,11 @@ const data = await apiClient.get('/comments/some-item-id')
 const result = await apiClient.post('/comments/some-item-id', { content: 'Hello' })
 ```
 
-**2. authenticatedFetch (lib/auth/client.ts)** — a lower-level wrapper around `fetch`:
+**2. authenticatedFetch (lib/auth/auth-utils.ts)** — a lower-level wrapper around `fetch`:
 
 ```typescript
-// lib/auth/client.ts
-import { authenticatedFetch } from '$lib/auth/client'
+// lib/auth/auth-utils.ts
+import { authenticatedFetch } from '$lib/auth/auth-utils'
 
 const response = await authenticatedFetch(`${API_URL}/comments/some-item-id`)
 const data = await response.json()
