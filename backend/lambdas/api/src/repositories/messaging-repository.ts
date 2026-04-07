@@ -15,9 +15,10 @@ import {
 import { BaseRepository } from './base-repository'
 import { docClient, TABLE_NAME, batchWriteWithRetry } from '../lib/database'
 import { keys, PREFIX } from '../lib/keys'
-import { validatePaginationKey, parsePageLimit } from '../lib/validation'
+import { validatePaginationKey } from '../lib/validation'
+import { ValidationError, NotFoundError } from '../lib/errors'
+import { mapWithConcurrency } from '../lib/concurrency'
 import { v4 as uuidv4 } from 'uuid'
-import { log } from '../lib/logger'
 
 interface Attachment {
   s3Key?: string
@@ -50,7 +51,7 @@ interface ConversationMeta {
   SK: string
 }
 
-interface MessageRecord {
+export interface MessageRecord {
   messageId: string
   conversationId: string
   senderId: string
@@ -65,6 +66,8 @@ interface MessageRecord {
   SK: string
 }
 
+export type { Attachment }
+
 interface SenderProfile {
   displayName: string
   photoUrl: string | null
@@ -76,11 +79,13 @@ export class MessagingRepository extends BaseRepository {
    */
   async listConversationsForUser(
     userId: string,
-    lastEvaluatedKey?: string
+    lastEvaluatedKey?: string,
+    limit = 50
   ): Promise<{
     conversations: ConversationMember[]
     lastEvaluatedKey: string | null
   }> {
+    const clamped = Math.min(Math.max(1, Math.floor(limit)), 100)
     const queryParams: QueryCommandInput = {
       TableName: this.tableName,
       KeyConditionExpression: 'PK = :pk AND begins_with(SK, :skPrefix)',
@@ -89,13 +94,13 @@ export class MessagingRepository extends BaseRepository {
         ':skPrefix': PREFIX.CONV,
       },
       ScanIndexForward: false,
-      Limit: 50,
+      Limit: clamped,
     }
 
     if (lastEvaluatedKey) {
       const paginationResult = validatePaginationKey(lastEvaluatedKey, `${PREFIX.USER}${userId}`)
       if (!paginationResult.valid) {
-        throw new Error(paginationResult.error || 'Invalid pagination key')
+        throw new ValidationError(paginationResult.error || 'Invalid pagination key')
       }
       if (paginationResult.key) {
         queryParams.ExclusiveStartKey = paginationResult.key
@@ -146,7 +151,7 @@ export class MessagingRepository extends BaseRepository {
     limit: number,
     lastEvaluatedKey?: string
   ): Promise<{
-    messages: Record<string, unknown>[]
+    messages: MessageRecord[]
     lastEvaluatedKey: string | null
   }> {
     const queryParams: QueryCommandInput = {
@@ -163,7 +168,7 @@ export class MessagingRepository extends BaseRepository {
     if (lastEvaluatedKey) {
       const paginationResult = validatePaginationKey(lastEvaluatedKey, `${PREFIX.CONV}${conversationId}`)
       if (!paginationResult.valid) {
-        throw new Error(paginationResult.error || 'Invalid pagination key')
+        throw new ValidationError(paginationResult.error || 'Invalid pagination key')
       }
       if (paginationResult.key) {
         queryParams.ExclusiveStartKey = paginationResult.key
@@ -172,7 +177,22 @@ export class MessagingRepository extends BaseRepository {
 
     const result = await this.docClient.send(new QueryCommand(queryParams))
 
-    const messages = (result.Items || []).filter(item => item.entityType === 'MESSAGE')
+    const messages = (result.Items || [])
+      .filter(item => item.entityType === 'MESSAGE')
+      .map(item => ({
+        PK: item.PK as string,
+        SK: item.SK as string,
+        entityType: item.entityType as string,
+        messageId: item.messageId as string,
+        conversationId: item.conversationId as string,
+        senderId: item.senderId as string,
+        senderName: item.senderName as string,
+        senderPhotoUrl: (item.senderPhotoUrl as string | null) ?? null,
+        messageText: (item.messageText as string) ?? '',
+        attachments: (item.attachments as Attachment[]) || [],
+        createdAt: item.createdAt as string,
+        conversationType: item.conversationType as string,
+      })) as MessageRecord[]
 
     return {
       messages,
@@ -291,24 +311,25 @@ export class MessagingRepository extends BaseRepository {
     conversationId: string,
     participantIds: string[]
   ): Promise<{ s3Keys: string[] }> {
-    const deleteOps: Array<{ DeleteRequest: { Key: Record<string, unknown> } }> = []
     const s3Keys: string[] = []
     const metaKey = keys.conversationMeta(conversationId)
 
-    // Delete participant membership records
+    // Delete participant membership + meta first as a single bounded batch.
+    // These records are O(participants), not O(messages), so memory is fine.
+    const membershipOps: Array<{ DeleteRequest: { Key: Record<string, unknown> } }> = []
     participantIds.forEach(pid => {
       const userConvKey = keys.userConversation(pid, conversationId)
-      deleteOps.push({
+      membershipOps.push({
         DeleteRequest: { Key: { PK: userConvKey.PK, SK: userConvKey.SK } },
       })
     })
-
-    // Delete conversation meta
-    deleteOps.push({
+    membershipOps.push({
       DeleteRequest: { Key: { PK: metaKey.PK, SK: metaKey.SK } },
     })
+    await batchWriteWithRetry(membershipOps, this.tableName)
 
-    // Query and delete all messages (with Limit: 25 for memory efficiency)
+    // Page through messages and flush each page as its own BatchWrite, so we
+    // never hold more than one page (max 25 records) of message keys in memory.
     let lastKey: Record<string, unknown> | undefined
     do {
       const msgs = await this.docClient.send(new QueryCommand({
@@ -322,26 +343,28 @@ export class MessagingRepository extends BaseRepository {
         Limit: 25,
       }))
 
+      const pageOps: Array<{ DeleteRequest: { Key: Record<string, unknown> } }> = []
       if (msgs.Items) {
         msgs.Items.forEach(msg => {
-          deleteOps.push({
+          pageOps.push({
             DeleteRequest: { Key: { PK: msg.PK as string, SK: msg.SK as string } },
           })
 
           const attachments = msg.attachments as Attachment[] | undefined
           if (attachments && attachments.length > 0) {
             attachments.forEach(att => {
-              if (att.s3Key) {
-                s3Keys.push(att.s3Key)
-              }
+              if (att.s3Key) s3Keys.push(att.s3Key)
             })
           }
         })
       }
+
+      if (pageOps.length > 0) {
+        await batchWriteWithRetry(pageOps, this.tableName)
+      }
+
       lastKey = msgs.LastEvaluatedKey
     } while (lastKey)
-
-    await batchWriteWithRetry(deleteOps, this.tableName)
 
     return { s3Keys }
   }
@@ -376,7 +399,7 @@ export class MessagingRepository extends BaseRepository {
     }))
 
     if (!messageResult.Item) {
-      throw new Error('Message not found')
+      throw new NotFoundError('Message not found')
     }
 
     const message = messageResult.Item
@@ -409,7 +432,10 @@ export class MessagingRepository extends BaseRepository {
   ): Promise<void> {
     const now = new Date().toISOString()
 
-    await Promise.all(participantIds.map(participantId => {
+    // Cap fanout at 10 in-flight UpdateCommand calls so a 1000-member group
+    // chat does not blow the DDB write throughput on a single message send.
+    const FANOUT_LIMIT = 10
+    await mapWithConcurrency(participantIds, FANOUT_LIMIT, async participantId => {
       const updateExpression = participantId === senderId
         ? 'SET lastMessageAt = :now'
         : 'SET lastMessageAt = :now ADD unreadCount :one'
@@ -418,13 +444,13 @@ export class MessagingRepository extends BaseRepository {
         ? { ':now': now }
         : { ':now': now, ':one': 1 }
 
-      return this.docClient.send(new UpdateCommand({
+      await this.docClient.send(new UpdateCommand({
         TableName: this.tableName,
         Key: keys.userConversation(participantId, conversationId),
         UpdateExpression: updateExpression,
         ExpressionAttributeValues: expressionValues,
       }))
-    }))
+    })
   }
 
   /**
