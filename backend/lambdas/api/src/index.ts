@@ -71,7 +71,7 @@ router.post('/letters/{date}/revert', requireAuth(), letters.revertToVersion)
 router.get('/letters/{date}/pdf', letters.getPdfUrl)
 
 // Contact
-router.post('/contact', contact.handle)
+router.post('/contact', contact.submitContact)
 
 // Admin - Drafts (approved users or admins)
 router.get('/admin/drafts', requireApproved(), drafts.listDrafts)

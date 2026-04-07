@@ -16,16 +16,11 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL || ''
 /**
  * Main contact route handler
  */
-export async function handle(
+export async function submitContact(
   event: APIGatewayProxyEvent,
   context: RequestContext
 ): Promise<APIGatewayProxyResult> {
   const { requestOrigin } = context
-  const { httpMethod } = event
-
-  if (httpMethod !== 'POST') {
-    return errorResponse(405, 'Method not allowed', requestOrigin)
-  }
 
   let body: { email?: string; message?: string }
   try {

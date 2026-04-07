@@ -21,7 +21,7 @@ vi.mock('../../backend/lambdas/api/src/lib/rate-limit', () => ({
   getRetryAfter: vi.fn().mockReturnValue(60),
 }))
 
-import { handle } from '../../backend/lambdas/api/src/routes/contact'
+import { submitContact as handle } from '../../backend/lambdas/api/src/routes/contact'
 
 function createMockEvent(overrides: Partial<APIGatewayProxyEvent> = {}): APIGatewayProxyEvent {
   return {
@@ -134,19 +134,6 @@ describe('contact handler', () => {
       expect(result.statusCode).toBe(400)
       const body = JSON.parse(result.body)
       expect(body.error).toContain('Invalid JSON')
-    })
-  })
-
-  describe('POST /contact - method check', () => {
-    it('returns 405 for non-POST methods', async () => {
-      const event = createMockEvent({
-        httpMethod: 'GET',
-      })
-      const result = await handle(event, createMockContext())
-
-      expect(result.statusCode).toBe(405)
-      const body = JSON.parse(result.body)
-      expect(body.error).toContain('Method not allowed')
     })
   })
 
