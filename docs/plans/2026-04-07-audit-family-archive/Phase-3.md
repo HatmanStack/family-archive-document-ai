@@ -40,10 +40,10 @@ parallelism (concurrency 5).
 
 **Verification checklist:**
 
-- [ ] No sequential `for…of` over S3 GetObject
-- [ ] Structured logging in place
-- [ ] Caps still enforced
-- [ ] Tests cover success, abort, retry
+- [x] No sequential `for…of` over S3 GetObject
+- [x] Structured logging in place
+- [x] Caps still enforced
+- [x] Tests cover success, abort, retry
 
 **Commit:** `perf(letter-processor): parallelize S3 downloads with concurrency cap`
 
@@ -74,10 +74,10 @@ leak on every page fetch.
 
 **Verification checklist:**
 
-- [ ] No inline `getSignedUrl` calls in `messages.ts`
-- [ ] Presign call count test in place
-- [ ] `listConversationsForUser` honors caller page size
-- [ ] TTLs reduced and centralized
+- [x] No inline `getSignedUrl` calls in `messages.ts`
+- [x] Presign call count test in place
+- [x] `listConversationsForUser` honors caller page size
+- [x] TTLs reduced and centralized
 
 **Commit:** `perf(api): batch presign and reduce TTLs in messages route`
 
@@ -102,9 +102,9 @@ and `updateConversationMembers` unbounded `Promise.all` fanout.
 
 **Verification checklist:**
 
-- [ ] `deleteConversationData` does not accumulate all keys
-- [ ] `updateConversationMembers` fanout capped
-- [ ] New tests pass
+- [x] `deleteConversationData` does not accumulate all keys
+- [x] `updateConversationMembers` fanout capped
+- [x] New tests pass
 
 **Commit:** `perf(api): chunk-delete conversations and cap member-update fanout`
 
@@ -128,9 +128,9 @@ open on contention.
 
 **Verification checklist:**
 
-- [ ] At most one retry
-- [ ] Fail-open path logged at warn
-- [ ] Tests updated
+- [x] At most one retry
+- [x] Fail-open path logged at warn
+- [x] Tests updated
 
 **Commit:** `refactor(api): simplify rate-limit retry to single attempt fail-open`
 
@@ -155,9 +155,9 @@ open on contention.
 
 **Verification checklist:**
 
-- [ ] Zero `message.includes` matches under `backend/lambdas/`
-- [ ] Zero `as Error` casts under `backend/lambdas/`
-- [ ] Tests cover each typed branch
+- [x] Zero `message.includes` matches under `backend/lambdas/`
+- [x] Zero `as Error` casts under `backend/lambdas/`
+- [x] Tests cover each typed branch
 
 **Commit:** `refactor(api): replace string-sniffing errors with typed errors`
 
@@ -183,9 +183,9 @@ open on contention.
 
 **Verification checklist:**
 
-- [ ] One canonical `MessageRecord` definition
-- [ ] No `Record<string, unknown>` in messaging code paths
-- [ ] Type check passes
+- [x] One canonical `MessageRecord` definition
+- [x] No `Record<string, unknown>` in messaging code paths
+- [x] Type check passes
 
 **Commit:** `refactor(api): type messages repository return shape`
 
@@ -214,9 +214,9 @@ the remaining ones at call sites.)
 
 **Verification checklist:**
 
-- [ ] No literal `expiresIn: 900`/`expiresIn: 3600` in route files
-- [ ] Constants exported and imported from one place
-- [ ] Tests green
+- [x] No literal `expiresIn: 900`/`expiresIn: 3600` in route files
+- [x] Constants exported and imported from one place
+- [x] Tests green
 
 **Commit:** `refactor(api): centralize presign TTLs and photo limits in constants`
 
