@@ -29,6 +29,7 @@
   ],
   "scripts": {
     "test": "vitest run --reporter=verbose",
+    "knip": "knip --no-progress",
     "lint": "cd frontend && npm run check:lint -- --max-warnings 0 && npm run check:types",
     "check": "npm run lint && npm run test",
     "cleanup": "bash scripts/cleanup.sh --execute",
