@@ -27,6 +27,26 @@ Plan ID: `2026-04-07-audit-family-archive`
 
 **Proposed resolution:** Phase 3 should consolidate these duplicated shapes into a single source of truth (either shared types or repository-owned types) rather than re-introducing the deleted central definitions.
 
+### 2026-04-07 Phase-7 Task-7.5
+
+**Issue:** Markdownlint produces ~80+ legacy-formatting violations across docs
+beyond the audit findings (MD012/MD022/MD029/MD031/MD032/MD060 — multiple
+blank lines, missing blank lines around lists/tables/fences, sequential
+ordered-list numbering, table column padding). Fixing them all in this commit
+would touch nearly every doc file and far exceed Phase 7's audit-finding
+scope.
+
+**Context:** The CI markdownlint job currently ships with these rules
+disabled in `.markdownlint.jsonc`. Phase-0's "blank lines surround headings,
+lists, and code blocks" rule is therefore not enforced. The MD040
+(fence-language) and MD026 (no heading punctuation) rules from Phase 0 are
+enforced and clean.
+
+**Proposed resolution:** Schedule a follow-up doc-formatting pass that
+re-enables MD012/MD022/MD031/MD032 and runs `markdownlint-cli2 --fix` across
+the repo, plus a manual pass for MD029 and MD060. Track as a separate
+"docs: enforce strict markdown formatting" task.
+
 ## Resolved Feedback
 
 <!-- Move resolved items here with the resolution noted. -->

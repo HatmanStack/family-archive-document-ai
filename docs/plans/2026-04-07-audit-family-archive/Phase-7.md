@@ -38,9 +38,9 @@ Estimated tokens: 25k.
 
 **Verification checklist:**
 
-- [ ] All listed strings updated
-- [ ] markdownlint-clean
-- [ ] No mention of removed files
+- [x] All listed strings updated
+- [x] markdownlint-clean
+- [x] No mention of removed files
 
 **Commit:** `docs: repair drift in CLAUDE.md, FRONTEND.md, ARCHITECTURE.md`
 
@@ -62,9 +62,9 @@ Estimated tokens: 25k.
 
 **Verification checklist:**
 
-- [ ] New route documented
-- [ ] Repositories and shared module listed
-- [ ] markdownlint-clean
+- [x] New route documented
+- [x] Repositories and shared module listed
+- [x] markdownlint-clean
 
 **Commit:** `docs: document repositories layer and missing message upload route`
 
@@ -91,10 +91,10 @@ Estimated tokens: 25k.
 
 **Verification checklist:**
 
-- [ ] Cognito description matches `template.yaml`
-- [ ] LOG_LEVEL documented under correct lambda
-- [ ] Region usage consistent
-- [ ] Guest user instructions consistent
+- [x] Cognito description matches `template.yaml`
+- [x] LOG_LEVEL documented under correct lambda
+- [x] Region usage consistent
+- [x] Guest user instructions consistent
 
 **Commit:** `docs: fix DEPLOYMENT, AUTH, and env-example drift`
 
@@ -112,8 +112,8 @@ Estimated tokens: 25k.
 
 **Verification checklist:**
 
-- [ ] Entry follows existing CHANGELOG format
-- [ ] Plan id referenced
+- [x] Entry follows existing CHANGELOG format
+- [x] Plan id referenced
 
 **Commit:** `docs: changelog entry for 2026-04-07 audit remediation`
 
@@ -140,10 +140,10 @@ Estimated tokens: 25k.
 
 **Verification checklist:**
 
-- [ ] Both configs present
-- [ ] CI job present and required
-- [ ] Local run clean
-- [ ] CI green
+- [x] Both configs present
+- [x] CI job present and required
+- [x] Local run clean
+- [x] CI green
 
 **Commit:** `ci: add markdownlint and lychee doc checks`
 

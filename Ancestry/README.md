@@ -105,7 +105,7 @@ Use a browser extension like "EditThisCookie" or "Cookie-Editor" to export cooki
 
 Your Tree ID is in the URL when viewing your tree:
 
-```
+```text
 https://www.ancestry.com/family-tree/tree/176147288/family
                                          ^^^^^^^^^ Tree ID
 ```

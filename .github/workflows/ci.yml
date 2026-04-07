@@ -4,14 +4,10 @@ on:
   push:
     branches: [main]
     paths-ignore:
-      - 'docs/**'
-      - '*.md'
       - '.claude/**'
   pull_request:
     branches: [main]
     paths-ignore:
-      - 'docs/**'
-      - '*.md'
       - '.claude/**'
 
 concurrency:
@@ -136,16 +132,35 @@ jobs:
       - name: Audit frontend
         run: cd frontend && npm audit --audit-level=high
 
+  docs:
+    name: Docs (markdownlint + lychee)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Markdownlint
+        uses: DavidAnson/markdownlint-cli2-action@v20
+        with:
+          globs: |
+            **/*.md
+            #node_modules
+            #frontend/node_modules
+      - name: Lychee link check
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --config .lychee.toml --no-progress "**/*.md"
+          fail: true
+
   status-check:
     name: All Checks Passed
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [check, audit]
+    needs: [check, audit, docs]
     if: always()
     steps:
       - name: Verify
         run: |
-          results=("${{ needs.check.result }}" "${{ needs.audit.result }}")
+          results=("${{ needs.check.result }}" "${{ needs.audit.result }}" "${{ needs.docs.result }}")
           for result in "${results[@]}"; do
             if [[ "$result" != "success" && "$result" != "skipped" ]]; then
               echo "One or more checks failed: $result"
