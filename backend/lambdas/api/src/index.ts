@@ -59,8 +59,8 @@ router.delete('/reactions/{commentId}', reactions.handle)
 router.get('/download/presigned-url', media.handle)
 
 // Drafts / Upload (before generic /letters routes)
-router.post('/letters/upload-request', drafts.handle)
-router.post('/letters/process/{uploadId}', drafts.handle)
+router.post('/letters/upload-request', requireAuth(), rateLimit('upload'), drafts.uploadRequest)
+router.post('/letters/process/{uploadId}', requireAuth(), rateLimit('upload'), drafts.processUpload)
 
 // Letters
 router.get('/letters', letters.listLetters)
@@ -74,10 +74,10 @@ router.get('/letters/{date}/pdf', letters.getPdfUrl)
 router.post('/contact', contact.handle)
 
 // Admin - Drafts (approved users or admins)
-router.get('/admin/drafts', requireApproved(), drafts.handle)
-router.get('/admin/drafts/{draftId}', requireApproved(), drafts.handle)
-router.delete('/admin/drafts/{draftId}', requireApproved(), drafts.handle)
-router.post('/admin/drafts/{draftId}/publish', requireApproved(), drafts.handle)
+router.get('/admin/drafts', requireApproved(), drafts.listDrafts)
+router.get('/admin/drafts/{draftId}', requireApproved(), drafts.getDraft)
+router.delete('/admin/drafts/{draftId}', requireApproved(), drafts.deleteDraft)
+router.post('/admin/drafts/{draftId}/publish', requireApproved(), rateLimit('default'), drafts.publishDraft)
 
 // Admin - Comment moderation (admins only)
 router.delete('/admin/comments/{commentId}', requireAdmin(), comments.adminDeleteComment)
