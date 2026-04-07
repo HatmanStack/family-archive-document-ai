@@ -1,7 +1,7 @@
 /**
  * Rate limiting utilities
  */
-import { PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import { UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { docClient, TABLE_NAME } from './database'
 import { keys } from './keys'
 import { hasErrorName, toError } from './errors'
@@ -91,89 +91,61 @@ export async function checkRateLimit(
       resetAt: recordWindowStart + config.windowMs,
     }
   } catch (error) {
-    // Window expired during operation - try to reset with conditional Put
+    // The condition fails when the stored window is older than our cutoff,
+    // meaning a new window started mid-flight. Retry the same Update once with
+    // no condition so we land in the new window's counter; if that also fails
+    // we fail open and log a warning rather than spin up a multi-stage ladder.
     if (hasErrorName(error, 'ConditionalCheckFailedException')) {
       try {
-        // Conditional Put: only create new window if item doesn't exist OR
-        // the existing windowStart is older than our threshold (truly expired)
-        await docClient.send(
-          new PutCommand({
+        const retryResult = await docClient.send(
+          new UpdateCommand({
             TableName: TABLE_NAME,
-            Item: {
-              ...key,
-              userId,
-              action,
-              count: 1,
-              windowStart: now,
-              ttl,
-              entityType: 'RATE_LIMIT',
+            Key: key,
+            UpdateExpression:
+              'SET windowStart = if_not_exists(windowStart, :now), ' +
+              'entityType = :entityType, userId = :userId, #action = :action, ' +
+              'updatedAt = :now, #ttl = :ttl ' +
+              'ADD #count :inc',
+            ExpressionAttributeNames: {
+              '#count': 'count',
+              '#action': 'action',
+              '#ttl': 'ttl',
             },
-            // Only succeed if no item exists OR the existing window is expired
-            ConditionExpression:
-              'attribute_not_exists(windowStart) OR windowStart < :windowStart',
             ExpressionAttributeValues: {
-              ':windowStart': windowStart,
+              ':inc': 1,
+              ':now': now,
+              ':ttl': ttl,
+              ':entityType': 'RATE_LIMIT',
+              ':userId': userId,
+              ':action': action,
             },
+            ReturnValues: 'ALL_NEW',
           })
         )
-        return {
-          allowed: true,
-          remaining: config.maxRequests - 1,
-          resetAt: now + config.windowMs,
-        }
-      } catch (putError) {
-        // If conditional Put failed, another request won the race and created
-        // the new window. Retry the original UpdateCommand to increment.
-        if (hasErrorName(putError, 'ConditionalCheckFailedException')) {
-          try {
-            const retryResult = await docClient.send(
-              new UpdateCommand({
-                TableName: TABLE_NAME,
-                Key: key,
-                UpdateExpression:
-                  'SET windowStart = if_not_exists(windowStart, :now), ' +
-                  'entityType = :entityType, userId = :userId, #action = :action, ' +
-                  'updatedAt = :now, #ttl = :ttl ' +
-                  'ADD #count :inc',
-                ExpressionAttributeNames: {
-                  '#count': 'count',
-                  '#action': 'action',
-                  '#ttl': 'ttl',
-                },
-                ExpressionAttributeValues: {
-                  ':inc': 1,
-                  ':now': now,
-                  ':ttl': ttl,
-                  ':entityType': 'RATE_LIMIT',
-                  ':userId': userId,
-                  ':action': action,
-                },
-                ReturnValues: 'ALL_NEW',
-              })
-            )
 
-            const retryCount = (retryResult.Attributes?.count as number) || 1
-            const retryWindowStart =
-              (retryResult.Attributes?.windowStart as number) || now
+        const retryCount = (retryResult.Attributes?.count as number) || 1
+        const retryWindowStart =
+          (retryResult.Attributes?.windowStart as number) || now
 
-            if (retryCount > config.maxRequests) {
-              return {
-                allowed: false,
-                remaining: 0,
-                resetAt: retryWindowStart + config.windowMs,
-              }
-            }
-
-            return {
-              allowed: true,
-              remaining: config.maxRequests - retryCount,
-              resetAt: retryWindowStart + config.windowMs,
-            }
-          } catch {
-            // Fall through to fail-open
+        if (retryCount > config.maxRequests) {
+          return {
+            allowed: false,
+            remaining: 0,
+            resetAt: retryWindowStart + config.windowMs,
           }
         }
-        // Other Put errors fall through to fail-open
+
+        return {
+          allowed: true,
+          remaining: config.maxRequests - retryCount,
+          resetAt: retryWindowStart + config.windowMs,
+        }
+      } catch (retryError) {
+        log.warn('rate_limit_contention_fail_open', {
+          userId,
+          action,
+          error: toError(retryError).message,
+        })
       }
     }
 
