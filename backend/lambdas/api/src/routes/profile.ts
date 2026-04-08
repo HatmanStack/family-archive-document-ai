@@ -6,18 +6,16 @@
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext } from '../types'
 import path from 'node:path'
-import { PutObjectCommand } from '@aws-sdk/client-s3'
 import { GetCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { docClient, TABLE_NAME, ARCHIVE_BUCKET } from '../lib/database'
+import { presignUpload, presignProfilePhoto } from '../lib/s3-presign'
 import { keys, PREFIX } from '../lib/keys'
 import { successResponse, errorResponse, rateLimitResponse } from '../lib/responses'
 import { validateUserId, sanitizeText, validateLimit, parseRequestBody, validatePaginationKey, parsePageLimit } from '../lib/validation'
-import { MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE, PRESIGNED_UPLOAD_URL_EXPIRY_SECONDS, ALLOWED_PROFILE_PHOTO_TYPES } from '../lib/constants'
+import { MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE, ALLOWED_PROFILE_PHOTO_TYPES } from '../lib/constants'
 import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 import { log } from '../lib/logger'
 import { toError } from '../lib/errors'
-import { s3Client, signPhotoUrl } from '../lib/s3-utils'
 import { getRequesterId } from '../lib/user'
 
 interface FamilyRelationship {
@@ -62,7 +60,7 @@ export async function getProfile(
       return errorResponse(403, 'This profile is private', requestOrigin)
     }
 
-    const signedPhotoUrl = await signPhotoUrl(profile.profilePhotoUrl as string)
+    const signedPhotoUrl = await presignProfilePhoto(profile.profilePhotoUrl as string)
 
     return successResponse({
       userId: profile.userId,
@@ -298,13 +296,7 @@ export async function getPhotoUploadUrl(
     const ext = (safeName.match(/\.([a-zA-Z0-9]+)$/)?.[1] || 'jpg').toLowerCase()
     const key = `profile-photos/${requesterId}/${Date.now()}.${ext}`
 
-    const command = new PutObjectCommand({
-      Bucket: ARCHIVE_BUCKET,
-      Key: key,
-      ContentType: contentType,
-    })
-
-    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: PRESIGNED_UPLOAD_URL_EXPIRY_SECONDS })
+    const uploadUrl = await presignUpload(key, contentType)
     const photoUrl = `https://${ARCHIVE_BUCKET}.s3.${process.env.AWS_REGION || 'us-west-2'}.amazonaws.com/${key}`
 
     return successResponse({ uploadUrl, photoUrl }, 200, requestOrigin)
@@ -351,7 +343,7 @@ export async function listUsers(
       (result.Items || []).map(async item => ({
         userId: item.userId,
         displayName: item.displayName,
-        profilePhotoUrl: await signPhotoUrl(item.profilePhotoUrl as string),
+        profilePhotoUrl: await presignProfilePhoto(item.profilePhotoUrl as string),
         bio: item.bio,
       }))
     )

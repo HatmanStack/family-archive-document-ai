@@ -106,10 +106,10 @@ path with Express-style path parameters and per-route middleware chains:
 
 ```typescript
 // index.ts (excerpt)
-router.get('/comments/{itemId}', comments.list)
-router.post('/comments/{itemId}', rateLimit('createComment'), comments.create)
+router.get('/comments/{itemId}', comments.listComments)
+router.post('/comments/{itemId}', rateLimit('comment'), comments.createComment)
 router.post('/messages/{conversationId}/upload-url', rateLimit('upload'), messages.generateUploadUrl)
-router.get('/letters/{date}', letters.getOne)
+router.get('/letters/{date}', letters.getLetter)
 ```
 
 There is no path-prefix dispatch and no `event.resource` switching inside
