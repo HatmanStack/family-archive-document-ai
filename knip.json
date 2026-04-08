@@ -1,0 +1,54 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": ["tests/**/*.test.{js,ts}", "tests/integration/setup.js"],
+      "project": ["tests/**/*.{js,ts}"]
+    },
+    "frontend": {
+      "entry": [
+        "svelte.config.js",
+        "vite.config.ts",
+        "hooks.server.ts",
+        "app.html",
+        "routes/**/+{page,layout,server,error}{,.server}.{ts,js,svelte}",
+        "routes/**/+page.svelte",
+        "routes/**/+layout.svelte"
+      ],
+      "project": ["lib/**/*.{ts,svelte,js}", "routes/**/*.{ts,svelte,js}"],
+      "ignore": [
+        "lib/components/**",
+        "lib/config/general.ts",
+        "lib/auth/middleware.ts"
+      ],
+      "ignoreDependencies": [
+        "@tailwindcss/postcss",
+        "tailwindcss",
+        "daisyui",
+        "mdsvex",
+        "vite-plugin-pwa",
+        "workbox-build",
+        "workbox-window"
+      ]
+    },
+    "backend/lambdas/api": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"],
+      "ignore": ["src/lib/index.ts"]
+    },
+    "backend/lambdas/letter-processor": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"]
+    }
+  },
+  "ignore": [
+    "Ancestry/**",
+    "backend/scripts/**",
+    "backend/lambdas/admin-provisioner/**",
+    "backend/lambdas/amplify-deployer/**",
+    "backend/lambdas/frontend-builder/**",
+    "backend/lambdas/activity-aggregator/**",
+    "backend/lambdas/notification-processor/**",
+    "data/**"
+  ]
+}

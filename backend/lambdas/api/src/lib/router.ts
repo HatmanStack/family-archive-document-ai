@@ -6,6 +6,7 @@
  */
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext } from '../types'
+import { stripVersionPrefix } from './path-utils'
 
 export type RouteHandler = (
   event: APIGatewayProxyEvent,
@@ -26,6 +27,11 @@ interface Route {
   paramNames: string[]
   middlewares: Middleware[]
   handler: RouteHandler
+  skipDefaultMiddleware: boolean
+}
+
+export interface RouterOptions {
+  defaultMiddleware?: Middleware[]
 }
 
 /**
@@ -46,40 +52,59 @@ function compilePattern(pattern: string): { regex: RegExp; paramNames: string[] 
 
 export class Router {
   private routes: Route[] = []
+  private defaultMiddleware: Middleware[]
+
+  constructor(options: RouterOptions = {}) {
+    this.defaultMiddleware = options.defaultMiddleware ?? []
+  }
 
   /**
    * Register a GET route
    */
   get(pattern: string, ...args: [...Middleware[], RouteHandler]): void {
-    this.addRoute('GET', pattern, args)
+    this.addRoute('GET', pattern, args, false)
   }
 
   /**
    * Register a POST route
    */
   post(pattern: string, ...args: [...Middleware[], RouteHandler]): void {
-    this.addRoute('POST', pattern, args)
+    this.addRoute('POST', pattern, args, false)
   }
 
   /**
    * Register a PUT route
    */
   put(pattern: string, ...args: [...Middleware[], RouteHandler]): void {
-    this.addRoute('PUT', pattern, args)
+    this.addRoute('PUT', pattern, args, false)
   }
 
   /**
    * Register a DELETE route
    */
   delete(pattern: string, ...args: [...Middleware[], RouteHandler]): void {
-    this.addRoute('DELETE', pattern, args)
+    this.addRoute('DELETE', pattern, args, false)
   }
 
   /**
    * Register a PATCH route
    */
   patch(pattern: string, ...args: [...Middleware[], RouteHandler]): void {
-    this.addRoute('PATCH', pattern, args)
+    this.addRoute('PATCH', pattern, args, false)
+  }
+
+  /**
+   * Register a public GET route (skips default middleware such as auth).
+   */
+  publicGet(pattern: string, ...args: [...Middleware[], RouteHandler]): void {
+    this.addRoute('GET', pattern, args, true)
+  }
+
+  /**
+   * Register a public POST route (skips default middleware such as auth).
+   */
+  publicPost(pattern: string, ...args: [...Middleware[], RouteHandler]): void {
+    this.addRoute('POST', pattern, args, true)
   }
 
   /**
@@ -92,7 +117,7 @@ export class Router {
   ): Promise<APIGatewayProxyResult | null> {
     const method = event.httpMethod as HttpMethod
     const rawPath = event.path || event.resource
-    const path = rawPath.replace(/^\/v1/, '') || '/'
+    const path = stripVersionPrefix(rawPath)
 
     for (const route of this.routes) {
       if (route.method !== method) continue
@@ -107,7 +132,15 @@ export class Router {
         }
       }
 
-      // Run middleware chain
+      // Run default middleware unless route opted out
+      if (!route.skipDefaultMiddleware) {
+        for (const middleware of this.defaultMiddleware) {
+          const result = await middleware(event, context)
+          if (result) return result
+        }
+      }
+
+      // Run per-route middleware chain
       for (const middleware of route.middlewares) {
         const result = await middleware(event, context)
         if (result) return result
@@ -123,7 +156,8 @@ export class Router {
   private addRoute(
     method: HttpMethod,
     pattern: string,
-    args: [...Middleware[], RouteHandler]
+    args: [...Middleware[], RouteHandler],
+    skipDefaultMiddleware: boolean
   ): void {
     const handler = args[args.length - 1] as RouteHandler
     const middlewares = args.slice(0, -1) as Middleware[]
@@ -136,6 +170,7 @@ export class Router {
       paramNames,
       middlewares,
       handler,
+      skipDefaultMiddleware,
     })
   }
 }

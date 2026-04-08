@@ -155,6 +155,70 @@ describe('Router', () => {
     expect(result).toBeNull()
   })
 
+  it('default middleware runs before per-route middleware on private routes', async () => {
+    const callOrder: string[] = []
+    const defaultMw = vi.fn().mockImplementation(async () => {
+      callOrder.push('default')
+      return null
+    })
+    const routeMw = vi.fn().mockImplementation(async () => {
+      callOrder.push('route')
+      return null
+    })
+    const handler = vi.fn().mockImplementation(async () => {
+      callOrder.push('handler')
+      return okResponse
+    })
+    const router = new Router({ defaultMiddleware: [defaultMw] })
+    router.get('/private', routeMw, handler)
+
+    await router.handle(createMockEvent({ path: '/private' }), mockContext)
+
+    expect(callOrder).toEqual(['default', 'route', 'handler'])
+  })
+
+  it('default middleware can short-circuit with a 401 on private routes', async () => {
+    const unauthorized: APIGatewayProxyResult = { statusCode: 401, headers: {}, body: '{}' }
+    const defaultMw = vi.fn().mockResolvedValue(unauthorized)
+    const handler = vi.fn().mockResolvedValue(okResponse)
+    const router = new Router({ defaultMiddleware: [defaultMw] })
+    router.get('/private', handler)
+
+    const result = await router.handle(createMockEvent({ path: '/private' }), mockContext)
+
+    expect(handler).not.toHaveBeenCalled()
+    expect(result).toEqual(unauthorized)
+  })
+
+  it('publicGet bypasses default middleware', async () => {
+    const defaultMw = vi.fn().mockResolvedValue({ statusCode: 401, headers: {}, body: '{}' } as APIGatewayProxyResult)
+    const handler = vi.fn().mockResolvedValue(okResponse)
+    const router = new Router({ defaultMiddleware: [defaultMw] })
+    router.publicGet('/health', handler)
+
+    const result = await router.handle(createMockEvent({ path: '/health' }), mockContext)
+
+    expect(defaultMw).not.toHaveBeenCalled()
+    expect(handler).toHaveBeenCalled()
+    expect(result).toEqual(okResponse)
+  })
+
+  it('publicPost bypasses default middleware', async () => {
+    const defaultMw = vi.fn().mockResolvedValue({ statusCode: 401, headers: {}, body: '{}' } as APIGatewayProxyResult)
+    const handler = vi.fn().mockResolvedValue(okResponse)
+    const router = new Router({ defaultMiddleware: [defaultMw] })
+    router.publicPost('/contact', handler)
+
+    const result = await router.handle(
+      createMockEvent({ httpMethod: 'POST', path: '/contact' }),
+      mockContext
+    )
+
+    expect(defaultMw).not.toHaveBeenCalled()
+    expect(handler).toHaveBeenCalled()
+    expect(result).toEqual(okResponse)
+  })
+
   it('route with version prefix stripped matches correctly', async () => {
     const router = new Router()
     const handler = vi.fn().mockResolvedValue(okResponse)

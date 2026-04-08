@@ -1,9 +1,11 @@
 /**
- * Letters route handler
+ * Letters route handlers
+ *
+ * Each function is registered individually on the router in index.ts.
  */
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext } from '../types'
-import { GetCommand, PutCommand, QueryCommand, UpdateCommand, type QueryCommandInput } from '@aws-sdk/lib-dynamodb'
+import { GetCommand, PutCommand, QueryCommand, TransactWriteCommand, UpdateCommand, type QueryCommandInput } from '@aws-sdk/lib-dynamodb'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { docClient, TABLE_NAME, ARCHIVE_BUCKET } from '../lib/database'
@@ -14,6 +16,7 @@ import { successResponse, errorResponse } from '../lib/responses'
 import { log } from '../lib/logger'
 import { validatePaginationKey, parsePageLimit } from '../lib/validation'
 import { toError } from '../lib/errors'
+import { getRequesterId } from '../lib/user'
 
 function isValidDate(date: string | undefined): boolean {
   if (!date || typeof date !== 'string') return false
@@ -22,51 +25,13 @@ function isValidDate(date: string | undefined): boolean {
 }
 
 /**
- * Main letters route handler
+ * GET /letters
  */
-export async function handle(
+export async function listLetters(
   event: APIGatewayProxyEvent,
   context: RequestContext
 ): Promise<APIGatewayProxyResult> {
-  const { requesterId, requestOrigin } = context
-  const method = event.httpMethod
-  const resource = event.resource
-  const normalizedResource = resource.replace(/^\/v1/, '')
-
-  if (method === 'GET' && normalizedResource === '/letters') {
-    return listLetters(event, requestOrigin)
-  }
-
-  if (method === 'GET' && normalizedResource === '/letters/{date}') {
-    return getLetter(event, requestOrigin)
-  }
-
-  if (method === 'PUT' && normalizedResource === '/letters/{date}') {
-    if (!requesterId) {
-      return errorResponse(401, 'Authentication required', requestOrigin)
-    }
-    return updateLetter(event, requesterId, requestOrigin)
-  }
-
-  if (method === 'GET' && normalizedResource === '/letters/{date}/versions') {
-    return getVersions(event, requestOrigin)
-  }
-
-  if (method === 'POST' && normalizedResource === '/letters/{date}/revert') {
-    if (!requesterId) {
-      return errorResponse(401, 'Authentication required', requestOrigin)
-    }
-    return revertToVersion(event, requesterId, requestOrigin)
-  }
-
-  if (method === 'GET' && normalizedResource === '/letters/{date}/pdf') {
-    return getPdfUrl(event, requestOrigin)
-  }
-
-  return errorResponse(404, 'Route not found', requestOrigin)
-}
-
-async function listLetters(event: APIGatewayProxyEvent, requestOrigin?: string): Promise<APIGatewayProxyResult> {
+  const { requestOrigin } = context
   const limit = parsePageLimit(event.queryStringParameters?.limit, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE)
   const cursor = event.queryStringParameters?.cursor
 
@@ -110,7 +75,14 @@ async function listLetters(event: APIGatewayProxyEvent, requestOrigin?: string):
   }
 }
 
-async function getLetter(event: APIGatewayProxyEvent, requestOrigin?: string): Promise<APIGatewayProxyResult> {
+/**
+ * GET /letters/{date}
+ */
+export async function getLetter(
+  event: APIGatewayProxyEvent,
+  context: RequestContext
+): Promise<APIGatewayProxyResult> {
+  const { requestOrigin } = context
   const date = event.pathParameters?.date
 
   if (!date || !isValidDate(date)) {
@@ -147,11 +119,15 @@ async function getLetter(event: APIGatewayProxyEvent, requestOrigin?: string): P
   }
 }
 
-async function updateLetter(
+/**
+ * PUT /letters/{date}
+ */
+export async function updateLetter(
   event: APIGatewayProxyEvent,
-  requesterId: string,
-  requestOrigin?: string
+  context: RequestContext
 ): Promise<APIGatewayProxyResult> {
+  const { requestOrigin } = context
+  const requesterId = getRequesterId(context)
   const date = event.pathParameters?.date
 
   let body: { content?: string; title?: string; author?: string; description?: string }
@@ -183,41 +159,61 @@ async function updateLetter(
 
     const now = new Date().toISOString()
     const versionNumber = ((current.Item.versionCount as number) || 0) + 1
-
-    // Create version of current content
-    await docClient.send(new PutCommand({
-      TableName: TABLE_NAME,
-      Item: {
-        ...keys.letterVersion(date, now),
-        content: current.Item.content,
-        title: current.Item.title,
-        author: current.Item.author,
-        description: current.Item.description,
-        editedBy: current.Item.lastEditedBy,
-        editedAt: current.Item.updatedAt,
-        versionNumber: current.Item.versionCount || 0,
-        entityType: 'LETTER_VERSION',
-      },
-    }))
+    const currentUpdatedAt = current.Item.updatedAt as string | undefined
 
     const updatedTitle = title || current.Item.title
     const updatedAuthor = author !== undefined ? author : current.Item.author
     const updatedDescription = description !== undefined ? description : current.Item.description
 
-    await docClient.send(new UpdateCommand({
-      TableName: TABLE_NAME,
-      Key: keys.letter(date),
-      UpdateExpression: 'SET content = :content, title = :title, author = :author, description = :description, updatedAt = :now, lastEditedBy = :editor, versionCount = :vc',
-      ExpressionAttributeValues: {
-        ':content': content,
-        ':title': updatedTitle,
-        ':author': updatedAuthor,
-        ':description': updatedDescription,
-        ':now': now,
-        ':editor': requesterId,
-        ':vc': versionNumber,
-      },
-    }))
+    // Snapshot + live update must be atomic. Conditional check on the live
+    // record's current updatedAt prevents lost writes from concurrent edits.
+    try {
+      await docClient.send(new TransactWriteCommand({
+        TransactItems: [
+          {
+            Put: {
+              TableName: TABLE_NAME,
+              Item: {
+                ...keys.letterVersion(date, now),
+                content: current.Item.content,
+                title: current.Item.title,
+                author: current.Item.author,
+                description: current.Item.description,
+                editedBy: current.Item.lastEditedBy,
+                editedAt: currentUpdatedAt,
+                versionNumber: current.Item.versionCount || 0,
+                entityType: 'LETTER_VERSION',
+              },
+            },
+          },
+          {
+            Update: {
+              TableName: TABLE_NAME,
+              Key: keys.letter(date),
+              UpdateExpression: 'SET content = :content, title = :title, author = :author, description = :description, updatedAt = :now, lastEditedBy = :editor, versionCount = :vc',
+              ConditionExpression: currentUpdatedAt
+                ? 'updatedAt = :prev'
+                : 'attribute_not_exists(updatedAt)',
+              ExpressionAttributeValues: {
+                ':content': content,
+                ':title': updatedTitle,
+                ':author': updatedAuthor,
+                ':description': updatedDescription,
+                ':now': now,
+                ':editor': requesterId,
+                ':vc': versionNumber,
+                ...(currentUpdatedAt ? { ':prev': currentUpdatedAt } : {}),
+              },
+            },
+          },
+        ],
+      }))
+    } catch (txErr) {
+      if (toError(txErr).name === 'TransactionCanceledException') {
+        return errorResponse(409, 'Letter was modified by another request, please retry', requestOrigin)
+      }
+      throw txErr
+    }
 
     return successResponse({
       message: 'Letter updated',
@@ -229,7 +225,14 @@ async function updateLetter(
   }
 }
 
-async function getVersions(event: APIGatewayProxyEvent, requestOrigin?: string): Promise<APIGatewayProxyResult> {
+/**
+ * GET /letters/{date}/versions
+ */
+export async function getVersions(
+  event: APIGatewayProxyEvent,
+  context: RequestContext
+): Promise<APIGatewayProxyResult> {
+  const { requestOrigin } = context
   const date = event.pathParameters?.date
 
   if (!date || !isValidDate(date)) {
@@ -261,11 +264,15 @@ async function getVersions(event: APIGatewayProxyEvent, requestOrigin?: string):
   }
 }
 
-async function revertToVersion(
+/**
+ * POST /letters/{date}/revert
+ */
+export async function revertToVersion(
   event: APIGatewayProxyEvent,
-  requesterId: string,
-  requestOrigin?: string
+  context: RequestContext
 ): Promise<APIGatewayProxyResult> {
+  const { requestOrigin } = context
+  const requesterId = getRequesterId(context)
   const date = event.pathParameters?.date
 
   let body: { timestamp?: string }
@@ -298,7 +305,6 @@ async function revertToVersion(
     const version = versionResult.Item
     const now = new Date().toISOString()
 
-    // Get current to create new version
     const current = await docClient.send(new GetCommand({
       TableName: TABLE_NAME,
       Key: keys.letter(date),
@@ -306,38 +312,55 @@ async function revertToVersion(
 
     if (current.Item) {
       const newVersionNumber = ((current.Item.versionCount as number) || 0) + 1
+      const currentUpdatedAt = current.Item.updatedAt as string | undefined
 
-      // Save current as version before reverting
-      await docClient.send(new PutCommand({
-        TableName: TABLE_NAME,
-        Item: {
-          ...keys.letterVersion(date, now),
-          content: current.Item.content,
-          title: current.Item.title,
-          author: current.Item.author,
-          description: current.Item.description,
-          editedBy: current.Item.lastEditedBy,
-          editedAt: current.Item.updatedAt,
-          versionNumber: current.Item.versionCount || 0,
-          entityType: 'LETTER_VERSION',
-        },
-      }))
-
-      // Update current with reverted content
-      await docClient.send(new UpdateCommand({
-        TableName: TABLE_NAME,
-        Key: keys.letter(date),
-        UpdateExpression: 'SET content = :content, title = :title, author = :author, description = :description, updatedAt = :now, lastEditedBy = :editor, versionCount = :vc',
-        ExpressionAttributeValues: {
-          ':content': version.content,
-          ':title': version.title,
-          ':author': version.author,
-          ':description': version.description,
-          ':now': now,
-          ':editor': requesterId,
-          ':vc': newVersionNumber,
-        },
-      }))
+      try {
+        await docClient.send(new TransactWriteCommand({
+          TransactItems: [
+            {
+              Put: {
+                TableName: TABLE_NAME,
+                Item: {
+                  ...keys.letterVersion(date, now),
+                  content: current.Item.content,
+                  title: current.Item.title,
+                  author: current.Item.author,
+                  description: current.Item.description,
+                  editedBy: current.Item.lastEditedBy,
+                  editedAt: currentUpdatedAt,
+                  versionNumber: current.Item.versionCount || 0,
+                  entityType: 'LETTER_VERSION',
+                },
+              },
+            },
+            {
+              Update: {
+                TableName: TABLE_NAME,
+                Key: keys.letter(date),
+                UpdateExpression: 'SET content = :content, title = :title, author = :author, description = :description, updatedAt = :now, lastEditedBy = :editor, versionCount = :vc',
+                ConditionExpression: currentUpdatedAt
+                  ? 'updatedAt = :prev'
+                  : 'attribute_not_exists(updatedAt)',
+                ExpressionAttributeValues: {
+                  ':content': version.content,
+                  ':title': version.title,
+                  ':author': version.author,
+                  ':description': version.description,
+                  ':now': now,
+                  ':editor': requesterId,
+                  ':vc': newVersionNumber,
+                  ...(currentUpdatedAt ? { ':prev': currentUpdatedAt } : {}),
+                },
+              },
+            },
+          ],
+        }))
+      } catch (txErr) {
+        if (toError(txErr).name === 'TransactionCanceledException') {
+          return errorResponse(409, 'Letter was modified by another request, please retry', requestOrigin)
+        }
+        throw txErr
+      }
     }
 
     return successResponse({ message: 'Reverted to version', timestamp }, 200, requestOrigin)
@@ -347,7 +370,14 @@ async function revertToVersion(
   }
 }
 
-async function getPdfUrl(event: APIGatewayProxyEvent, requestOrigin?: string): Promise<APIGatewayProxyResult> {
+/**
+ * GET /letters/{date}/pdf
+ */
+export async function getPdfUrl(
+  event: APIGatewayProxyEvent,
+  context: RequestContext
+): Promise<APIGatewayProxyResult> {
+  const { requestOrigin } = context
   const date = event.pathParameters?.date
 
   if (!date || !isValidDate(date)) {
@@ -367,7 +397,6 @@ async function getPdfUrl(event: APIGatewayProxyEvent, requestOrigin?: string): P
     let downloadUrl: string
 
     if (result.Item.ragstackDocumentId && RAGSTACK_BUCKET) {
-      // New path: serve from RAGStack bucket
       const ragstackKey = `input/${result.Item.ragstackDocumentId}/${result.Item.pdfFilename || `${date}.pdf`}`
       downloadUrl = await getSignedUrl(
         ragstackS3Client,
@@ -375,7 +404,6 @@ async function getPdfUrl(event: APIGatewayProxyEvent, requestOrigin?: string): P
         { expiresIn: PRESIGNED_URL_EXPIRY_SECONDS }
       )
     } else if (result.Item.pdfKey) {
-      // Legacy fallback: serve from archive bucket
       downloadUrl = await getSignedUrl(
         s3Client,
         new GetObjectCommand({ Bucket: ARCHIVE_BUCKET, Key: result.Item.pdfKey as string }),

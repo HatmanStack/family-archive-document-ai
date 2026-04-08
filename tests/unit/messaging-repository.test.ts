@@ -167,6 +167,53 @@ describe('MessagingRepository', () => {
     })
   })
 
+  describe('deleteConversationData chunked pagination', () => {
+    it('flushes each query page as its own batch write', async () => {
+      // Two pages of 2 messages each, then end.
+      const page1 = [
+        { PK: 'CONV#c', SK: 'MSG#1', entityType: 'MESSAGE', attachments: [{ s3Key: 'a' }] },
+        { PK: 'CONV#c', SK: 'MSG#2', entityType: 'MESSAGE', attachments: [] },
+      ]
+      const page2 = [
+        { PK: 'CONV#c', SK: 'MSG#3', entityType: 'MESSAGE', attachments: [{ s3Key: 'b' }] },
+        { PK: 'CONV#c', SK: 'MSG#4', entityType: 'MESSAGE', attachments: [] },
+      ]
+      ddbMock
+        .on(QueryCommand)
+        .resolvesOnce({ Items: page1, LastEvaluatedKey: { PK: 'CONV#c', SK: 'MSG#2' } })
+        .resolvesOnce({ Items: page2, LastEvaluatedKey: undefined })
+
+      ddbMock.on(BatchWriteCommand).resolves({ UnprocessedItems: {} })
+
+      const result = await repo.deleteConversationData('c', ['user-1'])
+
+      expect(result.s3Keys).toEqual(['a', 'b'])
+      // 1 batch for membership/meta + 1 per message page = 3 batch writes total.
+      const writes = ddbMock.commandCalls(BatchWriteCommand)
+      expect(writes.length).toBe(3)
+    })
+  })
+
+  describe('updateConversationMembers fanout', () => {
+    it('caps in-flight UpdateCommand calls at the fanout limit', async () => {
+      let inFlight = 0
+      let maxInFlight = 0
+      ddbMock.on(UpdateCommand).callsFake(async () => {
+        inFlight++
+        if (inFlight > maxInFlight) maxInFlight = inFlight
+        await new Promise(r => setTimeout(r, 5))
+        inFlight--
+        return {}
+      })
+
+      const participants = Array.from({ length: 30 }, (_, i) => `user-${i}`)
+      await repo.updateConversationMembers('c', 'user-0', participants)
+
+      expect(maxInFlight).toBeLessThanOrEqual(10)
+      expect(ddbMock.commandCalls(UpdateCommand).length).toBe(30)
+    })
+  })
+
   describe('fetchUserNames', () => {
     it('returns names from batch get', async () => {
       ddbMock.on(BatchGetCommand).resolves({

@@ -100,44 +100,46 @@ User Request → API Gateway → Lambda (consolidated) → DynamoDB / S3
 
 ## API Lambda Structure
 
-The consolidated API Lambda uses route-based dispatch:
+The consolidated API Lambda uses a declarative `Router` (see
+`backend/lambdas/api/src/lib/router.ts`). Routes are registered per verb and
+path with Express-style path parameters and per-route middleware chains:
 
 ```typescript
-// index.ts - Main handler
-handler(event) {
-  // Extract auth context from Cognito claims
-  // Route to appropriate handler based on path:
-
-  /comments/*     → comments.handle()
-  /messages/*     → messages.handle()
-  /profile/*      → profile.handle()
-  /users/*        → profile.handle()
-  /reactions/*    → reactions.handle()
-  /media/*        → media.handle()
-  /pdf/*          → media.handle()
-  /download/*     → media.handle()
-  /upload/*       → media.handle()
-  /letters/*      → letters.handle()
-  /admin/drafts/* → drafts.handle()
-  /admin/comments/* → comments.handle()
-  /contact        → contact.handle()
-}
+// index.ts (excerpt)
+router.get('/comments/{itemId}', comments.listComments)
+router.post('/comments/{itemId}', rateLimit('comment'), comments.createComment)
+router.post('/messages/{conversationId}/upload-url', rateLimit('upload'), messages.generateUploadUrl)
+router.get('/letters/{date}', letters.getLetter)
 ```
+
+There is no path-prefix dispatch and no `event.resource` switching inside
+route files. Every handler is a function `(event, context) => Promise<Result>`
+registered directly on the router.
 
 ### Shared Libraries
 
 | Library | Purpose |
 |---------|---------|
-| `lib/errors.ts` | Typed error classes (ValidationError, NotFoundError, etc.) |
-| `lib/responses.ts` | CORS-aware response helpers |
-| `lib/validation.ts` | Input validation and sanitization |
-| `lib/rate-limit.ts` | Atomic rate limiting with DynamoDB |
+| `lib/router.ts` | Declarative `Router` with `{param}` paths and middleware chains |
+| `lib/middleware.ts` | Rate-limit, auth, and admin middleware factories |
+| `lib/errors.ts` | Typed error classes (ValidationError, NotFoundError, etc.) and `toError()` |
+| `lib/responses.ts` | CORS-aware response helpers (fail-closed in production) |
+| `lib/validation.ts` | Input validation, including `validatePaginationKey()` |
+| `lib/rate-limit.ts` | Atomic rate limiting with DynamoDB (fail-open) |
 | `lib/logger.ts` | Structured JSON logging with correlation IDs |
 | `lib/keys.ts` | DynamoDB key builders |
 | `lib/database.ts` | DynamoDB client and table config |
 | `lib/constants.ts` | Shared constants (limits, expiry times) |
 | `lib/user.ts` | User profile management |
-| `lib/s3-utils.ts` | S3 presigned URL helpers |
+| `lib/s3-utils.ts` | Shared S3 client |
+| `lib/s3-presign.ts` | Presigned URL helpers for uploads, attachments, profile photos |
+| `lib/concurrency.ts` | Bounded concurrency helpers for batched operations |
+| `lib/path-utils.ts` | Path/key sanitization utilities |
+| `repositories/` | DynamoDB data access (`base-repository`, `comment-repository`, `messaging-repository`) |
+
+The `letter-processor` Lambda has its own `src/lib/` with `config.ts`
+(env validation), `retry.ts` (exponential backoff), `concurrency.ts`,
+`logger.ts`, and `errors.ts`.
 
 ## Security
 

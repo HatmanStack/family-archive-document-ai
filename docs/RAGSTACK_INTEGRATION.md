@@ -94,7 +94,7 @@ PUBLIC_RAGSTACK_CHAT_URL=https://xxxxx.cloudfront.net/ragstack-chat.js
 ### Get Dashboard URL
 
 From CloudFormation **Outputs** tab:
-```
+```text
 RagStackAdminDashboardUrl: https://main.xxxxxx.amplifyapp.com/admin
 ```
 

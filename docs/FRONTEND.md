@@ -15,7 +15,7 @@ The frontend is built with SvelteKit 2.x and Svelte 5, using DaisyUI components 
 
 ## Project Structure
 
-```
+```text
 frontend/
 ├── routes/                  # SvelteKit file-based routing
 │   ├── +layout.svelte      # Root layout with nav
@@ -49,10 +49,10 @@ frontend/
 │
 ├── lib/
 │   ├── auth/               # Authentication (Cognito, JWT, OAuth)
-│   │   ├── api-client.ts       # Class-based API client
+│   │   ├── api-client.ts       # Class-based API client (shared singleton)
 │   │   ├── auth-service.ts     # Auth orchestration (sign in, refresh, sign out)
 │   │   ├── auth-store.ts       # Auth state store
-│   │   ├── client.ts           # authenticatedFetch wrapper
+│   │   ├── auth-utils.ts       # Token management and session helpers
 │   │   ├── cognito-client.ts   # CognitoAuthClient (AWS SDK calls)
 │   │   ├── cognito-config.ts   # Cognito env var config
 │   │   ├── google-oauth.ts     # Google OAuth helpers
@@ -60,10 +60,13 @@ frontend/
 │   │   ├── jwt.ts              # JWT utilities
 │   │   └── middleware.ts       # Auth middleware
 │   ├── components/         # Reusable components
+│   │   ├── auth/          # Login form, auth guard, user menu
 │   │   ├── comments/      # Comment system
+│   │   ├── gallery/       # Gallery subcomponents (search, tabs, upload, preview)
+│   │   ├── letters/       # Letter components
 │   │   ├── messages/      # Messaging components
-│   │   ├── profile/       # Profile components
-│   │   └── letters/       # Letter components
+│   │   ├── profile/       # Profile subcomponents (form, photo, relationships, notifications)
+│   │   └── *.svelte       # Top-level layout, header, post, and prose components
 │   ├── config/             # Site configuration (general, icons, posts)
 │   ├── services/           # API service modules
 │   │   ├── comment-service.ts        # Comment CRUD
@@ -179,23 +182,26 @@ import {
   getPdfUrl
 } from '$lib/services/letters-service'
 
+// All letters service functions use the shared apiClient singleton
+// for authentication; no authToken argument is required.
+
 // List all letters
-const { items, nextCursor } = await listLetters(authToken, limit, cursor)
+const { items, nextCursor } = await listLetters(limit, cursor)
 
 // Get single letter
-const letter = await getLetter(date, authToken)
+const letter = await getLetter(date)
 
 // Update letter content
-await updateLetter(date, { content, title, author }, authToken)
+await updateLetter(date, { content, title, author })
 
 // Get version history
-const versions = await getVersions(date, authToken)
+const versions = await getVersions(date)
 
 // Revert to previous version
-await revertToVersion(date, versionTimestamp, authToken)
+await revertToVersion(date, versionTimestamp)
 
 // Get PDF download URL
-const pdfUrl = await getPdfUrl(date, authToken)
+const pdfUrl = await getPdfUrl(date)
 ```
 
 ## Stores
@@ -225,15 +231,20 @@ authStore.clearAuth()
 <!-- lib/components/comments/Comment.svelte -->
 <script lang="ts">
   import type { Comment } from '$lib/types/comment'
-  export let comment: Comment
-  export let onEdit: (commentId: string, text: string) => void
-  export let onDelete: (commentId: string) => void
+
+  interface Props {
+    comment: Comment
+    onEdit: (commentId: string, text: string) => void
+    onDelete: (commentId: string) => void
+  }
+
+  const { comment, onEdit, onDelete }: Props = $props()
 </script>
 
 <div class="comment">
   <p>{comment.content}</p>
-  <button on:click={() => onEdit(comment.commentId, comment.content)}>Edit</button>
-  <button on:click={() => onDelete(comment.commentId)}>Delete</button>
+  <button onclick={() => onEdit(comment.commentId, comment.content)}>Edit</button>
+  <button onclick={() => onDelete(comment.commentId)}>Delete</button>
 </div>
 ```
 

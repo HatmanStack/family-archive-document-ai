@@ -1,1 +1,4 @@
+# Runs eslint with --max-warnings 0 on staged frontend files via lint-staged.
+# Do not bypass with --no-verify; the same lint job runs in CI and will block
+# the PR. See CLAUDE.md "Pre-commit hook" section.
 npx lint-staged

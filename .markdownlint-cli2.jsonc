@@ -1,0 +1,12 @@
+// markdownlint-cli2 wrapper config: defines ignore globs and points at
+// .markdownlint.jsonc for the rule configuration.
+{
+  "config": {
+    "extends": "./.markdownlint.jsonc"
+  },
+  "ignores": [
+    "**/node_modules/**",
+    ".claude/**",
+    "docs/plans/**"
+  ]
+}

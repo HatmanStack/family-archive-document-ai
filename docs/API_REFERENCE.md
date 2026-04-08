@@ -286,6 +286,34 @@ Get presigned URL for attachment.
 
 ---
 
+### POST /messages/attachments/upload-url
+
+Get a presigned upload URL for a message attachment. Functionally identical to
+`POST /messages/{conversationId}/upload-url` but does not require a
+conversation id (used when composing a new conversation).
+
+**Signature:** `POST /messages/attachments/upload-url`
+**Auth:** Any authenticated user
+**Rate Limit:** 10/5min (`upload`)
+
+| Parameter | Type | Required |
+|-----------|------|----------|
+| fileName | string | Yes |
+| contentType | string | Yes |
+
+**Response:**
+
+```json
+{
+  "uploadUrl": "string",
+  "s3Key": "string",
+  "fileName": "string",
+  "contentType": "string"
+}
+```
+
+---
+
 ### PUT /messages/{conversationId}/read
 Mark messages as read.
 

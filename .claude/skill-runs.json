@@ -3,12 +3,34 @@
     "skill": "audit",
     "date": "2026-03-15",
     "plan": "2026-03-15-audit-family-archive",
-    "audits": ["health", "eval", "docs"]
+    "audits": [
+      "health",
+      "eval",
+      "docs"
+    ]
   },
   {
     "skill": "audit",
     "date": "2026-03-23",
     "plan": "2026-03-23-audit-document-ai",
-    "audits": ["eval"]
+    "audits": [
+      "eval"
+    ]
+  },
+  {
+    "skill": "audit",
+    "date": "2026-04-07",
+    "plan": "2026-04-07-audit-family-archive",
+    "audits": [
+      "health",
+      "eval",
+      "docs"
+    ]
+  },
+  {
+    "skill": "pipeline",
+    "date": "2026-04-07",
+    "plan": "2026-04-07-audit-family-archive",
+    "verdict": "VERIFIED"
   }
 ]

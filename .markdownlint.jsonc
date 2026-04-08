@@ -1,0 +1,35 @@
+// Markdownlint configuration for Family Archive - Document AI.
+// Targets the critical rules from docs/plans/2026-04-07-audit-family-archive/Phase-0.md
+// while leaving legacy formatting cleanups (blank-line spacing, table column
+// alignment, sequential ordered-list numbering) tracked separately in
+// feedback.md so this gate can ship without churning every legacy doc.
+{
+  "default": true,
+
+  // Allow long lines (tables, URLs, code samples).
+  "MD013": false,
+  // Allow inline HTML where needed.
+  "MD033": false,
+  // Allow first line to not be a top-level heading.
+  "MD041": false,
+  // Allow duplicate headings under different parents.
+  "MD024": { "siblings_only": true },
+
+  // Critical rules from Phase 0 — keep on:
+  // MD040 fenced code blocks must have a language tag.
+  "MD040": true,
+  // MD026 headings must not end with punctuation.
+  "MD026": { "punctuation": ".,;:!?" },
+
+  // Legacy formatting cleanups tracked in feedback.md, not gated here:
+  "MD012": false,
+  "MD022": false,
+  "MD029": false,
+  "MD031": false,
+  "MD032": false,
+  "MD034": false,
+  "MD036": false,
+  "MD047": false,
+  "MD058": false,
+  "MD060": false
+}

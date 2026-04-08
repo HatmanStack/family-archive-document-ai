@@ -11,7 +11,7 @@ Deploy Family Archive - Document AI to your AWS account in ~15 minutes using Clo
 ## Step 1: Deploy via CloudFormation Template
 
 **Template URL:**
-```
+```text
 https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/quickcreate?templateURL=https://hold-that-thought-quicklaunch-public-631094035453.s3.us-east-1.amazonaws.com/hold-that-thought-template.yaml
 ```
 
@@ -120,7 +120,7 @@ If you enabled RAGStack (`RagStackBuildWebComponent=true`), configure semantic s
 ### Access RAGStack Admin Dashboard
 
 From CloudFormation **Outputs**, copy **RagStackAdminDashboardUrl**:
-```
+```text
 https://main.xxxxxx.amplifyapp.com/admin
 ```
 

@@ -10,31 +10,33 @@
 import path from 'node:path'
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext } from '../types'
-import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { v4 as uuidv4 } from 'uuid'
 import { ARCHIVE_BUCKET } from '../lib/database'
 import { successResponse, errorResponse } from '../lib/responses'
 import { log } from '../lib/logger'
-import { s3Client, signPhotoUrl } from '../lib/s3-utils'
-import { toError } from '../lib/errors'
+import { s3Client } from '../lib/s3-utils'
+import { toError, ValidationError, NotFoundError } from '../lib/errors'
 import { parseRequestBody, parsePageLimit } from '../lib/validation'
 import { MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE } from '../lib/constants'
 import { messagingRepository } from '../repositories'
-
-interface Attachment {
-  s3Key?: string
-  fileName?: string
-  contentType?: string
-  url?: string
-}
+import { getRequesterId } from '../lib/user'
+import {
+  presignAttachment,
+  presignAttachmentBatch,
+  presignProfilePhoto,
+  presignUpload,
+} from '../lib/s3-presign'
+import type { Attachment } from '../repositories/messaging-repository'
 
 export async function listConversations(event: APIGatewayProxyEvent, context: RequestContext): Promise<APIGatewayProxyResult> {
-  const { requesterId: userId, requestOrigin } = context
+  const { requestOrigin } = context
+  const userId = getRequesterId(context)
   const lastEvaluatedKey = event.queryStringParameters?.lastEvaluatedKey
+  const limit = parsePageLimit(event.queryStringParameters?.limit, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE)
 
   try {
-    const result = await messagingRepository.listConversationsForUser(userId!, lastEvaluatedKey)
+    const result = await messagingRepository.listConversationsForUser(userId, lastEvaluatedKey, limit)
 
     const conversations = result.conversations.map(item => ({
       conversationId: item.conversationId,
@@ -52,17 +54,18 @@ export async function listConversations(event: APIGatewayProxyEvent, context: Re
       lastEvaluatedKey: result.lastEvaluatedKey,
     }, 200, requestOrigin)
   } catch (err) {
-    const error = toError(err)
-    if (error.message.includes('Invalid pagination key') || error.message.includes('pagination')) {
-      return errorResponse(400, error.message, requestOrigin)
+    if (err instanceof ValidationError) {
+      return errorResponse(400, err.message, requestOrigin)
     }
+    const error = toError(err)
     log.error('list_conversations_error', { userId, error: error.message })
     return errorResponse(500, 'Failed to list conversations', requestOrigin)
   }
 }
 
 export async function getMessages(event: APIGatewayProxyEvent, context: RequestContext): Promise<APIGatewayProxyResult> {
-  const { requesterId: userId, requestOrigin } = context
+  const { requestOrigin } = context
+  const userId = getRequesterId(context)
   const conversationId = event.pathParameters?.conversationId
   const limit = parsePageLimit(event.queryStringParameters?.limit, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE)
   const lastEvaluatedKey = event.queryStringParameters?.lastEvaluatedKey
@@ -72,7 +75,7 @@ export async function getMessages(event: APIGatewayProxyEvent, context: RequestC
   }
 
   try {
-    const memberCheck = await messagingRepository.getConversationMembership(userId!, conversationId)
+    const memberCheck = await messagingRepository.getConversationMembership(userId, conversationId)
 
     if (!memberCheck) {
       return errorResponse(403, 'You are not a participant in this conversation', requestOrigin)
@@ -80,42 +83,39 @@ export async function getMessages(event: APIGatewayProxyEvent, context: RequestC
 
     const result = await messagingRepository.getMessages(conversationId, limit, lastEvaluatedKey)
 
-    // Process messages in batches to limit concurrent signing operations
-    const SIGN_BATCH_SIZE = 10
-    const messages = []
-
-    for (let i = 0; i < result.messages.length; i += SIGN_BATCH_SIZE) {
-      const batch = result.messages.slice(i, i + SIGN_BATCH_SIZE)
-      const batchResults = await Promise.all(
-        batch.map(async item => {
-          const attachmentsWithUrls = await Promise.all(
-            ((item.attachments as Attachment[]) || []).map(async attachment => {
-              if (attachment.s3Key) {
-                const command = new GetObjectCommand({
-                  Bucket: ARCHIVE_BUCKET,
-                  Key: attachment.s3Key,
-                })
-                const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 })
-                return { ...attachment, url }
-              }
-              return attachment
-            })
-          )
-
-          return {
-            messageId: item.messageId,
-            conversationId: item.conversationId,
-            senderId: item.senderId,
-            senderName: item.senderName,
-            senderPhotoUrl: await signPhotoUrl(item.senderPhotoUrl as string),
-            messageText: item.messageText,
-            attachments: attachmentsWithUrls,
-            createdAt: item.createdAt,
-          }
-        })
-      )
-      messages.push(...batchResults)
+    // Collect unique attachment keys and unique sender photos so each is
+    // presigned at most once per page (was N+1 per attachment before).
+    const allKeys: string[] = []
+    const senderPhotoBySender = new Map<string, string | null>()
+    for (const item of result.messages) {
+      for (const att of item.attachments || []) {
+        if (att.s3Key) allKeys.push(att.s3Key)
+      }
+      if (!senderPhotoBySender.has(item.senderId)) {
+        senderPhotoBySender.set(item.senderId, item.senderPhotoUrl)
+      }
     }
+
+    const attachmentUrls = await presignAttachmentBatch(allKeys)
+    const senderPhotoEntries = await Promise.all(
+      Array.from(senderPhotoBySender.entries()).map(async ([senderId, photo]) =>
+        [senderId, await presignProfilePhoto(photo)] as const
+      )
+    )
+    const senderPhotoUrls = new Map(senderPhotoEntries)
+
+    const messages = result.messages.map(item => ({
+      messageId: item.messageId,
+      conversationId: item.conversationId,
+      senderId: item.senderId,
+      senderName: item.senderName,
+      senderPhotoUrl: senderPhotoUrls.get(item.senderId) ?? null,
+      messageText: item.messageText,
+      attachments: (item.attachments || []).map(att =>
+        att.s3Key ? { ...att, url: attachmentUrls.get(att.s3Key) } : att
+      ),
+      createdAt: item.createdAt,
+    }))
 
     return successResponse({
       messages,
@@ -124,17 +124,18 @@ export async function getMessages(event: APIGatewayProxyEvent, context: RequestC
       lastEvaluatedKey: result.lastEvaluatedKey,
     }, 200, requestOrigin)
   } catch (err) {
-    const error = toError(err)
-    if (error.message.includes('Invalid pagination key') || error.message.includes('pagination')) {
-      return errorResponse(400, error.message, requestOrigin)
+    if (err instanceof ValidationError) {
+      return errorResponse(400, err.message, requestOrigin)
     }
+    const error = toError(err)
     log.error('get_messages_error', { conversationId, userId, error: error.message })
     return errorResponse(500, 'Failed to get messages', requestOrigin)
   }
 }
 
 export async function createConversation(event: APIGatewayProxyEvent, context: RequestContext): Promise<APIGatewayProxyResult> {
-  const { requesterId: userId, requestOrigin } = context
+  const { requestOrigin } = context
+  const userId = getRequesterId(context)
   const body = parseRequestBody(event.body)
   if (!body) {
     return errorResponse(400, 'Invalid JSON in request body', requestOrigin)
@@ -160,8 +161,8 @@ export async function createConversation(event: APIGatewayProxyEvent, context: R
     }
   }
 
-  if (!participantIds.includes(userId!)) {
-    participantIds.push(userId!)
+  if (!participantIds.includes(userId)) {
+    participantIds.push(userId)
   }
 
   try {
@@ -177,16 +178,16 @@ export async function createConversation(event: APIGatewayProxyEvent, context: R
       conversationType,
       participantIds,
       participantNames,
-      userId!,
+      userId,
       conversationTitle as string | undefined
     )
 
     let message = null
     if (messageText) {
-      const senderProfile = await messagingRepository.getSenderProfile(userId!)
+      const senderProfile = await messagingRepository.getSenderProfile(userId)
       const messageRecord = await messagingRepository.createMessage(
         conversationId,
-        userId!,
+        userId,
         senderProfile,
         messageText as string,
         participantIds,
@@ -199,7 +200,7 @@ export async function createConversation(event: APIGatewayProxyEvent, context: R
         conversationId: messageRecord.conversationId,
         senderId: messageRecord.senderId,
         senderName: messageRecord.senderName,
-        senderPhotoUrl: await signPhotoUrl(messageRecord.senderPhotoUrl),
+        senderPhotoUrl: await presignProfilePhoto(messageRecord.senderPhotoUrl),
         messageText: messageRecord.messageText,
         attachments: messageRecord.attachments,
         createdAt: messageRecord.createdAt,
@@ -216,7 +217,8 @@ export async function createConversation(event: APIGatewayProxyEvent, context: R
 }
 
 export async function sendMessage(event: APIGatewayProxyEvent, context: RequestContext): Promise<APIGatewayProxyResult> {
-  const { requesterId: userId, requestOrigin } = context
+  const { requestOrigin } = context
+  const userId = getRequesterId(context)
   const conversationId = event.pathParameters?.conversationId
   const body = parseRequestBody(event.body)
   if (!body) {
@@ -240,7 +242,7 @@ export async function sendMessage(event: APIGatewayProxyEvent, context: RequestC
   }
 
   try {
-    const membership = await messagingRepository.getConversationMembership(userId!, conversationId)
+    const membership = await messagingRepository.getConversationMembership(userId, conversationId)
 
     if (!membership) {
       return errorResponse(403, 'You are not a participant in this conversation', requestOrigin)
@@ -251,29 +253,24 @@ export async function sendMessage(event: APIGatewayProxyEvent, context: RequestC
 
     // Fetch sender profile separately (extracted from createMessage for clarity,
     // but still a dedicated DB call -- not derived from membership context)
-    const senderProfile = await messagingRepository.getSenderProfile(userId!)
+    const senderProfile = await messagingRepository.getSenderProfile(userId)
 
     const messageRecord = await messagingRepository.createMessage(
       conversationId,
-      userId!,
+      userId,
       senderProfile,
       messageText as string,
       participantIds,
       conversationType,
       attachments as Attachment[]
     )
-    await messagingRepository.updateConversationMembers(conversationId, userId!, participantIds)
+    await messagingRepository.updateConversationMembers(conversationId, userId, participantIds)
 
     // Sign attachment URLs for response
     const attachmentsWithUrls = await Promise.all(
       (messageRecord.attachments || []).map(async attachment => {
         if (attachment.s3Key) {
-          const command = new GetObjectCommand({
-            Bucket: ARCHIVE_BUCKET,
-            Key: attachment.s3Key,
-          })
-          const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 })
-          return { ...attachment, url }
+          return { ...attachment, url: await presignAttachment(attachment.s3Key) }
         }
         return attachment
       })
@@ -284,7 +281,7 @@ export async function sendMessage(event: APIGatewayProxyEvent, context: RequestC
       conversationId: messageRecord.conversationId,
       senderId: messageRecord.senderId,
       senderName: messageRecord.senderName,
-      senderPhotoUrl: await signPhotoUrl(messageRecord.senderPhotoUrl),
+      senderPhotoUrl: await presignProfilePhoto(messageRecord.senderPhotoUrl),
       messageText: messageRecord.messageText,
       attachments: attachmentsWithUrls,
       createdAt: messageRecord.createdAt,
@@ -307,7 +304,8 @@ const ALLOWED_ATTACHMENT_TYPES = new Set([
 ])
 
 export async function generateUploadUrl(event: APIGatewayProxyEvent, context: RequestContext): Promise<APIGatewayProxyResult> {
-  const { requesterId: userId, requestOrigin } = context
+  const { requestOrigin } = context
+  const userId = getRequesterId(context)
   const body = parseRequestBody(event.body)
   if (!body) {
     return errorResponse(400, 'Invalid JSON in request body', requestOrigin)
@@ -324,13 +322,7 @@ export async function generateUploadUrl(event: APIGatewayProxyEvent, context: Re
     const safeName = path.basename(String(fileName)).replace(/[^a-zA-Z0-9._-]/g, '_')
     const key = `messages/attachments/${userId}/${uuidv4()}_${safeName}`
 
-    const command = new PutObjectCommand({
-      Bucket: ARCHIVE_BUCKET,
-      Key: key,
-      ContentType: contentType,
-    })
-
-    const presignedUrl = await getSignedUrl(s3Client, command, { expiresIn: 900 })
+    const presignedUrl = await presignUpload(key, contentType)
 
     return successResponse({ uploadUrl: presignedUrl, s3Key: key, fileName, contentType }, 200, requestOrigin)
   } catch (err) {
@@ -341,7 +333,8 @@ export async function generateUploadUrl(event: APIGatewayProxyEvent, context: Re
 }
 
 export async function markAsRead(event: APIGatewayProxyEvent, context: RequestContext): Promise<APIGatewayProxyResult> {
-  const { requesterId: userId, requestOrigin } = context
+  const { requestOrigin } = context
+  const userId = getRequesterId(context)
   const conversationId = event.pathParameters?.conversationId
 
   if (!conversationId) {
@@ -349,7 +342,7 @@ export async function markAsRead(event: APIGatewayProxyEvent, context: RequestCo
   }
 
   try {
-    await messagingRepository.markConversationRead(userId!, conversationId)
+    await messagingRepository.markConversationRead(userId, conversationId)
 
     return successResponse({ message: 'Conversation marked as read' }, 200, requestOrigin)
   } catch (err) {
@@ -363,7 +356,8 @@ export async function markAsRead(event: APIGatewayProxyEvent, context: RequestCo
 }
 
 export async function deleteConversation(event: APIGatewayProxyEvent, context: RequestContext): Promise<APIGatewayProxyResult> {
-  const { requesterId: userId, requestOrigin } = context
+  const { requestOrigin } = context
+  const userId = getRequesterId(context)
   let conversationId: string
   try {
     conversationId = decodeURIComponent(event.pathParameters?.conversationId || '')
@@ -387,7 +381,7 @@ export async function deleteConversation(event: APIGatewayProxyEvent, context: R
       }
       participantIds = Array.from(meta.participantIds || [])
     } else {
-      const membership = await messagingRepository.getConversationMembership(userId!, conversationId)
+      const membership = await messagingRepository.getConversationMembership(userId, conversationId)
 
       if (!membership) {
         return errorResponse(404, 'Conversation not found', requestOrigin)
@@ -428,7 +422,8 @@ export async function deleteConversation(event: APIGatewayProxyEvent, context: R
 }
 
 export async function deleteMessage(event: APIGatewayProxyEvent, context: RequestContext): Promise<APIGatewayProxyResult> {
-  const { requesterId: userId, requestOrigin } = context
+  const { requestOrigin } = context
+  const userId = getRequesterId(context)
   let conversationId: string
   let messageId: string
   try {
@@ -472,10 +467,10 @@ export async function deleteMessage(event: APIGatewayProxyEvent, context: Reques
 
     return successResponse({ message: 'Message deleted' }, 200, requestOrigin)
   } catch (err) {
-    const error = toError(err)
-    if (error.message === 'Message not found') {
-      return errorResponse(404, 'Message not found', requestOrigin)
+    if (err instanceof NotFoundError) {
+      return errorResponse(404, err.message, requestOrigin)
     }
+    const error = toError(err)
     log.error('delete_message_error', { conversationId, messageId, userId, error: error.message })
     return errorResponse(500, 'Failed to delete message', requestOrigin)
   }

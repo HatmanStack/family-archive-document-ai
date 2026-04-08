@@ -110,7 +110,7 @@ Backend environment variables are configured via `backend/template.yaml` SAM par
 | `SES_FROM_EMAIL` | API, notification-processor | SES sender email |
 | `ADMIN_EMAIL` | API | Admin notification email |
 | `BASE_URL` | notification-processor | App base URL for email links |
-| `LOG_LEVEL` | frontend-builder, amplify-deployer | Logging level (default: info) |
+| `LOG_LEVEL` | API | Logging level for the API Lambda's structured logger (default: info) |
 | `LETTER_PROCESSOR_FUNCTION_NAME` | API (drafts) | Lambda function name for letter processing |
 | `RAGSTACK_BUCKET` | API (media, letters) | RAGStack S3 bucket |
 | `RAGSTACK_REGION` | API (media, letters) | RAGStack S3 region |
@@ -146,11 +146,11 @@ Backend environment variables are configured via `backend/template.yaml` SAM par
 1. Go to [Google Cloud Console](https://console.cloud.google.com/) → APIs & Services → Credentials
 2. Create or select an OAuth 2.0 Client ID (Application type: Web application)
 3. Under "Authorized JavaScript origins", add your Cognito Hosted UI URL:
-   ```
+   ```text
    https://<your-domain-prefix>.auth.<region>.amazoncognito.com
    ```
 4. Under "Authorized redirect URIs", add the Cognito OAuth callback:
-   ```
+   ```text
    https://<your-domain-prefix>.auth.<region>.amazoncognito.com/oauth2/idpresponse
    ```
 5. Save and copy the **Client ID** and **Client Secret** for Cognito setup
@@ -175,7 +175,7 @@ aws cognito-idp admin-add-user-to-group \
   --user-pool-id YOUR_POOL_ID \
   --username user@example.com \
   --group-name ApprovedUsers \
-  --region us-east-1
+  --region us-west-2
 ```
 
 **Verify group membership:**
@@ -184,7 +184,7 @@ aws cognito-idp admin-add-user-to-group \
 aws cognito-idp admin-list-groups-for-user \
   --user-pool-id YOUR_POOL_ID \
   --username user@example.com \
-  --region us-east-1
+  --region us-west-2
 ```
 
 **Add admin privileges** (optional):
@@ -194,7 +194,7 @@ aws cognito-idp admin-add-user-to-group \
   --user-pool-id YOUR_POOL_ID \
   --username user@example.com \
   --group-name Admins \
-  --region us-east-1
+  --region us-west-2
 ```
 
 ### Guest Access (Optional)

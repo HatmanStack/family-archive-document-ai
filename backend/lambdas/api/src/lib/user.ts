@@ -4,12 +4,81 @@
 import { GetCommand, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { docClient, TABLE_NAME } from './database'
 import { keys } from './keys'
-import type { UserProfile } from '../types'
-import { toError } from './errors'
+import type { RequestContext, UserProfile } from '../types'
+import { AuthenticationError, toError } from './errors'
 import { log } from './logger'
 
-/** Users whose GSI1 attributes have been verified this Lambda instance */
-const gsi1VerifiedUsers = new Set<string>()
+/**
+ * Returns the authenticated requester id from a RequestContext.
+ * Throws AuthenticationError if missing. Routes registered behind the default
+ * `requireAuth` middleware should never see a missing id, but this helper
+ * provides a typed guarantee in place of `userId!` non-null assertions.
+ */
+export function getRequesterId(context: RequestContext): string {
+  if (!context.requesterId) {
+    throw new AuthenticationError('Missing user context')
+  }
+  return context.requesterId
+}
+
+// ---------------------------------------------------------------------------
+// ensureProfile cache (bounded LRU with TTL)
+// ---------------------------------------------------------------------------
+
+const ENSURE_PROFILE_CACHE_MAX = 1000
+const ENSURE_PROFILE_CACHE_TTL_MS = 10 * 60 * 1000 // 10 minutes
+
+interface CacheEntry {
+  expiresAt: number
+}
+
+/**
+ * Tiny in-process LRU with TTL. Uses Map insertion order for recency tracking.
+ * Bounded to prevent unbounded memory growth on long-lived warm Lambdas.
+ */
+class EnsureProfileCache {
+  private store = new Map<string, CacheEntry>()
+
+  constructor(private readonly maxEntries: number, private readonly ttlMs: number) {}
+
+  has(userId: string, now: number = Date.now()): boolean {
+    const entry = this.store.get(userId)
+    if (!entry) return false
+    if (entry.expiresAt <= now) {
+      this.store.delete(userId)
+      return false
+    }
+    // Refresh recency
+    this.store.delete(userId)
+    this.store.set(userId, entry)
+    return true
+  }
+
+  set(userId: string, now: number = Date.now()): void {
+    if (this.store.has(userId)) {
+      this.store.delete(userId)
+    }
+    this.store.set(userId, { expiresAt: now + this.ttlMs })
+    while (this.store.size > this.maxEntries) {
+      const oldest = this.store.keys().next().value
+      if (oldest === undefined) break
+      this.store.delete(oldest)
+    }
+  }
+
+  clear(): void {
+    this.store.clear()
+  }
+
+  get size(): number {
+    return this.store.size
+  }
+}
+
+export const ensureProfileCache = new EnsureProfileCache(
+  ENSURE_PROFILE_CACHE_MAX,
+  ENSURE_PROFILE_CACHE_TTL_MS
+)
 
 /**
  * Backfill GSI1 attributes for a profile if missing (read-repair).
@@ -30,18 +99,14 @@ async function backfillGSI1IfMissing(profile: UserProfile): Promise<UserProfile>
             ':gsi1pk': gsi1Keys.GSI1PK,
             ':gsi1sk': gsi1Keys.GSI1SK,
           },
-          // Update if either GSI1 attribute is missing (handles partial backfills)
           ConditionExpression: 'attribute_not_exists(GSI1PK) OR attribute_not_exists(GSI1SK)',
         })
       )
-      // Return profile with GSI1 attributes
       return { ...profile, ...gsi1Keys }
     } catch (err) {
-      // Condition failed means another request already added GSI1 - that's fine
       if (toError(err).name === 'ConditionalCheckFailedException') {
         return { ...profile, ...gsi1Keys }
       }
-      // Log but don't fail - GSI1 is for listing, not critical path
       log.warn('gsi1_backfill_failed', { error: toError(err).message })
     }
   }
@@ -50,34 +115,53 @@ async function backfillGSI1IfMissing(profile: UserProfile): Promise<UserProfile>
 }
 
 /**
- * Ensure a user profile exists (create if not present)
+ * Ensure a user profile exists (create if not present).
+ *
+ * Caches verified user ids in a bounded LRU with TTL to short-circuit the
+ * per-request DDB Get on warm Lambda invocations. Fails open on transient
+ * DynamoDB errors so requests are not blocked by best-effort bootstrap.
+ *
+ * Returns nothing: callers that need profile data must fetch it separately.
+ * The cache only tracks "this user has been verified to exist".
  */
 export async function ensureProfile(
   userId: string,
   email?: string,
   groups?: string
-): Promise<UserProfile> {
+): Promise<void> {
+  // Cache hit short-circuits the DDB call entirely.
+  if (ensureProfileCache.has(userId)) {
+    return
+  }
+
   const key = keys.userProfile(userId)
 
-  // Try to get existing profile
-  const result = await docClient.send(
-    new GetCommand({
-      TableName: TABLE_NAME,
-      Key: key,
+  let result
+  try {
+    result = await docClient.send(
+      new GetCommand({
+        TableName: TABLE_NAME,
+        Key: key,
+      })
+    )
+  } catch (err) {
+    // Fail open: log and return so requests are not blocked by transient
+    // DynamoDB issues during profile bootstrap. Cache stays empty so the
+    // next call retries.
+    log.warn('ensure_profile_get_failed', {
+      userId,
+      error: toError(err).message,
     })
-  )
+    return
+  }
 
   if (result.Item) {
     const profile = result.Item as UserProfile
-    if (gsi1VerifiedUsers.has(userId)) {
-      return profile
-    }
     const updated = await backfillGSI1IfMissing(profile)
-    // Only cache as verified if backfill actually succeeded (GSI1 keys present)
     if (updated.GSI1PK && updated.GSI1SK) {
-      gsi1VerifiedUsers.add(userId)
+      ensureProfileCache.set(userId)
     }
-    return updated
+    return
   }
 
   // Create new profile with GSI1 keys for listing all users
@@ -103,37 +187,12 @@ export async function ensureProfile(
       })
     )
   } catch (err) {
-    // Profile created by concurrent request, fetch it
     if (toError(err).name === 'ConditionalCheckFailedException') {
-      const existing = await docClient.send(
-        new GetCommand({
-          TableName: TABLE_NAME,
-          Key: key,
-        })
-      )
-      return existing.Item as UserProfile
+      ensureProfileCache.set(userId)
+      return
     }
     throw err
   }
 
-  gsi1VerifiedUsers.add(userId)
-  return profile
-}
-
-/**
- * Get a user profile by ID
- */
-export async function getProfile(
-  userId: string
-): Promise<UserProfile | null> {
-  const key = keys.userProfile(userId)
-
-  const result = await docClient.send(
-    new GetCommand({
-      TableName: TABLE_NAME,
-      Key: key,
-    })
-  )
-
-  return (result.Item as UserProfile) || null
+  ensureProfileCache.set(userId)
 }

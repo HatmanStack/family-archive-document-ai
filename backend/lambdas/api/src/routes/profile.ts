@@ -1,21 +1,22 @@
 /**
- * Profile route handler
+ * Profile route handlers
+ *
+ * Each function is registered individually on the router in index.ts.
  */
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext } from '../types'
 import path from 'node:path'
-import { PutObjectCommand } from '@aws-sdk/client-s3'
 import { GetCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { docClient, TABLE_NAME, ARCHIVE_BUCKET } from '../lib/database'
+import { presignUpload, presignProfilePhoto } from '../lib/s3-presign'
 import { keys, PREFIX } from '../lib/keys'
 import { successResponse, errorResponse, rateLimitResponse } from '../lib/responses'
 import { validateUserId, sanitizeText, validateLimit, parseRequestBody, validatePaginationKey, parsePageLimit } from '../lib/validation'
-import { MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE } from '../lib/constants'
+import { MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE, ALLOWED_PROFILE_PHOTO_TYPES } from '../lib/constants'
 import { checkRateLimit, getRetryAfter } from '../lib/rate-limit'
 import { log } from '../lib/logger'
 import { toError } from '../lib/errors'
-import { s3Client, signPhotoUrl } from '../lib/s3-utils'
+import { getRequesterId } from '../lib/user'
 
 interface FamilyRelationship {
   id: string
@@ -26,51 +27,13 @@ interface FamilyRelationship {
 }
 
 /**
- * Main profile route handler
+ * GET /profile/{userId}
  */
-export async function handle(
+export async function getProfile(
   event: APIGatewayProxyEvent,
   context: RequestContext
 ): Promise<APIGatewayProxyResult> {
-  const { requesterId, requesterEmail, isAdmin, requestOrigin } = context
-
-  if (!requesterId) {
-    return errorResponse(401, 'Unauthorized: Missing user context', requestOrigin)
-  }
-
-  const method = event.httpMethod
-  const resource = event.resource
-  const normalizedResource = resource.replace(/^\/v1/, '')
-
-  if (method === 'GET' && normalizedResource === '/profile/{userId}') {
-    return getProfile(event, requesterId, isAdmin, requestOrigin)
-  }
-
-  if (method === 'PUT' && normalizedResource === '/profile') {
-    return updateProfile(event, requesterId, requesterEmail, requestOrigin)
-  }
-
-  if (method === 'GET' && normalizedResource === '/profile/{userId}/comments') {
-    return getUserComments(event, requesterId, isAdmin, requestOrigin)
-  }
-
-  if (method === 'POST' && normalizedResource === '/profile/photo/upload-url') {
-    return getPhotoUploadUrl(event, requesterId, requestOrigin)
-  }
-
-  if (method === 'GET' && normalizedResource === '/users') {
-    return listUsers(event, requestOrigin)
-  }
-
-  return errorResponse(404, 'Route not found', requestOrigin)
-}
-
-async function getProfile(
-  event: APIGatewayProxyEvent,
-  requesterId: string,
-  isAdmin: boolean,
-  requestOrigin?: string
-): Promise<APIGatewayProxyResult> {
+  const { requesterId, isAdmin, requestOrigin } = context
   const userId = event.pathParameters?.userId
 
   if (!userId) {
@@ -97,11 +60,11 @@ async function getProfile(
       return errorResponse(403, 'This profile is private', requestOrigin)
     }
 
-    const signedPhotoUrl = await signPhotoUrl(profile.profilePhotoUrl as string)
+    const signedPhotoUrl = await presignProfilePhoto(profile.profilePhotoUrl as string)
+    const isOwnerOrAdmin = userId === requesterId || isAdmin
 
     return successResponse({
       userId: profile.userId,
-      email: profile.email,
       displayName: profile.displayName,
       profilePhotoUrl: signedPhotoUrl,
       bio: profile.bio,
@@ -113,11 +76,14 @@ async function getProfile(
       lastActive: profile.lastActive,
       commentCount: profile.commentCount || 0,
       mediaUploadCount: profile.mediaUploadCount || 0,
-      contactEmail: profile.contactEmail,
-      notifyOnMessage: profile.notifyOnMessage !== false,
-      notifyOnComment: profile.notifyOnComment !== false,
       theme: profile.theme || null,
       familyRelationships: profile.familyRelationships || [],
+      ...(isOwnerOrAdmin && {
+        email: profile.email,
+        contactEmail: profile.contactEmail,
+        notifyOnMessage: profile.notifyOnMessage !== false,
+        notifyOnComment: profile.notifyOnComment !== false,
+      }),
     }, 200, requestOrigin)
   } catch (error) {
     log.error('get_profile_error', { userId, error: toError(error).message })
@@ -125,12 +91,15 @@ async function getProfile(
   }
 }
 
-async function updateProfile(
+/**
+ * PUT /profile
+ */
+export async function updateProfile(
   event: APIGatewayProxyEvent,
-  requesterId: string,
-  requesterEmail?: string,
-  requestOrigin?: string
+  context: RequestContext
 ): Promise<APIGatewayProxyResult> {
+  const { requesterEmail, requestOrigin } = context
+  const requesterId = getRequesterId(context)
   const rateLimit = await checkRateLimit(requesterId, 'default')
   if (!rateLimit.allowed) {
     return rateLimitResponse(getRetryAfter(rateLimit.resetAt), 'Rate limit exceeded', requestOrigin)
@@ -141,19 +110,16 @@ async function updateProfile(
     return errorResponse(400, 'Invalid JSON in request body', requestOrigin)
   }
 
-  // Sanitize inputs
   if (body.bio) body.bio = sanitizeText(body.bio)
   if (body.displayName) body.displayName = sanitizeText(body.displayName)
   if (body.familyRelationship) body.familyRelationship = sanitizeText(body.familyRelationship)
 
-  // Validate theme
   if (body.theme !== undefined) {
     if (typeof body.theme !== 'string' || body.theme.length > 50 || !/^[a-z0-9-]*$/.test(body.theme)) {
       return errorResponse(400, 'Invalid theme value', requestOrigin)
     }
   }
 
-  // Validate familyRelationships
   if (body.familyRelationships !== undefined) {
     if (!Array.isArray(body.familyRelationships)) {
       return errorResponse(400, 'familyRelationships must be an array', requestOrigin)
@@ -206,7 +172,6 @@ async function updateProfile(
     ]
 
     if (existingResult.Item) {
-      // Update existing profile
       const updateParts: string[] = ['lastActive = :now']
       const expressionValues: Record<string, unknown> = { ':now': now }
 
@@ -224,7 +189,6 @@ async function updateProfile(
         ExpressionAttributeValues: expressionValues,
       }))
     } else {
-      // Create new profile with GSI1 keys for listing all users
       const profile: Record<string, unknown> = {
         ...keys.userProfile(requesterId),
         ...keys.userProfileGSI1(requesterId),
@@ -257,12 +221,14 @@ async function updateProfile(
   }
 }
 
-async function getUserComments(
+/**
+ * GET /profile/{userId}/comments
+ */
+export async function getUserComments(
   event: APIGatewayProxyEvent,
-  requesterId: string,
-  isAdmin: boolean,
-  requestOrigin?: string
+  context: RequestContext
 ): Promise<APIGatewayProxyResult> {
+  const { requesterId, isAdmin, requestOrigin } = context
   const userId = event.pathParameters?.userId
   const limit = validateLimit(event.queryStringParameters?.limit)
 
@@ -274,7 +240,6 @@ async function getUserComments(
     return errorResponse(400, 'Invalid userId format', requestOrigin)
   }
 
-  // Only allow viewing own comments or if admin
   if (userId !== requesterId && !isAdmin) {
     return errorResponse(403, 'You can only view your own comments', requestOrigin)
   }
@@ -307,11 +272,15 @@ async function getUserComments(
   }
 }
 
-async function getPhotoUploadUrl(
+/**
+ * POST /profile/photo/upload-url
+ */
+export async function getPhotoUploadUrl(
   event: APIGatewayProxyEvent,
-  requesterId: string,
-  requestOrigin?: string
+  context: RequestContext
 ): Promise<APIGatewayProxyResult> {
+  const { requestOrigin } = context
+  const requesterId = getRequesterId(context)
   const body = parseRequestBody(event.body)
   if (!body) {
     return errorResponse(400, 'Invalid JSON in request body', requestOrigin)
@@ -322,8 +291,7 @@ async function getPhotoUploadUrl(
     return errorResponse(400, 'Missing filename', requestOrigin)
   }
 
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
-  if (!contentType || !allowedTypes.includes(contentType)) {
+  if (!contentType || !(ALLOWED_PROFILE_PHOTO_TYPES as readonly string[]).includes(contentType)) {
     return errorResponse(400, 'Invalid content type', requestOrigin)
   }
 
@@ -332,13 +300,7 @@ async function getPhotoUploadUrl(
     const ext = (safeName.match(/\.([a-zA-Z0-9]+)$/)?.[1] || 'jpg').toLowerCase()
     const key = `profile-photos/${requesterId}/${Date.now()}.${ext}`
 
-    const command = new PutObjectCommand({
-      Bucket: ARCHIVE_BUCKET,
-      Key: key,
-      ContentType: contentType,
-    })
-
-    const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 900 })
+    const uploadUrl = await presignUpload(key, contentType)
     const photoUrl = `https://${ARCHIVE_BUCKET}.s3.${process.env.AWS_REGION || 'us-west-2'}.amazonaws.com/${key}`
 
     return successResponse({ uploadUrl, photoUrl }, 200, requestOrigin)
@@ -348,7 +310,14 @@ async function getPhotoUploadUrl(
   }
 }
 
-async function listUsers(event: APIGatewayProxyEvent, requestOrigin?: string): Promise<APIGatewayProxyResult> {
+/**
+ * GET /users
+ */
+export async function listUsers(
+  event: APIGatewayProxyEvent,
+  context: RequestContext
+): Promise<APIGatewayProxyResult> {
+  const { requestOrigin } = context
   try {
     const limit = parsePageLimit(event.queryStringParameters?.limit, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE)
     const cursor = event.queryStringParameters?.cursor
@@ -378,7 +347,7 @@ async function listUsers(event: APIGatewayProxyEvent, requestOrigin?: string): P
       (result.Items || []).map(async item => ({
         userId: item.userId,
         displayName: item.displayName,
-        profilePhotoUrl: await signPhotoUrl(item.profilePhotoUrl as string),
+        profilePhotoUrl: await presignProfilePhoto(item.profilePhotoUrl as string),
         bio: item.bio,
       }))
     )

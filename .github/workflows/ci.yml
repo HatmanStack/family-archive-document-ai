@@ -4,14 +4,10 @@ on:
   push:
     branches: [main]
     paths-ignore:
-      - 'docs/**'
-      - '*.md'
       - '.claude/**'
   pull_request:
     branches: [main]
     paths-ignore:
-      - 'docs/**'
-      - '*.md'
       - '.claude/**'
 
 concurrency:
@@ -88,16 +84,87 @@ jobs:
       - name: Tests
         run: npm test -- --reporter=verbose
 
+  knip:
+    name: Knip (unused exports)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true'
+    # Reports unused exports, types, and dependencies. Currently advisory
+    # while pre-existing findings from Phases 1-5 are cleared. Flip
+    # continue-on-error to false (and add to status-check needs) once knip
+    # output is clean to make the gate enforcing.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate SvelteKit types
+        run: cd frontend && npx svelte-kit sync || true
+      - name: Run knip (advisory)
+        # Exit 0 unconditionally while pre-existing findings from earlier
+        # remediation phases are cleared. Drop `|| true` (and flip
+        # continue-on-error above to false, plus add to status-check needs)
+        # once knip output is clean to make this an enforcing gate.
+        run: npm run knip || true
+
+  audit:
+    name: npm audit (high+critical)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true'
+    # Fails on any high or critical vulnerability at the repo root or in
+    # frontend/. Dependabot raises automatic PRs for upgrades; merge those
+    # rather than disabling this gate. When an upstream fix is unavailable,
+    # add an override in package.json with a CVE reference in
+    # _securityNotes.resolved before re-running.
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Audit root
+        run: npm audit --audit-level=high
+      - name: Audit frontend
+        run: cd frontend && npm audit --audit-level=high
+
+  docs:
+    name: Docs (markdownlint + lychee)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Markdownlint
+        uses: DavidAnson/markdownlint-cli2-action@v20
+        with:
+          globs: |
+            **/*.md
+            #node_modules
+            #frontend/node_modules
+      - name: Lychee link check
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --config .lychee.toml --no-progress "**/*.md"
+          fail: true
+
   status-check:
     name: All Checks Passed
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [check]
+    needs: [check, audit, docs]
     if: always()
     steps:
       - name: Verify
         run: |
-          results=("${{ needs.check.result }}")
+          results=("${{ needs.check.result }}" "${{ needs.audit.result }}" "${{ needs.docs.result }}")
           for result in "${results[@]}"; do
             if [[ "$result" != "success" && "$result" != "skipped" ]]; then
               echo "One or more checks failed: $result"

@@ -114,7 +114,7 @@ See [ONE_CLICK_DEPLOYMENT.md](docs/ONE_CLICK_DEPLOYMENT.md) for detailed setup.
 
 ## Project Structure
 
-```
+```text
 family-archive-document-ai/
 ├── frontend/                 # SvelteKit application
 │   ├── routes/              # File-based routing
