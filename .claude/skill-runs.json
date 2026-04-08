@@ -26,5 +26,11 @@
       "eval",
       "docs"
     ]
+  },
+  {
+    "skill": "pipeline",
+    "date": "2026-04-07",
+    "plan": "2026-04-07-audit-family-archive",
+    "verdict": "VERIFIED"
   }
 ]
