@@ -276,7 +276,8 @@ export async function getPhotoUploadUrl(
   event: APIGatewayProxyEvent,
   context: RequestContext
 ): Promise<APIGatewayProxyResult> {
-  const { requesterId, requestOrigin } = context
+  const { requestOrigin } = context
+  const requesterId = getRequesterId(context)
   const body = parseRequestBody(event.body)
   if (!body) {
     return errorResponse(400, 'Invalid JSON in request body', requestOrigin)
