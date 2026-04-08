@@ -61,10 +61,10 @@ export async function getProfile(
     }
 
     const signedPhotoUrl = await presignProfilePhoto(profile.profilePhotoUrl as string)
+    const isOwnerOrAdmin = userId === requesterId || isAdmin
 
     return successResponse({
       userId: profile.userId,
-      email: profile.email,
       displayName: profile.displayName,
       profilePhotoUrl: signedPhotoUrl,
       bio: profile.bio,
@@ -76,11 +76,14 @@ export async function getProfile(
       lastActive: profile.lastActive,
       commentCount: profile.commentCount || 0,
       mediaUploadCount: profile.mediaUploadCount || 0,
-      contactEmail: profile.contactEmail,
-      notifyOnMessage: profile.notifyOnMessage !== false,
-      notifyOnComment: profile.notifyOnComment !== false,
       theme: profile.theme || null,
       familyRelationships: profile.familyRelationships || [],
+      ...(isOwnerOrAdmin && {
+        email: profile.email,
+        contactEmail: profile.contactEmail,
+        notifyOnMessage: profile.notifyOnMessage !== false,
+        notifyOnComment: profile.notifyOnComment !== false,
+      }),
     }, 200, requestOrigin)
   } catch (error) {
     log.error('get_profile_error', { userId, error: toError(error).message })

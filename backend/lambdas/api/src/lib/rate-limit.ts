@@ -101,8 +101,11 @@ export async function checkRateLimit(
           new UpdateCommand({
             TableName: TABLE_NAME,
             Key: key,
+            // Unconditionally reset windowStart on retry: the original update
+            // failed because the stored window was expired, so the retry must
+            // start a fresh window rather than preserve the stale value.
             UpdateExpression:
-              'SET windowStart = if_not_exists(windowStart, :now), ' +
+              'SET windowStart = :now, ' +
               'entityType = :entityType, userId = :userId, #action = :action, ' +
               'updatedAt = :now, #ttl = :ttl ' +
               'ADD #count :inc',

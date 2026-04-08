@@ -57,9 +57,7 @@ describe('ensureProfile caching', () => {
   it('fails open on transient DynamoDB errors and does not throw', async () => {
     ddbMock.on(GetCommand).rejects(new Error('throttled'))
 
-    const profile = await ensureProfile('u1', 'u1@example.com')
-
-    expect(profile.userId).toBe('u1')
+    await expect(ensureProfile('u1', 'u1@example.com')).resolves.toBeUndefined()
     // Cache stays empty so the next call retries.
     expect(ensureProfileCache.has('u1')).toBe(false)
   })
@@ -68,9 +66,8 @@ describe('ensureProfile caching', () => {
     ddbMock.on(GetCommand).resolves({ Item: undefined })
     ddbMock.on(PutCommand).resolves({})
 
-    const profile = await ensureProfile('u-new', 'new@example.com')
+    await ensureProfile('u-new', 'new@example.com')
 
-    expect(profile.userId).toBe('u-new')
     expect(ddbMock.commandCalls(PutCommand).length).toBe(1)
     expect(ensureProfileCache.has('u-new')).toBe(true)
   })

@@ -314,22 +314,9 @@ export class MessagingRepository extends BaseRepository {
     const s3Keys: string[] = []
     const metaKey = keys.conversationMeta(conversationId)
 
-    // Delete participant membership + meta first as a single bounded batch.
-    // These records are O(participants), not O(messages), so memory is fine.
-    const membershipOps: Array<{ DeleteRequest: { Key: Record<string, unknown> } }> = []
-    participantIds.forEach(pid => {
-      const userConvKey = keys.userConversation(pid, conversationId)
-      membershipOps.push({
-        DeleteRequest: { Key: { PK: userConvKey.PK, SK: userConvKey.SK } },
-      })
-    })
-    membershipOps.push({
-      DeleteRequest: { Key: { PK: metaKey.PK, SK: metaKey.SK } },
-    })
-    await batchWriteWithRetry(membershipOps, this.tableName)
-
-    // Page through messages and flush each page as its own BatchWrite, so we
-    // never hold more than one page (max 25 records) of message keys in memory.
+    // Sweep messages FIRST so that a mid-delete failure can safely retry —
+    // the auth check on retry still finds membership/meta records and is not
+    // 404'd into orphaned message rows.
     let lastKey: Record<string, unknown> | undefined
     do {
       const msgs = await this.docClient.send(new QueryCommand({
@@ -365,6 +352,20 @@ export class MessagingRepository extends BaseRepository {
 
       lastKey = msgs.LastEvaluatedKey
     } while (lastKey)
+
+    // Now that all messages are gone, delete participant membership + meta as
+    // a single bounded batch. O(participants), not O(messages).
+    const membershipOps: Array<{ DeleteRequest: { Key: Record<string, unknown> } }> = []
+    participantIds.forEach(pid => {
+      const userConvKey = keys.userConversation(pid, conversationId)
+      membershipOps.push({
+        DeleteRequest: { Key: { PK: userConvKey.PK, SK: userConvKey.SK } },
+      })
+    })
+    membershipOps.push({
+      DeleteRequest: { Key: { PK: metaKey.PK, SK: metaKey.SK } },
+    })
+    await batchWriteWithRetry(membershipOps, this.tableName)
 
     return { s3Keys }
   }

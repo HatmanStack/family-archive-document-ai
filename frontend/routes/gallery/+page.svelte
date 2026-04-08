@@ -56,7 +56,7 @@ import {
     clearPendingRefreshTimeouts()
   })
 
-  function checkForItemParam() {
+  async function checkForItemParam() {
     const itemParam = $page.url.searchParams.get('item')
     if (!itemParam)
       return
@@ -65,8 +65,7 @@ import {
       const section = match[1] as GallerySection
       if (section !== $selectedSection) {
         selectedSection.set(section)
-        loadMediaItems(section)
-        return
+        await loadMediaItems(section)
       }
     }
     const item = $mediaItems.find(m => m.id === itemParam)
@@ -185,13 +184,19 @@ import {
       return
     }
 
+    let userUnsubscribe: (() => void) | undefined
     const unsubscribe = isAuthenticated.subscribe((authenticated) => {
+      // Svelte ignores return values from subscribe callbacks — track the
+      // inner subscription explicitly so each auth-state change replaces the
+      // previous currentUser subscriber instead of leaking it.
+      userUnsubscribe?.()
+      userUnsubscribe = undefined
       if (!$authLoading && !authenticated) {
         goto('/auth/login')
         return
       }
       if (authenticated) {
-        const userUnsubscribe = currentUser.subscribe((user) => {
+        userUnsubscribe = currentUser.subscribe((user) => {
           if (user) {
             const isApproved = user['cognito:groups']?.includes('ApprovedUsers') || false
             if (!isApproved) {
@@ -201,10 +206,12 @@ import {
             loadMediaItems($selectedSection).then(checkForItemParam)
           }
         })
-        return userUnsubscribe
       }
     })
-    return unsubscribe
+    return () => {
+      userUnsubscribe?.()
+      unsubscribe()
+    }
   })
 </script>
 

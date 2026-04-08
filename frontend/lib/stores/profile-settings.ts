@@ -48,32 +48,50 @@ export function resetState(): void {
   error.set('')
   successMessage.set('')
   photoFile.set(null)
+  displayName.set('')
+  bio.set('')
+  familyRelationship.set('')
+  generation.set('')
+  familyBranch.set('')
+  isProfilePrivate.set(false)
+  previewUrl.set('')
+  contactEmail.set('')
+  notifyOnMessage.set(true)
+  notifyOnComment.set(true)
+  familyRelationships.set([])
 }
 
 export async function loadProfileForUser(userId: string): Promise<void> {
   loading.set(true)
   error.set('')
 
-  const result = await getProfile(userId)
-  if (result.success && result.data) {
-    const p = result.data as UserProfile
-    profile.set(p)
-    displayName.set(p.displayName || '')
-    bio.set(p.bio || '')
-    familyRelationship.set(p.familyRelationship || '')
-    generation.set(p.generation || '')
-    familyBranch.set(p.familyBranch || '')
-    isProfilePrivate.set(p.isProfilePrivate || false)
-    previewUrl.set(p.profilePhotoUrl || '')
-    contactEmail.set(p.contactEmail || '')
-    notifyOnMessage.set(p.notifyOnMessage !== false)
-    notifyOnComment.set(p.notifyOnComment !== false)
-    familyRelationships.set(p.familyRelationships || [])
+  try {
+    const result = await getProfile(userId)
+    if (result.success && result.data) {
+      const p = result.data as UserProfile
+      profile.set(p)
+      displayName.set(p.displayName || '')
+      bio.set(p.bio || '')
+      familyRelationship.set(p.familyRelationship || '')
+      generation.set(p.generation || '')
+      familyBranch.set(p.familyBranch || '')
+      isProfilePrivate.set(p.isProfilePrivate || false)
+      previewUrl.set(p.profilePhotoUrl || '')
+      contactEmail.set(p.contactEmail || '')
+      notifyOnMessage.set(p.notifyOnMessage !== false)
+      notifyOnComment.set(p.notifyOnComment !== false)
+      familyRelationships.set(p.familyRelationships || [])
+    }
+    else {
+      error.set(result.error || 'Failed to load profile')
+    }
   }
-  else {
-    error.set(result.error || 'Failed to load profile')
+  catch (err) {
+    error.set(err instanceof Error ? err.message : 'Failed to load profile')
   }
-  loading.set(false)
+  finally {
+    loading.set(false)
+  }
 }
 
 export async function saveProfile(): Promise<boolean> {

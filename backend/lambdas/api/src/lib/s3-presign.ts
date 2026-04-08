@@ -48,6 +48,11 @@ export async function presignProfilePhoto(
         expiresIn: PRESIGNED_PROFILE_PHOTO_URL_EXPIRY_SECONDS,
       })
     }
+    // Full URL we can't parse (CDN, presigned, dotted bucket): pass through
+    // unchanged rather than signing the literal URL as an S3 key.
+    if (photoUrl.startsWith('https://') || photoUrl.startsWith('http://')) {
+      return photoUrl
+    }
     // Treat as a key in the archive bucket
     const command = new GetObjectCommand({ Bucket: ARCHIVE_BUCKET, Key: photoUrl })
     return await getSignedUrl(s3Client, command, {

@@ -118,31 +118,23 @@ async function backfillGSI1IfMissing(profile: UserProfile): Promise<UserProfile>
  * Ensure a user profile exists (create if not present).
  *
  * Caches verified user ids in a bounded LRU with TTL to short-circuit the
- * per-request DDB Get on warm Lambda invocations. On transient DDB failure
- * the cache fails open: we log and return a synthesised profile rather than
- * 500ing the request, since profile initialisation is best-effort.
+ * per-request DDB Get on warm Lambda invocations. Fails open on transient
+ * DynamoDB errors so requests are not blocked by best-effort bootstrap.
+ *
+ * Returns nothing: callers that need profile data must fetch it separately.
+ * The cache only tracks "this user has been verified to exist".
  */
 export async function ensureProfile(
   userId: string,
   email?: string,
   groups?: string
-): Promise<UserProfile> {
-  const key = keys.userProfile(userId)
-
+): Promise<void> {
   // Cache hit short-circuits the DDB call entirely.
   if (ensureProfileCache.has(userId)) {
-    return {
-      ...key,
-      ...keys.userProfileGSI1(userId),
-      userId,
-      email,
-      displayName: email?.split('@')[0] || 'User',
-      groups,
-      createdAt: '',
-      updatedAt: '',
-      entityType: 'USER_PROFILE',
-    }
+    return
   }
+
+  const key = keys.userProfile(userId)
 
   let result
   try {
@@ -153,23 +145,14 @@ export async function ensureProfile(
       })
     )
   } catch (err) {
-    // Fail open: log and return a synthesised profile so requests are not
-    // blocked by transient DynamoDB issues during profile bootstrap.
+    // Fail open: log and return so requests are not blocked by transient
+    // DynamoDB issues during profile bootstrap. Cache stays empty so the
+    // next call retries.
     log.warn('ensure_profile_get_failed', {
       userId,
       error: toError(err).message,
     })
-    return {
-      ...key,
-      ...keys.userProfileGSI1(userId),
-      userId,
-      email,
-      displayName: email?.split('@')[0] || 'User',
-      groups,
-      createdAt: '',
-      updatedAt: '',
-      entityType: 'USER_PROFILE',
-    }
+    return
   }
 
   if (result.Item) {
@@ -178,7 +161,7 @@ export async function ensureProfile(
     if (updated.GSI1PK && updated.GSI1SK) {
       ensureProfileCache.set(userId)
     }
-    return updated
+    return
   }
 
   // Create new profile with GSI1 keys for listing all users
@@ -205,18 +188,11 @@ export async function ensureProfile(
     )
   } catch (err) {
     if (toError(err).name === 'ConditionalCheckFailedException') {
-      const existing = await docClient.send(
-        new GetCommand({
-          TableName: TABLE_NAME,
-          Key: key,
-        })
-      )
       ensureProfileCache.set(userId)
-      return existing.Item as UserProfile
+      return
     }
     throw err
   }
 
   ensureProfileCache.set(userId)
-  return profile
 }

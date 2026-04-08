@@ -8,5 +8,5 @@
  */
 export function stripVersionPrefix(input: string | undefined | null): string {
   if (!input) return '/'
-  return input.replace(/^\/v1/, '') || '/'
+  return input.replace(/^\/v1(?=\/|$)/, '') || '/'
 }

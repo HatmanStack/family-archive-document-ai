@@ -5,7 +5,7 @@
  */
 import type { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import type { RequestContext } from '../types'
-import { GetCommand, PutCommand, QueryCommand, UpdateCommand, type QueryCommandInput } from '@aws-sdk/lib-dynamodb'
+import { GetCommand, PutCommand, QueryCommand, TransactWriteCommand, UpdateCommand, type QueryCommandInput } from '@aws-sdk/lib-dynamodb'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { docClient, TABLE_NAME, ARCHIVE_BUCKET } from '../lib/database'
@@ -159,40 +159,61 @@ export async function updateLetter(
 
     const now = new Date().toISOString()
     const versionNumber = ((current.Item.versionCount as number) || 0) + 1
-
-    await docClient.send(new PutCommand({
-      TableName: TABLE_NAME,
-      Item: {
-        ...keys.letterVersion(date, now),
-        content: current.Item.content,
-        title: current.Item.title,
-        author: current.Item.author,
-        description: current.Item.description,
-        editedBy: current.Item.lastEditedBy,
-        editedAt: current.Item.updatedAt,
-        versionNumber: current.Item.versionCount || 0,
-        entityType: 'LETTER_VERSION',
-      },
-    }))
+    const currentUpdatedAt = current.Item.updatedAt as string | undefined
 
     const updatedTitle = title || current.Item.title
     const updatedAuthor = author !== undefined ? author : current.Item.author
     const updatedDescription = description !== undefined ? description : current.Item.description
 
-    await docClient.send(new UpdateCommand({
-      TableName: TABLE_NAME,
-      Key: keys.letter(date),
-      UpdateExpression: 'SET content = :content, title = :title, author = :author, description = :description, updatedAt = :now, lastEditedBy = :editor, versionCount = :vc',
-      ExpressionAttributeValues: {
-        ':content': content,
-        ':title': updatedTitle,
-        ':author': updatedAuthor,
-        ':description': updatedDescription,
-        ':now': now,
-        ':editor': requesterId,
-        ':vc': versionNumber,
-      },
-    }))
+    // Snapshot + live update must be atomic. Conditional check on the live
+    // record's current updatedAt prevents lost writes from concurrent edits.
+    try {
+      await docClient.send(new TransactWriteCommand({
+        TransactItems: [
+          {
+            Put: {
+              TableName: TABLE_NAME,
+              Item: {
+                ...keys.letterVersion(date, now),
+                content: current.Item.content,
+                title: current.Item.title,
+                author: current.Item.author,
+                description: current.Item.description,
+                editedBy: current.Item.lastEditedBy,
+                editedAt: currentUpdatedAt,
+                versionNumber: current.Item.versionCount || 0,
+                entityType: 'LETTER_VERSION',
+              },
+            },
+          },
+          {
+            Update: {
+              TableName: TABLE_NAME,
+              Key: keys.letter(date),
+              UpdateExpression: 'SET content = :content, title = :title, author = :author, description = :description, updatedAt = :now, lastEditedBy = :editor, versionCount = :vc',
+              ConditionExpression: currentUpdatedAt
+                ? 'updatedAt = :prev'
+                : 'attribute_not_exists(updatedAt)',
+              ExpressionAttributeValues: {
+                ':content': content,
+                ':title': updatedTitle,
+                ':author': updatedAuthor,
+                ':description': updatedDescription,
+                ':now': now,
+                ':editor': requesterId,
+                ':vc': versionNumber,
+                ...(currentUpdatedAt ? { ':prev': currentUpdatedAt } : {}),
+              },
+            },
+          },
+        ],
+      }))
+    } catch (txErr) {
+      if (toError(txErr).name === 'TransactionCanceledException') {
+        return errorResponse(409, 'Letter was modified by another request, please retry', requestOrigin)
+      }
+      throw txErr
+    }
 
     return successResponse({
       message: 'Letter updated',
@@ -291,36 +312,55 @@ export async function revertToVersion(
 
     if (current.Item) {
       const newVersionNumber = ((current.Item.versionCount as number) || 0) + 1
+      const currentUpdatedAt = current.Item.updatedAt as string | undefined
 
-      await docClient.send(new PutCommand({
-        TableName: TABLE_NAME,
-        Item: {
-          ...keys.letterVersion(date, now),
-          content: current.Item.content,
-          title: current.Item.title,
-          author: current.Item.author,
-          description: current.Item.description,
-          editedBy: current.Item.lastEditedBy,
-          editedAt: current.Item.updatedAt,
-          versionNumber: current.Item.versionCount || 0,
-          entityType: 'LETTER_VERSION',
-        },
-      }))
-
-      await docClient.send(new UpdateCommand({
-        TableName: TABLE_NAME,
-        Key: keys.letter(date),
-        UpdateExpression: 'SET content = :content, title = :title, author = :author, description = :description, updatedAt = :now, lastEditedBy = :editor, versionCount = :vc',
-        ExpressionAttributeValues: {
-          ':content': version.content,
-          ':title': version.title,
-          ':author': version.author,
-          ':description': version.description,
-          ':now': now,
-          ':editor': requesterId,
-          ':vc': newVersionNumber,
-        },
-      }))
+      try {
+        await docClient.send(new TransactWriteCommand({
+          TransactItems: [
+            {
+              Put: {
+                TableName: TABLE_NAME,
+                Item: {
+                  ...keys.letterVersion(date, now),
+                  content: current.Item.content,
+                  title: current.Item.title,
+                  author: current.Item.author,
+                  description: current.Item.description,
+                  editedBy: current.Item.lastEditedBy,
+                  editedAt: currentUpdatedAt,
+                  versionNumber: current.Item.versionCount || 0,
+                  entityType: 'LETTER_VERSION',
+                },
+              },
+            },
+            {
+              Update: {
+                TableName: TABLE_NAME,
+                Key: keys.letter(date),
+                UpdateExpression: 'SET content = :content, title = :title, author = :author, description = :description, updatedAt = :now, lastEditedBy = :editor, versionCount = :vc',
+                ConditionExpression: currentUpdatedAt
+                  ? 'updatedAt = :prev'
+                  : 'attribute_not_exists(updatedAt)',
+                ExpressionAttributeValues: {
+                  ':content': version.content,
+                  ':title': version.title,
+                  ':author': version.author,
+                  ':description': version.description,
+                  ':now': now,
+                  ':editor': requesterId,
+                  ':vc': newVersionNumber,
+                  ...(currentUpdatedAt ? { ':prev': currentUpdatedAt } : {}),
+                },
+              },
+            },
+          ],
+        }))
+      } catch (txErr) {
+        if (toError(txErr).name === 'TransactionCanceledException') {
+          return errorResponse(409, 'Letter was modified by another request, please retry', requestOrigin)
+        }
+        throw txErr
+      }
     }
 
     return successResponse({ message: 'Reverted to version', timestamp }, 200, requestOrigin)
