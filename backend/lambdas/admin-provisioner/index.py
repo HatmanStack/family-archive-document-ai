@@ -42,7 +42,7 @@ def create(event, context):
     props = event.get("ResourceProperties", {})
     user_pool_id = props["UserPoolId"]
     admin_email = props["AdminEmail"]
-    amplify_url = props.get("AmplifyUrl", "")
+    amplify_url = props.get("AppDomain", "") or props.get("AmplifyUrl", "")
 
     if not admin_email or admin_email == "placeholder@example.com":
         logger.info("No admin email provided, skipping user creation")

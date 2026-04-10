@@ -1005,6 +1005,7 @@ Resources:
 
   AmplifyApp:
     Type: AWS::Amplify::App
+    Condition: ShouldDeployUI
     Properties:
       Name: !Sub '${AWS::StackName}'
       Description: Family Archive - Document AI Platform
@@ -1063,6 +1064,7 @@ Resources:
 
   AmplifyBranch:
     Type: AWS::Amplify::Branch
+    Condition: ShouldDeployUI
     Properties:
       AppId: !GetAtt AmplifyApp.AppId
       BranchName: main
@@ -1182,14 +1184,13 @@ Resources:
     Type: Custom::AdminProvisioner
     Condition: HasInitialAdmin
     DependsOn:
-      - AmplifyApp
       - ApprovedUsersGroup
       - AdminsGroup
     Properties:
       ServiceToken: !GetAtt AdminProvisionerFunction.Arn
       UserPoolId: !Ref UserPool
       AdminEmail: !Ref RagStackAdminEmail
-      AmplifyUrl: !Sub 'main.${AmplifyApp.AppId}.amplifyapp.com'
+      AppDomain: !Ref AppDomain
 
 Outputs:
   ApiUrl:
@@ -1263,10 +1264,12 @@ Outputs:
       Name: !Sub '${AWS::StackName}-RagStackAdminDashboard'
 
   AmplifyAppId:
+    Condition: ShouldDeployUI
     Description: Amplify App ID
     Value: !GetAtt AmplifyApp.AppId
 
   AmplifyUrl:
+    Condition: ShouldDeployUI
     Description: Amplify Hosting URL (Frontend Application CDN)
     Value: !Sub 'https://main.${AmplifyApp.DefaultDomain}'
     Export:
