@@ -1,7 +1,9 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import type { DynamoDBStreamEvent, DynamoDBRecord } from 'aws-lambda'
-import { SHARED_PREFIX } from '../shared/types'
+// Inlined from shared/types.ts — esbuild cannot resolve imports outside
+// this Lambda's CodeUri (backend/lambdas/activity-aggregator).
+const SHARED_PREFIX = { USER: 'USER#' } as const
 
 const client = new DynamoDBClient({})
 const docClient = DynamoDBDocumentClient.from(client)
