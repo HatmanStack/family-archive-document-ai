@@ -62,8 +62,10 @@ package_frontend_source() {
 
     echo "Packaging frontend source..." >&2
 
-    # Ship frontend/ directory and amplify.yml - Amplify will install deps and build
-    (cd .. && zip -r "$zip_file" frontend amplify.yml \
+    # Ship frontend/, amplify.yml, and root package files (lockfile lives at root
+    # because npm workspaces hoist it). CodeBuild runs npm ci from root then
+    # builds inside frontend/.
+    (cd .. && zip -r "$zip_file" frontend amplify.yml package.json package-lock.json \
         -x "frontend/node_modules/*" \
         -x "frontend/.svelte-kit/*" \
         -x "frontend/build/*" \

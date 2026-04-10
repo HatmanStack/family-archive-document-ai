@@ -1,0 +1,23 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Skeleton template to import orphaned resources back into the stack
+
+Parameters:
+  ArchiveBucket:
+    Type: String
+  UserPoolId:
+    Type: String
+
+Resources:
+  ArchiveBucketResource:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Ref ArchiveBucket
+
+  ApprovedUsersGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    DeletionPolicy: Retain
+    Properties:
+      GroupName: ApprovedUsers
+      UserPoolId: !Ref UserPoolId
