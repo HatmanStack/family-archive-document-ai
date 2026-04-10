@@ -56,7 +56,21 @@ export function validateContentLength(
   return content.length >= minLength && content.length <= maxLength
 }
 
-export { escapeHtml } from '../../../shared/html-utils'
+/**
+ * Escape HTML special characters to prevent XSS.
+ * Inlined from shared/html-utils.ts because the API Lambda's esbuild
+ * boundary (CodeUri: backend/lambdas/api) cannot resolve imports outside
+ * its own directory tree.
+ */
+export function escapeHtml(text: string): string {
+  if (!text) return ''
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
 
 /**
  * Safely parse JSON request body.
