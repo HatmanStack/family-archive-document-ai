@@ -5,6 +5,10 @@
   export let relationships: FamilyRelationship[] = []
   export let disabled = false
 
+  // Guard against undefined from store/API — bind: can pass undefined before data loads
+  $: if (!Array.isArray(relationships))
+    relationships = []
+
   const RELATIONSHIP_LIMIT_WARNING = 10
 
   function generateId(): string {
