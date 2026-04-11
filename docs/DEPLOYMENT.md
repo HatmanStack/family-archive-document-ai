@@ -279,7 +279,7 @@ This bypasses CodeBuild entirely. The local build bakes in the guest credentials
 from your `.env` file, and the Amplify deployment serves the pre-built static
 files.
 
-### Why not use the SAM deploy pipeline?
+### Why not the SAM deploy pipeline
 
 The SAM deploy pipeline passes environment variables through CloudFormation
 parameters to CodeBuild. SvelteKit's `$env/dynamic/public` reads these at
