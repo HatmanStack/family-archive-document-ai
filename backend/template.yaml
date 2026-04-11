@@ -1281,8 +1281,9 @@ Outputs:
       Name: !Sub '${AWS::StackName}-RagStackDataBucket'
 
   RagStackAdminDashboardUrl:
+    Condition: DeployNestedRagStack
     Description: RAGStack Admin Dashboard URL (React UI for managing knowledge base)
-    Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.UIUrl, '']
+    Value: !GetAtt ragstack.Outputs.UIUrl
     Export:
       Name: !Sub '${AWS::StackName}-RagStackAdminDashboard'
 
