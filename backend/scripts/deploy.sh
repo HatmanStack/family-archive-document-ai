@@ -192,6 +192,9 @@ publish_to_marketplace() {
     local ui_key
     ui_key=$(package_frontend_source "$marketplace_bucket" "$region")
     echo "  ✓ Frontend source uploaded: $ui_key"
+    # Copy to stable name for one-click deploys (template defaults UISourceKey to frontend.zip)
+    aws s3 cp "s3://${marketplace_bucket}/${ui_key}" "s3://${marketplace_bucket}/frontend.zip" --region "$region"
+    echo "  ✓ Copied to frontend.zip for one-click template"
     echo ""
 
     # Step 5: SAM package (bundles Lambda code with template)
