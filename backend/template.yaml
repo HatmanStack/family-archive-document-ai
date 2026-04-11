@@ -1215,11 +1215,12 @@ Resources:
     DependsOn:
       - ApprovedUsersGroup
       - AdminsGroup
+      - AmplifyApp
     Properties:
       ServiceToken: !GetAtt AdminProvisionerFunction.Arn
       UserPoolId: !Ref UserPool
       AdminEmail: !Ref RagStackAdminEmail
-      AppDomain: !Ref AppDomain
+      AmplifyUrl: !Sub 'main.${AmplifyApp.DefaultDomain}'
 
 Outputs:
   ApiUrl:
