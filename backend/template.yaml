@@ -26,8 +26,6 @@ Metadata:
         default: "Administrator Email"
       SesFromEmail:
         default: "Notification From Email"
-      RagStackAdminEmail:
-        default: "RAGStack Admin Email"
       RagStackBuildWebComponent:
         default: "Build Chat Widget"
       RagStackBuildDashboard:
@@ -55,7 +53,6 @@ Metadata:
           default: "RAGStack AI Configuration"
         Parameters:
           - RagStackStackName
-          - RagStackAdminEmail
           - RagStackBuildWebComponent
           - RagStackBuildDashboard
           - RagStackTemplateUrl
@@ -75,7 +72,7 @@ Metadata:
 
     Initial Deployment:
     - This one-click URL creates a NEW stack
-    - Required parameters: AdminEmail, RagStackAdminEmail
+    - Required parameters: AdminEmail
     - Optional: Set AppDomain to your domain, or use default localhost:5173
     - OAuth credentials (GoogleClientId/Secret) can be added later
 
@@ -151,11 +148,6 @@ Parameters:
     Description: Existing RAGStack chat widget CDN URL (auto-populated by deploy script)
     Default: ''
 
-  RagStackAdminEmail:
-    Type: String
-    Description: Admin email for RAGStack (required)
-    Default: 'placeholder@example.com'
-
   RagStackBuildWebComponent:
     Type: String
     Default: 'true'
@@ -175,7 +167,7 @@ Parameters:
 
   AdminEmail:
     Type: String
-    Description: Admin email address for contact form submissions
+    Description: Admin email - receives contact form submissions, initial login invite, and RAGStack dashboard access
     Default: ''
 
   GeminiApiKey:
@@ -206,9 +198,7 @@ Conditions:
   IsLocalhost: !Equals [!Select [0, !Split [":", !Ref AppDomain]], "localhost"]
   HasTableName: !Not [!Equals [!Ref TableName, '']]
   HasArchiveBucket: !Not [!Equals [!Ref ArchiveBucket, '']]
-  HasInitialAdmin: !And
-    - !Not [!Equals [!Ref RagStackAdminEmail, '']]
-    - !Not [!Equals [!Ref RagStackAdminEmail, 'placeholder@example.com']]
+  HasInitialAdmin: !Not [!Equals [!Ref AdminEmail, '']]
   DeployNestedRagStack: !Equals [!Ref RagStackStackName, '']
 
 Globals:
@@ -844,7 +834,7 @@ Resources:
     Properties:
       TemplateURL: !Ref RagStackTemplateUrl
       Parameters:
-        AdminEmail: !Ref RagStackAdminEmail
+        AdminEmail: !Ref AdminEmail
         StackPrefix: !Sub '${AWS::StackName}-rag'
         BuildWebComponent: !Ref RagStackBuildWebComponent
         BuildDashboard: !Ref RagStackBuildDashboard
@@ -1219,7 +1209,7 @@ Resources:
     Properties:
       ServiceToken: !GetAtt AdminProvisionerFunction.Arn
       UserPoolId: !Ref UserPool
-      AdminEmail: !Ref RagStackAdminEmail
+      AdminEmail: !Ref AdminEmail
       AmplifyUrl: !Sub 'main.${AmplifyApp.DefaultDomain}'
 
 Outputs:
