@@ -189,6 +189,17 @@ Parameters:
     Description: Google Gemini Model to use for letter parsing
     Default: 'gemini-3.1-flash-lite-preview'
 
+  GuestEmail:
+    Type: String
+    Description: Guest login email (leave empty to disable guest access)
+    Default: ''
+
+  GuestPassword:
+    Type: String
+    Description: Guest login password
+    Default: ''
+    NoEcho: true
+
   # UI Source for one-click deployments (auto-configured for marketplace)
   UISourceBucket:
     Type: String
@@ -894,6 +905,10 @@ Resources:
             Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.GraphQLApiKey, !Ref RagStackGraphQLApiKey]
           - Name: PUBLIC_RAGSTACK_CHAT_URL
             Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.WebComponentCDNUrl, !Ref RagStackChatWidgetUrl]
+          - Name: PUBLIC_GUEST_EMAIL
+            Value: !Ref GuestEmail
+          - Name: PUBLIC_GUEST_PASSWORD
+            Value: !Ref GuestPassword
       Source:
         Type: NO_SOURCE
         BuildSpec: |
@@ -1030,6 +1045,10 @@ Resources:
           Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.GraphQLApiKey, !Ref RagStackGraphQLApiKey]
         - Name: PUBLIC_RAGSTACK_CHAT_URL
           Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.WebComponentCDNUrl, !Ref RagStackChatWidgetUrl]
+        - Name: PUBLIC_GUEST_EMAIL
+          Value: !Ref GuestEmail
+        - Name: PUBLIC_GUEST_PASSWORD
+          Value: !Ref GuestPassword
 
   # =============================================================================
   # Amplify Hosting
@@ -1082,6 +1101,10 @@ Resources:
           Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.GraphQLApiKey, !Ref RagStackGraphQLApiKey]
         - Name: PUBLIC_RAGSTACK_CHAT_URL
           Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.WebComponentCDNUrl, !Ref RagStackChatWidgetUrl]
+        - Name: PUBLIC_GUEST_EMAIL
+          Value: !Ref GuestEmail
+        - Name: PUBLIC_GUEST_PASSWORD
+          Value: !Ref GuestPassword
 
       # SPA rewrite rule
       CustomRules:
@@ -1123,6 +1146,10 @@ Resources:
           Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.GraphQLApiKey, !Ref RagStackGraphQLApiKey]
         - Name: PUBLIC_RAGSTACK_CHAT_URL
           Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.WebComponentCDNUrl, !Ref RagStackChatWidgetUrl]
+        - Name: PUBLIC_GUEST_EMAIL
+          Value: !Ref GuestEmail
+        - Name: PUBLIC_GUEST_PASSWORD
+          Value: !Ref GuestPassword
 
   # Lambda to trigger Amplify deployment
   AmplifyDeployerFunction:

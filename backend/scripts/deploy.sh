@@ -647,6 +647,11 @@ if [ "$SKIP_UI" != "true" ]; then
     PARAM_OVERRIDES="$PARAM_OVERRIDES UISourceKey=$UI_SOURCE_KEY"
 fi
 
+if [ -n "$PRESERVED_GUEST_EMAIL" ]; then
+    PARAM_OVERRIDES="$PARAM_OVERRIDES GuestEmail=$PRESERVED_GUEST_EMAIL"
+    PARAM_OVERRIDES="$PARAM_OVERRIDES GuestPassword=$PRESERVED_GUEST_PASSWORD"
+fi
+
 sam deploy \
     --stack-name "$STACK_NAME" \
     --region "$AWS_REGION" \
@@ -805,8 +810,14 @@ update_env_var() {
 PRESERVED_RAGSTACK_CHAT_URL=""
 PRESERVED_RAGSTACK_GRAPHQL_URL=""
 PRESERVED_RAGSTACK_API_KEY=""
+# Guest credentials enable a one-click "Try as Guest" button on the login page.
+# Leave blank in .env.deploy to disable public guest access (e.g., for private family stacks).
 PRESERVED_GUEST_EMAIL=""
 PRESERVED_GUEST_PASSWORD=""
+
+# Check .env.deploy for guest credentials first
+[ -z "$PRESERVED_GUEST_EMAIL" ] && PRESERVED_GUEST_EMAIL=$(grep "^PUBLIC_GUEST_EMAIL=" "$ENV_DEPLOY_FILE" 2>/dev/null | cut -d'=' -f2-)
+[ -z "$PRESERVED_GUEST_PASSWORD" ] && PRESERVED_GUEST_PASSWORD=$(grep "^PUBLIC_GUEST_PASSWORD=" "$ENV_DEPLOY_FILE" 2>/dev/null | cut -d'=' -f2-)
 
 # Check frontend/.env first, then root .env for existing values
 for env_file in "$FRONTEND_DIR_ENV" "$FRONTEND_ENV"; do
