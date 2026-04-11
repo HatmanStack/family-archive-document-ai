@@ -28,10 +28,9 @@ export async function getProfile(userId: string): Promise<ProfileApiResponse> {
     }
   }
   catch (error) {
-    console.error('[profile-service] getProfile error:', error)
+    console.error('Error fetching profile:', error)
 
     if (error instanceof ApiError) {
-      console.error('[profile-service] ApiError status:', error.status, 'message:', error.message)
       if (error.status === 403) {
         return { success: false, error: 'This profile is private' }
       }
@@ -88,7 +87,7 @@ export async function getCommentHistory(
     }
   }
   catch (error) {
-    console.error('[profile-service] getCommentHistory error:', error)
+    console.error('Error fetching comment history:', error)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch comment history',

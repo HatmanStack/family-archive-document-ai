@@ -186,8 +186,7 @@ export class AuthService {
         const newTokens = await this.refreshTokens()
         return newTokens.idToken
       }
-      catch (err) {
-        console.error('[auth-service] Token refresh failed:', err)
+      catch {
         return null
       }
     }

@@ -55,7 +55,6 @@ export class ApiClient {
     if (requireAuth) {
       const accessToken = await authService.getValidAccessToken()
       if (!accessToken) {
-        console.error('[api-client] No valid access token — authService.getValidAccessToken() returned null')
         throw new Error('No valid access token available')
       }
       requestHeaders.Authorization = `Bearer ${accessToken}`
@@ -83,7 +82,6 @@ export class ApiClient {
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.error(`[api-client] Error response body:`, errorText)
         let errorMessage = `HTTP ${response.status}: ${response.statusText}`
 
         try {
