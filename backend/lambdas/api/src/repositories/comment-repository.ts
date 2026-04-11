@@ -11,6 +11,8 @@ interface CreateCommentInput {
   content: string
   authorId: string
   authorEmail?: string
+  itemType?: string
+  itemTitle?: string
 }
 
 interface ListCommentsOptions {
@@ -65,15 +67,19 @@ class CommentRepository extends BaseRepository {
    * Create a new comment
    */
   async create(input: CreateCommentInput): Promise<Comment> {
-    const { itemId, content, authorId, authorEmail } = input
+    const { itemId, content, authorId, authorEmail, itemType, itemTitle } = input
     const timestamp = new Date().toISOString()
     const commentId = `${timestamp}#${uuidv4()}`
 
     const comment: Comment = {
       PK: `${PREFIX.COMMENT}${itemId}`,
       SK: commentId,
+      GSI1PK: `${PREFIX.USER}${authorId}`,
+      GSI1SK: `${PREFIX.COMMENT}${timestamp}`,
       commentId,
       itemId,
+      itemType: itemType || 'letter',
+      itemTitle: itemTitle || itemId,
       content,
       authorId,
       authorEmail,

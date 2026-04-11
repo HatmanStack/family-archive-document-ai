@@ -97,6 +97,8 @@ export async function createComment(
       content,
       authorId: requesterId,
       authorEmail: requesterEmail,
+      itemType: body.itemType as string,
+      itemTitle: body.itemTitle as string,
     })
 
     log.info('create_comment', { itemId, commentId: comment.commentId })
