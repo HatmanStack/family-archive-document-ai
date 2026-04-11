@@ -176,15 +176,22 @@ export class AuthService {
     const currentState = get(authStore)
 
     if (!currentState.tokens) {
+      console.warn('[auth-service] getValidAccessToken: no tokens in store. isAuthenticated:', currentState.isAuthenticated, 'user:', currentState.user?.email)
       return null
     }
 
-    if (currentState.tokens.expiresAt - Date.now() < 5 * 60 * 1000) {
+    const timeToExpiry = currentState.tokens.expiresAt - Date.now()
+    console.warn('[auth-service] getValidAccessToken: token expires in', Math.round(timeToExpiry / 1000), 'seconds')
+
+    if (timeToExpiry < 5 * 60 * 1000) {
+      console.warn('[auth-service] Token near expiry, refreshing...')
       try {
         const newTokens = await this.refreshTokens()
+        console.warn('[auth-service] Token refreshed successfully')
         return newTokens.accessToken
       }
-      catch {
+      catch (err) {
+        console.error('[auth-service] Token refresh failed:', err)
         return null
       }
     }
