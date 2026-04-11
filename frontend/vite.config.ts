@@ -1,29 +1,13 @@
 import { sveltekit } from '@sveltejs/kit/vite'
-import tailwindcss from '@tailwindcss/postcss'
+import tailwindcss from '@tailwindcss/vite'
 import { SvelteKitPWA as pwa } from '@vite-pwa/sveltekit'
-import postcssLightningcss from 'postcss-lightningcss'
 import { defineConfig } from 'vite'
 import { imagetools } from 'vite-imagetools'
 
 export default defineConfig({
-  css: {
-    postcss: {
-      plugins: [
-        tailwindcss(),
-        postcssLightningcss({
-          browsers: '>= .25%',
-          lightningcssOptions: {
-            drafts: {
-              customMedia: true,
-            },
-            errorRecovery: true,
-          },
-        }),
-      ],
-    },
-  },
   envPrefix: 'URARA_',
   plugins: [
+    tailwindcss(),
     imagetools(),
     sveltekit(),
     pwa({

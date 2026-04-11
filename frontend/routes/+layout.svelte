@@ -11,7 +11,7 @@
   import { onMount } from 'svelte'
   import { registerSW } from 'virtual:pwa-register'
 
-  import '../app.pcss'
+  import '../app.css'
 
   export let data: LayoutData
   export let params: unknown = undefined
