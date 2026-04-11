@@ -228,7 +228,7 @@ export async function getUserComments(
   event: APIGatewayProxyEvent,
   context: RequestContext
 ): Promise<APIGatewayProxyResult> {
-  const { requesterId, isAdmin, requestOrigin } = context
+  const { requestOrigin } = context
   const userId = event.pathParameters?.userId
   const limit = validateLimit(event.queryStringParameters?.limit)
 

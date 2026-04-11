@@ -62,7 +62,15 @@
 </svelte:head>
 
 <div class='mx-auto px-4 py-8 max-w-5xl'>
-  {#if loading}
+  {#if mounted && !$isAuthenticated}
+    <div class='card bg-base-100 shadow-xl'>
+      <div class='card-body items-center text-center'>
+        <h2 class='card-title'>Sign in required</h2>
+        <p class='text-base-content/60'>You need to be logged in to view profiles.</p>
+        <a href='/auth/login' class='btn btn-primary mt-4'>Sign In</a>
+      </div>
+    </div>
+  {:else if loading}
     <!-- Loading skeleton -->
     <div class='space-y-6'>
       <div class='card bg-base-100 shadow-xl'>

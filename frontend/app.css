@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 @plugin "daisyui" {
-  themes: cmyk, dracula, valentine, aqua, synthwave, night, lofi, garden, emerald, retro, cyberpunk, wireframe, luxury, autumn, business, lemonade, coffee, dim --default;
+  themes: cmyk, dracula, valentine, aqua, synthwave, night, lofi, lemonade, cupcake, garden, retro, black;
 }
 
 /* global */

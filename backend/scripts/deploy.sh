@@ -647,7 +647,6 @@ if [ "$SKIP_UI" != "true" ]; then
     PARAM_OVERRIDES="$PARAM_OVERRIDES UISourceKey=$UI_SOURCE_KEY"
 fi
 
-echo "PARAM_OVERRIDES: $PARAM_OVERRIDES"
 sam deploy \
     --stack-name "$STACK_NAME" \
     --region "$AWS_REGION" \
