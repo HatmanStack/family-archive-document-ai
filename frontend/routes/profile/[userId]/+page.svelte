@@ -1,7 +1,7 @@
 <script lang='ts'>
   import type { UserProfile } from '$lib/types/profile'
   import { page } from '$app/stores'
-  import { currentUser } from '$lib/auth/auth-store'
+  import { currentUser, isAuthenticated } from '$lib/auth/auth-store'
   import CommentHistory from '$lib/components/profile/CommentHistory.svelte'
   import ProfileCard from '$lib/components/profile/ProfileCard.svelte'
   import { getProfile } from '$lib/services/profile-service'
@@ -42,13 +42,18 @@
     loading = false
   }
 
-  // Load profile when component mounts or userId changes
-  $: if (userId) {
+  let mounted = false
+
+  // Load profile when userId changes (after mount)
+  $: if (userId && mounted && $isAuthenticated) {
     loadProfile()
   }
 
   onMount(() => {
-    loadProfile()
+    mounted = true
+    if ($isAuthenticated) {
+      loadProfile()
+    }
   })
 </script>
 
