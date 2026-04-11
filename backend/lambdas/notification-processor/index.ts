@@ -2,8 +2,40 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses'
 import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb'
 import type { DynamoDBStreamEvent, DynamoDBRecord } from 'aws-lambda'
-import { escapeHtml } from '../shared/html-utils'
-import { SHARED_PREFIX, type StreamMessageImage, type StreamCommentImage } from '../shared/types'
+// Inlined from shared/ — esbuild cannot resolve imports outside this
+// Lambda's CodeUri (backend/lambdas/notification-processor).
+
+function escapeHtml(text: string): string {
+  if (!text) return ''
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
+const SHARED_PREFIX = { USER: 'USER#' } as const
+
+interface StreamMessageImage {
+  conversationId: { S: string }
+  senderId: { S: string }
+  senderName?: { S: string }
+  messageText?: { S: string }
+  participants?: { SS: string[] }
+  entityType: { S: string }
+}
+
+interface StreamCommentImage {
+  itemId?: { S: string }
+  itemType?: { S: string }
+  userId?: { S: string }
+  userName?: { S: string }
+  commentText?: { S: string }
+  itemTitle?: { S: string }
+  previousCommenters?: { L: Array<{ S: string }> }
+  entityType: { S: string }
+}
 
 const dynamoClient = new DynamoDBClient({})
 const docClient = DynamoDBDocumentClient.from(dynamoClient)
@@ -147,6 +179,11 @@ async function processCommentNotification(newImage: StreamCommentImage): Promise
   const previousCommenters = (newImage.previousCommenters?.L?.map(item => item.S).filter((s): s is string => !!s)) || []
 
   if (!commenterId) {
+    return
+  }
+
+  if (itemType !== 'media' && !itemId) {
+    console.error('Skipping comment notification: missing itemId')
     return
   }
 

@@ -85,7 +85,7 @@
           {:else}
             <div class='placeholder'>
               <div class='bg-neutral text-neutral-content rounded-full w-24'>
-                <span class='text-3xl'>{profile.displayName.charAt(0).toUpperCase()}</span>
+                <span class='text-3xl'>{(profile.displayName ?? '').charAt(0).toUpperCase() || 'U'}</span>
               </div>
             </div>
           {/if}

@@ -104,7 +104,8 @@ export class ApiClient {
         return null as unknown as T
       }
 
-      return await response.json()
+      const json = await response.json()
+      return json
     }
     catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') {

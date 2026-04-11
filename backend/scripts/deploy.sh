@@ -57,13 +57,16 @@ done
 package_frontend_source() {
     local bucket_name=$1
     local region=$2
-    local s3_key="frontend.zip"
-    local zip_file="/tmp/frontend-source.zip"
+    local timestamp=$(date +%s)
+    local s3_key="frontend-${timestamp}.zip"
+    local zip_file="/tmp/frontend-source-${timestamp}.zip"
 
     echo "Packaging frontend source..." >&2
 
-    # Ship frontend/ directory and amplify.yml - Amplify will install deps and build
-    (cd .. && zip -r "$zip_file" frontend amplify.yml \
+    # Ship frontend/, amplify.yml, and root package files (lockfile lives at root
+    # because npm workspaces hoist it). CodeBuild runs npm ci from root then
+    # builds inside frontend/.
+    (cd .. && zip -r "$zip_file" frontend amplify.yml package.json package-lock.json \
         -x "frontend/node_modules/*" \
         -x "frontend/.svelte-kit/*" \
         -x "frontend/build/*" \
@@ -186,8 +189,12 @@ publish_to_marketplace() {
 
     # Step 4: Package frontend source
     echo "Step 4: Packaging frontend source..."
-    package_frontend_source "$marketplace_bucket" "$region"
-    echo "  ✓ Frontend source uploaded: frontend.zip"
+    local ui_key
+    ui_key=$(package_frontend_source "$marketplace_bucket" "$region")
+    echo "  ✓ Frontend source uploaded: $ui_key"
+    # Copy to stable name for one-click deploys (template defaults UISourceKey to frontend.zip)
+    aws s3 cp "s3://${marketplace_bucket}/${ui_key}" "s3://${marketplace_bucket}/frontend.zip" --region "$region"
+    echo "  ✓ Copied to frontend.zip for one-click template"
     echo ""
 
     # Step 5: SAM package (bundles Lambda code with template)
@@ -447,7 +454,6 @@ SES_FROM_EMAIL=$SES_FROM_EMAIL
 ADMIN_EMAIL=$ADMIN_EMAIL
 ARCHIVE_BUCKET=$ARCHIVE_BUCKET
 RAGSTACK_STACK_NAME=$RAGSTACK_STACK_NAME
-RAGSTACK_ADMIN_EMAIL=$RAGSTACK_ADMIN_EMAIL
 LETTERS_DB_POPULATED=$LETTERS_DB_POPULATED
 EOF
 echo ""
@@ -456,9 +462,6 @@ echo "Configuration saved to $ENV_DEPLOY_FILE"
 # Generate samconfig.toml so `sam deploy` without arguments uses correct config
 DEPLOY_BUCKET="sam-deploy-hold-that-thought-${AWS_REGION}"
 PARAM_OVERRIDES_TOML="AllowedOrigins=$ALLOWED_ORIGINS AppDomain=$APP_DOMAIN TableName=$TABLE_NAME SesFromEmail=$SES_FROM_EMAIL AdminEmail=$ADMIN_EMAIL ArchiveBucket=$ARCHIVE_BUCKET GeminiApiKey=$GEMINI_API_KEY RagStackStackName=$RAGSTACK_STACK_NAME"
-if [ -n "$RAGSTACK_ADMIN_EMAIL" ]; then
-    PARAM_OVERRIDES_TOML="$PARAM_OVERRIDES_TOML RagStackAdminEmail=$RAGSTACK_ADMIN_EMAIL"
-fi
 if [ -n "$GOOGLE_CLIENT_ID" ]; then
     PARAM_OVERRIDES_TOML="$PARAM_OVERRIDES_TOML GoogleClientId=$GOOGLE_CLIENT_ID GoogleClientSecret=$GOOGLE_CLIENT_SECRET"
 fi
@@ -621,9 +624,6 @@ PARAM_OVERRIDES="$PARAM_OVERRIDES AdminEmail=$ADMIN_EMAIL"
 PARAM_OVERRIDES="$PARAM_OVERRIDES ArchiveBucket=$ARCHIVE_BUCKET"
 PARAM_OVERRIDES="$PARAM_OVERRIDES GeminiApiKey=$GEMINI_API_KEY"
 PARAM_OVERRIDES="$PARAM_OVERRIDES RagStackStackName=$RAGSTACK_STACK_NAME"
-if [ -n "$RAGSTACK_ADMIN_EMAIL" ]; then
-    PARAM_OVERRIDES="$PARAM_OVERRIDES RagStackAdminEmail=$RAGSTACK_ADMIN_EMAIL"
-fi
 
 if [ -n "$RAGSTACK_STACK_NAME" ]; then
     PARAM_OVERRIDES="$PARAM_OVERRIDES RagStackDataBucketName=$RAGSTACK_DATA_BUCKET"
@@ -641,10 +641,8 @@ fi
 if [ "$SKIP_UI" != "true" ]; then
     PARAM_OVERRIDES="$PARAM_OVERRIDES UISourceBucket=$DEPLOY_BUCKET"
     PARAM_OVERRIDES="$PARAM_OVERRIDES UISourceKey=$UI_SOURCE_KEY"
-    PARAM_OVERRIDES="$PARAM_OVERRIDES DeployUI=true"
-else
-    PARAM_OVERRIDES="$PARAM_OVERRIDES DeployUI=false"
 fi
+
 
 sam deploy \
     --stack-name "$STACK_NAME" \

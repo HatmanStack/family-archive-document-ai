@@ -1,7 +1,7 @@
 <script lang='ts'>
   import type { UserProfile } from '$lib/types/profile'
   import { page } from '$app/stores'
-  import { currentUser } from '$lib/auth/auth-store'
+  import { currentUser, isAuthenticated } from '$lib/auth/auth-store'
   import CommentHistory from '$lib/components/profile/CommentHistory.svelte'
   import ProfileCard from '$lib/components/profile/ProfileCard.svelte'
   import { getProfile } from '$lib/services/profile-service'
@@ -13,7 +13,14 @@
 
   $: userId = $page.params.userId ?? ''
   $: isOwner = $currentUser?.sub === userId
-  $: isAdmin = $currentUser?.['cognito:groups']?.includes('Admins') || false
+  $: isAdmin = (() => {
+    const groups = $currentUser?.['cognito:groups']
+    if (Array.isArray(groups))
+      return groups.includes('Admins')
+    if (typeof groups === 'string')
+      return groups === 'Admins'
+    return false
+  })()
 
   /**
    * Load profile data
@@ -35,13 +42,18 @@
     loading = false
   }
 
-  // Load profile when component mounts or userId changes
-  $: if (userId) {
+  let mounted = false
+
+  // Load profile when userId changes (after mount)
+  $: if (userId && mounted && $isAuthenticated) {
     loadProfile()
   }
 
   onMount(() => {
-    loadProfile()
+    mounted = true
+    if ($isAuthenticated) {
+      loadProfile()
+    }
   })
 </script>
 
@@ -50,7 +62,15 @@
 </svelte:head>
 
 <div class='mx-auto px-4 py-8 max-w-5xl'>
-  {#if loading}
+  {#if mounted && !$isAuthenticated}
+    <div class='card bg-base-100 shadow-xl'>
+      <div class='card-body items-center text-center'>
+        <h2 class='card-title'>Sign in required</h2>
+        <p class='text-base-content/60'>You need to be logged in to view profiles.</p>
+        <a href='/auth/login' class='btn btn-primary mt-4'>Sign In</a>
+      </div>
+    </div>
+  {:else if loading}
     <!-- Loading skeleton -->
     <div class='space-y-6'>
       <div class='card bg-base-100 shadow-xl'>

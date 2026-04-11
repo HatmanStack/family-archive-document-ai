@@ -6,7 +6,7 @@
   export let familyBranch = ''
   export let disabled = false
 
-  $: bioLength = bio.length
+  $: bioLength = (bio ?? '').length
 </script>
 
 <!-- Display Name -->

@@ -1,25 +1,24 @@
-/* tailwind */
-
-@tailwind base;
-
-@tailwind components;
-
-@tailwind utilities;
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+@plugin "daisyui" {
+  themes: cmyk, dracula, valentine, aqua, synthwave, night, lofi, lemonade, cupcake, garden, retro, black;
+}
 
 /* global */
 
 html {
-  @apply !bg-base-200 scroll-smooth overflow-x-hidden overflow-y-scroll;
+  @apply scroll-smooth overflow-x-hidden overflow-y-scroll;
+  background-color: oklch(var(--b2)) !important;
 }
 
 ::selection {
-  @apply bg-primary/20;
+  background-color: oklch(var(--p) / 0.2);
 }
 
 /* .urara-prose */
 
 .urara-prose {
-  @apply !max-w-none;
+  max-width: none !important;
 }
 
 /* .urara-prose heading */
@@ -29,11 +28,13 @@ html {
 }
 
 .urara-prose > :is(h1, h2, h3, h4, h5) > a::after {
-  @apply pl-2 text-base-200 transition-all content-['#'];
+  @apply pl-2 transition-all;
+  color: oklch(var(--b2));
+  content: '#';
 }
 
 .urara-prose > :is(h1, h2, h3, h4, h5):hover > a::after {
-  @apply text-primary;
+  color: oklch(var(--p));
 }
 
 /* .urara-prose table */
@@ -43,13 +44,21 @@ html {
 }
 
 .urara-prose div > table > thead > tr > th {
-  @apply !relative;
+  position: relative !important;
 }
 
 /* .urara-prose a */
 
 .urara-prose :is(p, li) > a {
-  @apply bg-[length:100%_0.2em] hover:bg-[length:100%_100%] bg-[position:0_88%] bg-gradient-to-t from-secondary/50 to-secondary/40 bg-no-repeat transition-all ease-in-out !no-underline;
+  @apply bg-no-repeat transition-all ease-in-out;
+  background-size: 100% 0.2em;
+  background-position: 0 88%;
+  background-image: linear-gradient(to top, oklch(var(--s) / 0.4), oklch(var(--s) / 0.5));
+  text-decoration: none !important;
+}
+
+.urara-prose :is(p, li) > a:hover {
+  background-size: 100% 100%;
 }
 
 /* .urara-prose misc */
@@ -59,25 +68,28 @@ html {
 }
 
 .urara-prose :is(p, li) > code {
-  @apply bg-base-200 px-2;
+  @apply px-2;
+  background-color: oklch(var(--b2));
 }
 
 .urara-prose li > input {
-  @apply checkbox checkbox-xs me-2 -my-0.5;
-}
-
-.urara-prose kbd {
-  @apply kbd;
+  @apply me-2 -my-0.5;
 }
 
 .urara-prose hr {
-  @apply border-none divider;
+  border: none;
 }
 
 /* footer a */
 
 footer a {
-  @apply !no-underline hover:text-primary hover:!underline transition-all;
+  @apply transition-all;
+  text-decoration: none !important;
+}
+
+footer a:hover {
+  color: oklch(var(--p));
+  text-decoration: underline !important;
 }
 
 .spoiler {
@@ -87,11 +99,13 @@ footer a {
 /* .prose pre */
 
 .prose pre {
-  @apply mockup-code !bg-neutral min-w-0;
+  @apply min-w-0;
+  background-color: oklch(var(--n)) !important;
 }
 
 .prose pre:not(.shiki) {
-  @apply bg-neutral text-neutral-content;
+  background-color: oklch(var(--n));
+  color: oklch(var(--nc));
 }
 
 .prose pre:not(.shiki)::before {
@@ -157,7 +171,9 @@ pre.shiki:hover div.dim {
 }
 
 pre.shiki div.highlight::before {
-  @apply bg-warning/20 absolute content-[''] w-full h-6;
+  @apply absolute w-full h-6;
+  background-color: oklch(var(--wa) / 0.2);
+  content: '';
 }
 
 pre.twoslash data-lsp {
@@ -165,12 +181,14 @@ pre.twoslash data-lsp {
 }
 
 pre.twoslash:hover data-lsp {
-  @apply border-neutral-content/30;
+  border-color: oklch(var(--nc) / 0.3);
 }
 
 pre.twoslash data-lsp:hover::before {
-  /* https://daisyui.com/blog/how-to-update-daisyui-4/#3-all--focus-colors-are-removed */
-  @apply content-[attr(lsp)] absolute rounded translate-y-5 bg-[color-mix(in_oklab,oklch(var(--n)),black_7%)] text-neutral-content font-mono whitespace-pre-wrap transition-all px-2 py-1 z-50;
+  @apply absolute rounded translate-y-5 font-mono whitespace-pre-wrap transition-all px-2 py-1 z-50;
+  content: attr(lsp);
+  background-color: color-mix(in oklab, oklch(var(--n)), black 7%);
+  color: oklch(var(--nc));
 }
 
 /* RAGStack Chat Widget Theme Integration */
@@ -212,5 +230,3 @@ ragstack-chat {
   --chat-radius-md: var(--rounded-btn, 4px);
   --chat-radius-lg: var(--rounded-box, 8px);
 }
-
-/* your code here */

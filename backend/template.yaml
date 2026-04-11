@@ -26,8 +26,6 @@ Metadata:
         default: "Administrator Email"
       SesFromEmail:
         default: "Notification From Email"
-      RagStackAdminEmail:
-        default: "RAGStack Admin Email"
       RagStackBuildWebComponent:
         default: "Build Chat Widget"
       RagStackBuildDashboard:
@@ -39,7 +37,6 @@ Metadata:
           - AppDomain
           - ArchiveBucket
           - TableName
-          - DeployUI
       - Label:
           default: "Authentication & API Keys"
         Parameters:
@@ -55,7 +52,7 @@ Metadata:
       - Label:
           default: "RAGStack AI Configuration"
         Parameters:
-          - RagStackAdminEmail
+          - RagStackStackName
           - RagStackBuildWebComponent
           - RagStackBuildDashboard
           - RagStackTemplateUrl
@@ -75,7 +72,7 @@ Metadata:
 
     Initial Deployment:
     - This one-click URL creates a NEW stack
-    - Required parameters: AdminEmail, RagStackAdminEmail
+    - Required parameters: AdminEmail
     - Optional: Set AppDomain to your domain, or use default localhost:5173
     - OAuth credentials (GoogleClientId/Secret) can be added later
 
@@ -125,10 +122,31 @@ Parameters:
     Description: S3 URL of the packaged RAGStack CloudFormation template
     Default: 'https://ragstack-quicklaunch-public.s3.us-east-1.amazonaws.com/ragstack-template.yaml'
 
-  RagStackAdminEmail:
+  RagStackStackName:
     Type: String
-    Description: Admin email for RAGStack (required)
-    Default: 'placeholder@example.com'
+    Description: Name of an existing separately-deployed RAGStack stack. When set, the nested RAGStack is skipped and the deploy script populates the values below from the existing stack.
+    Default: ''
+
+  RagStackDataBucketName:
+    Type: String
+    Description: Existing RAGStack data bucket name (auto-populated by deploy script when RagStackStackName is set)
+    Default: ''
+
+  RagStackGraphQLApiUrl:
+    Type: String
+    Description: Existing RAGStack GraphQL API URL (auto-populated by deploy script)
+    Default: ''
+
+  RagStackGraphQLApiKey:
+    Type: String
+    Description: Existing RAGStack GraphQL API key (auto-populated by deploy script)
+    Default: ''
+    NoEcho: true
+
+  RagStackChatWidgetUrl:
+    Type: String
+    Description: Existing RAGStack chat widget CDN URL (auto-populated by deploy script)
+    Default: ''
 
   RagStackBuildWebComponent:
     Type: String
@@ -149,7 +167,7 @@ Parameters:
 
   AdminEmail:
     Type: String
-    Description: Admin email address for contact form submissions
+    Description: Admin email - receives contact form submissions, initial login invite, and RAGStack dashboard access
     Default: ''
 
   GeminiApiKey:
@@ -167,30 +185,21 @@ Parameters:
   UISourceBucket:
     Type: String
     Description: S3 bucket containing frontend source zip
-    Default: 'hold-that-thought-quicklaunch-public'
+    Default: 'hold-that-thought-quicklaunch-public-631094035453'
 
   UISourceKey:
     Type: String
     Description: S3 key for frontend source zip
     Default: 'frontend.zip'
 
-  DeployUI:
-    Type: String
-    Default: 'true'
-    AllowedValues: ['true', 'false']
-    Description: Deploy frontend via Amplify (includes full-stack deployment)
 
 Conditions:
   HasGoogleOAuth: !Not [!Equals [!Ref GoogleClientId, '']]
   IsLocalhost: !Equals [!Select [0, !Split [":", !Ref AppDomain]], "localhost"]
   HasTableName: !Not [!Equals [!Ref TableName, '']]
   HasArchiveBucket: !Not [!Equals [!Ref ArchiveBucket, '']]
-  ShouldDeployUI: !And
-    - !Equals [!Ref DeployUI, 'true']
-    - !Not [!Equals [!Ref UISourceBucket, '']]
-  HasInitialAdmin: !And
-    - !Not [!Equals [!Ref RagStackAdminEmail, '']]
-    - !Not [!Equals [!Ref RagStackAdminEmail, 'placeholder@example.com']]
+  HasInitialAdmin: !Not [!Equals [!Ref AdminEmail, '']]
+  DeployNestedRagStack: !Equals [!Ref RagStackStackName, '']
 
 Globals:
   Function:
@@ -491,7 +500,7 @@ Resources:
         Variables:
           TABLE_NAME: !If [HasTableName, !Ref TableName, !Sub '${AWS::StackName}-Table']
           ARCHIVE_BUCKET: !Ref ArchiveBucketResource
-          RAGSTACK_BUCKET: !GetAtt ragstack.Outputs.DataBucketName
+          RAGSTACK_BUCKET: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.DataBucketName, !Ref RagStackDataBucketName]
           RAGSTACK_REGION: us-east-1
           LETTER_PROCESSOR_FUNCTION_NAME: !Ref LetterProcessorFunction
           SES_FROM_EMAIL: !Ref SesFromEmail
@@ -511,7 +520,7 @@ Resources:
         - S3CrudPolicy:
             BucketName: !Ref ArchiveBucketResource
         - S3ReadPolicy:
-            BucketName: !GetAtt ragstack.Outputs.DataBucketName
+            BucketName: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.DataBucketName, !Ref RagStackDataBucketName]
       Events:
         # Comments
         GetComments:
@@ -821,10 +830,11 @@ Resources:
   # RAGStack is always deployed as a nested stack for marketplace deployments
   ragstack:
     Type: AWS::CloudFormation::Stack
+    Condition: DeployNestedRagStack
     Properties:
       TemplateURL: !Ref RagStackTemplateUrl
       Parameters:
-        AdminEmail: !Ref RagStackAdminEmail
+        AdminEmail: !Ref AdminEmail
         StackPrefix: !Sub '${AWS::StackName}-rag'
         BuildWebComponent: !Ref RagStackBuildWebComponent
         BuildDashboard: !Ref RagStackBuildDashboard
@@ -836,7 +846,6 @@ Resources:
 
   FrontendBuildProject:
     Type: AWS::CodeBuild::Project
-    Condition: ShouldDeployUI
     Properties:
       Name: !Sub '${AWS::StackName}-frontend-build'
       Description: Builds SvelteKit frontend with stack-specific environment variables
@@ -844,7 +853,7 @@ Resources:
       Artifacts:
         Type: S3
         Location: !Ref UISourceBucket
-        Name: built-frontend.zip
+        Name: !Sub '${AWS::StackName}-built-frontend.zip'
         Packaging: ZIP
       Environment:
         Type: LINUX_CONTAINER
@@ -855,6 +864,26 @@ Resources:
             Value: !Ref UISourceBucket
           - Name: SOURCE_KEY
             Value: !Ref UISourceKey
+          - Name: PUBLIC_AWS_REGION
+            Value: !Ref AWS::Region
+          - Name: PUBLIC_API_GATEWAY_URL
+            Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod'
+          - Name: PUBLIC_COGNITO_USER_POOL_ID
+            Value: !Ref UserPool
+          - Name: PUBLIC_COGNITO_USER_POOL_CLIENT_ID
+            Value: !If [HasGoogleOAuth, !Ref UserPoolClientWithGoogle, !Ref UserPoolClient]
+          - Name: PUBLIC_COGNITO_IDENTITY_POOL_ID
+            Value: !Ref IdentityPool
+          - Name: PUBLIC_COGNITO_HOSTED_UI_DOMAIN
+            Value: !Sub '${UserPoolDomain}'
+          - Name: PUBLIC_COGNITO_HOSTED_UI_URL
+            Value: !Sub 'https://${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com'
+          - Name: PUBLIC_RAGSTACK_GRAPHQL_URL
+            Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.GraphQLApiUrl, !Ref RagStackGraphQLApiUrl]
+          - Name: PUBLIC_RAGSTACK_API_KEY
+            Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.GraphQLApiKey, !Ref RagStackGraphQLApiKey]
+          - Name: PUBLIC_RAGSTACK_CHAT_URL
+            Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.WebComponentCDNUrl, !Ref RagStackChatWidgetUrl]
       Source:
         Type: NO_SOURCE
         BuildSpec: |
@@ -865,6 +894,8 @@ Resources:
                 nodejs: 24
             pre_build:
               commands:
+                - echo "Verifying environment variables..."
+                - echo "API URL is $PUBLIC_API_GATEWAY_URL"
                 - echo "Downloading frontend source from S3..."
                 - aws s3 cp s3://$SOURCE_BUCKET/$SOURCE_KEY /tmp/frontend.zip
                 - mkdir -p /tmp/source
@@ -873,21 +904,15 @@ Resources:
             build:
               commands:
                 - echo "Building frontend with environment variables..."
-                - cd frontend
+                - cd /tmp/source
                 - echo "=== Environment Info ==="
                 - node --version
                 - npm --version
-                - npm install -g pnpm
-                - pnpm --version
-                - echo "=== Files present ==="
-                - ls -la
-                - echo "=== Installing dependencies ==="
-                - pnpm install --frozen-lockfile
-                - echo "=== Checking for workbox-window ==="
-                - find node_modules -name "workbox-window" -type d 2>/dev/null || echo "workbox-window not found"
-                - ls node_modules/workbox-window 2>/dev/null || echo "workbox-window directory does not exist"
-                - echo "=== Building ==="
-                - pnpm run build
+                - echo "=== Installing dependencies (from root for workspaces lockfile) ==="
+                - npm ci
+                - echo "=== Building frontend ==="
+                - cd frontend
+                - npm run build
                 - echo "Build complete"
           artifacts:
             files:
@@ -897,7 +922,6 @@ Resources:
 
   FrontendBuildRole:
     Type: AWS::IAM::Role
-    Condition: ShouldDeployUI
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -927,7 +951,6 @@ Resources:
 
   FrontendBuilderFunction:
     Type: AWS::Serverless::Function
-    Condition: ShouldDeployUI
     Properties:
       FunctionName: !Sub '${AWS::StackName}-frontend-builder'
       CodeUri: lambdas/frontend-builder/
@@ -970,13 +993,12 @@ Resources:
 
   FrontendBuild:
     Type: Custom::FrontendBuild
-    Condition: ShouldDeployUI
     DependsOn:
-      - ragstack
       - ApiFunction
     Properties:
       ServiceToken: !GetAtt FrontendBuilderFunction.Arn
       ProjectName: !Ref FrontendBuildProject
+      UISourceKey: !Ref UISourceKey
       EnvironmentVariables:
         - Name: PUBLIC_AWS_REGION
           Value: !Ref AWS::Region
@@ -985,7 +1007,7 @@ Resources:
         - Name: PUBLIC_COGNITO_USER_POOL_ID
           Value: !Ref UserPool
         - Name: PUBLIC_COGNITO_USER_POOL_CLIENT_ID
-          Value: !Ref UserPoolClient
+          Value: !If [HasGoogleOAuth, !Ref UserPoolClientWithGoogle, !Ref UserPoolClient]
         - Name: PUBLIC_COGNITO_IDENTITY_POOL_ID
           Value: !Ref IdentityPool
         - Name: PUBLIC_COGNITO_HOSTED_UI_DOMAIN
@@ -993,11 +1015,11 @@ Resources:
         - Name: PUBLIC_COGNITO_HOSTED_UI_URL
           Value: !Sub 'https://${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com'
         - Name: PUBLIC_RAGSTACK_GRAPHQL_URL
-          Value: !Sub '${ragstack.Outputs.GraphQLApiUrl}'
+          Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.GraphQLApiUrl, !Ref RagStackGraphQLApiUrl]
         - Name: PUBLIC_RAGSTACK_API_KEY
-          Value: !Sub '${ragstack.Outputs.GraphQLApiKey}'
+          Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.GraphQLApiKey, !Ref RagStackGraphQLApiKey]
         - Name: PUBLIC_RAGSTACK_CHAT_URL
-          Value: !Sub '${ragstack.Outputs.WebComponentCDNUrl}'
+          Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.WebComponentCDNUrl, !Ref RagStackChatWidgetUrl]
 
   # =============================================================================
   # Amplify Hosting
@@ -1045,15 +1067,15 @@ Resources:
         - Name: PUBLIC_COGNITO_HOSTED_UI_URL
           Value: !Sub 'https://${AWS::StackName}-${AWS::AccountId}.auth.${AWS::Region}.amazoncognito.com'
         - Name: PUBLIC_RAGSTACK_GRAPHQL_URL
-          Value: !GetAtt ragstack.Outputs.GraphQLApiUrl
+          Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.GraphQLApiUrl, !Ref RagStackGraphQLApiUrl]
         - Name: PUBLIC_RAGSTACK_API_KEY
-          Value: !GetAtt ragstack.Outputs.GraphQLApiKey
+          Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.GraphQLApiKey, !Ref RagStackGraphQLApiKey]
         - Name: PUBLIC_RAGSTACK_CHAT_URL
-          Value: !GetAtt ragstack.Outputs.WebComponentCDNUrl
+          Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.WebComponentCDNUrl, !Ref RagStackChatWidgetUrl]
 
       # SPA rewrite rule
       CustomRules:
-        - Source: '</^[^.]+$|\.(?!(css|gif|ico|jpg|jpeg|js|png|txt|svg|woff|woff2|ttf|map|json|webp)$)([^.]+$)/>'
+        - Source: '</^[^.]+$|\.(?!(css|gif|ico|jpg|jpeg|js|png|txt|svg|woff|woff2|ttf|map|json|webp|webmanifest|xml)$)([^.]+$)/>'
           Target: /index.html
           Status: '200'
 
@@ -1078,7 +1100,7 @@ Resources:
         - Name: PUBLIC_COGNITO_USER_POOL_ID
           Value: !Ref UserPool
         - Name: PUBLIC_COGNITO_USER_POOL_CLIENT_ID
-          Value: !Ref UserPoolClient
+          Value: !If [HasGoogleOAuth, !Ref UserPoolClientWithGoogle, !Ref UserPoolClient]
         - Name: PUBLIC_COGNITO_IDENTITY_POOL_ID
           Value: !Ref IdentityPool
         - Name: PUBLIC_COGNITO_HOSTED_UI_DOMAIN
@@ -1086,16 +1108,15 @@ Resources:
         - Name: PUBLIC_COGNITO_HOSTED_UI_URL
           Value: !Sub 'https://${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com'
         - Name: PUBLIC_RAGSTACK_GRAPHQL_URL
-          Value: !GetAtt ragstack.Outputs.GraphQLApiUrl
+          Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.GraphQLApiUrl, !Ref RagStackGraphQLApiUrl]
         - Name: PUBLIC_RAGSTACK_API_KEY
-          Value: !GetAtt ragstack.Outputs.GraphQLApiKey
+          Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.GraphQLApiKey, !Ref RagStackGraphQLApiKey]
         - Name: PUBLIC_RAGSTACK_CHAT_URL
-          Value: !GetAtt ragstack.Outputs.WebComponentCDNUrl
+          Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.WebComponentCDNUrl, !Ref RagStackChatWidgetUrl]
 
   # Lambda to trigger Amplify deployment
   AmplifyDeployerFunction:
     Type: AWS::Serverless::Function
-    Condition: ShouldDeployUI
     Properties:
       FunctionName: !Sub '${AWS::StackName}-amplify-deployer'
       CodeUri: lambdas/amplify-deployer/
@@ -1145,7 +1166,6 @@ Resources:
   # Custom resource that triggers deployment during stack creation
   AmplifyDeployment:
     Type: Custom::AmplifyDeployment
-    Condition: ShouldDeployUI
     DependsOn:
       - AmplifyBranch
       - FrontendBuild
@@ -1154,7 +1174,8 @@ Resources:
       AppId: !GetAtt AmplifyApp.AppId
       BranchName: main
       SourceBucket: !Ref UISourceBucket
-      SourceKey: built-frontend.zip
+      SourceKey: !Sub '${AWS::StackName}-built-frontend.zip'
+      UISourceKey: !Ref UISourceKey
 
   # =============================================================================
   # Admin User Provisioner
@@ -1182,14 +1203,14 @@ Resources:
     Type: Custom::AdminProvisioner
     Condition: HasInitialAdmin
     DependsOn:
-      - AmplifyApp
       - ApprovedUsersGroup
       - AdminsGroup
+      - AmplifyApp
     Properties:
       ServiceToken: !GetAtt AdminProvisionerFunction.Arn
       UserPoolId: !Ref UserPool
-      AdminEmail: !Ref RagStackAdminEmail
-      AmplifyUrl: !Sub 'main.${AmplifyApp.AppId}.amplifyapp.com'
+      AdminEmail: !Ref AdminEmail
+      AmplifyUrl: !Sub 'main.${AmplifyApp.DefaultDomain}'
 
 Outputs:
   ApiUrl:
@@ -1234,29 +1255,30 @@ Outputs:
 
   RagStackGraphQLUrl:
     Description: RAGStack GraphQL API URL
-    Value: !GetAtt ragstack.Outputs.GraphQLApiUrl
+    Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.GraphQLApiUrl, !Ref RagStackGraphQLApiUrl]
     Export:
       Name: !Sub '${AWS::StackName}-RagStackGraphQLUrl'
 
   RagStackApiKey:
     Description: RAGStack GraphQL API Key
-    Value: !GetAtt ragstack.Outputs.GraphQLApiKey
+    Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.GraphQLApiKey, !Ref RagStackGraphQLApiKey]
     Export:
       Name: !Sub '${AWS::StackName}-RagStackApiKey'
 
   RagStackChatWidgetUrl:
     Description: RAGStack Chat Widget CDN URL (Web UI Component)
-    Value: !GetAtt ragstack.Outputs.WebComponentCDNUrl
+    Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.WebComponentCDNUrl, !Ref RagStackChatWidgetUrl]
     Export:
       Name: !Sub '${AWS::StackName}-RagStackWebUICDN'
 
   RagStackDataBucket:
     Description: RAGStack data bucket name
-    Value: !GetAtt ragstack.Outputs.DataBucketName
+    Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.DataBucketName, !Ref RagStackDataBucketName]
     Export:
       Name: !Sub '${AWS::StackName}-RagStackDataBucket'
 
   RagStackAdminDashboardUrl:
+    Condition: DeployNestedRagStack
     Description: RAGStack Admin Dashboard URL (React UI for managing knowledge base)
     Value: !GetAtt ragstack.Outputs.UIUrl
     Export:

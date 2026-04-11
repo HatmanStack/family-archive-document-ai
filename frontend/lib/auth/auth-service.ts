@@ -179,17 +179,19 @@ export class AuthService {
       return null
     }
 
-    if (currentState.tokens.expiresAt - Date.now() < 5 * 60 * 1000) {
+    const timeToExpiry = currentState.tokens.expiresAt - Date.now()
+
+    if (timeToExpiry < 5 * 60 * 1000) {
       try {
         const newTokens = await this.refreshTokens()
-        return newTokens.accessToken
+        return newTokens.idToken
       }
       catch {
         return null
       }
     }
 
-    return currentState.tokens.accessToken
+    return currentState.tokens.idToken
   }
 
   async signInAsGuest() {

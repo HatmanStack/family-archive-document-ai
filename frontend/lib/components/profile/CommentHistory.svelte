@@ -11,19 +11,22 @@
    * Media items: "media/pictures/foo.jpg" -> "/gallery?item=media/pictures/foo.jpg"
    * Letters: "2024-12-10" -> "/letters/2024-12-10"
    */
-  function itemIdToPath(itemId: string, itemType?: string): string {
-    if (itemId.startsWith('media/')) {
-      return `/gallery?item=${encodeURIComponent(itemId)}`
+  function itemIdToPath(itemId: string | null | undefined, itemType?: string): string {
+    if (!itemId)
+      return '/'
+    const id = String(itemId)
+    if (id.startsWith('media/')) {
+      return `/gallery?item=${encodeURIComponent(id)}`
     }
     // Letter dates are stored as just "2024-12-10"
-    if (itemType === 'letter' || /^\d{4}-\d{2}-\d{2}$/.test(itemId)) {
-      return `/letters/${itemId}`
+    if (itemType === 'letter' || /^\d{4}-\d{2}-\d{2}$/.test(id)) {
+      return `/letters/${id}`
     }
     // Ensure path starts with /
-    if (itemId.startsWith('/')) {
-      return itemId
+    if (id.startsWith('/')) {
+      return id
     }
-    return `/${itemId}`
+    return `/${id}`
   }
 
   let comments: CommentHistoryItem[] = []
@@ -64,10 +67,13 @@
   /**
    * Truncate comment text to snippet length
    */
-  function truncateComment(text: string, maxLength: number = 150): string {
-    if (text.length <= maxLength)
-      return text
-    return `${text.substring(0, maxLength).trim()}...`
+  function truncateComment(text: string | null | undefined, maxLength: number = 150): string {
+    if (!text)
+      return ''
+    const str = String(text)
+    if (str.length <= maxLength)
+      return str
+    return `${str.substring(0, maxLength).trim()}...`
   }
 
   /**
@@ -161,7 +167,7 @@
         </svg>
         <span>{error}</span>
       </div>
-    {:else if comments.length === 0}
+    {:else if (comments ?? []).length === 0}
       <!-- Empty state -->
       <div class='text-center py-8'>
         <svg
@@ -183,7 +189,7 @@
     {:else}
       <!-- Comments list -->
       <div class='space-y-4'>
-        {#each comments as comment}
+        {#each comments ?? [] as comment}
           <div class='border-l-4 py-2 hover:bg-base-200 transition-colors border-primary pl-4'>
             <button
               class='text-left w-full'
@@ -191,7 +197,7 @@
             >
               <!-- Item title -->
               <h4 class='font-semibold text-primary hover:underline mb-1'>
-                {comment.itemTitle}
+                {comment.itemTitle || 'Untitled Item'}
               </h4>
 
               <!-- Comment snippet -->

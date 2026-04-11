@@ -231,3 +231,59 @@ npm run check:types   # Svelte type check
 npm run lint:fix      # Auto-fix lint issues
 ```
 
+## Guest Access (Showcase/Demo Stacks)
+
+Demo stacks can enable a "Try as Guest" button on the login page. This requires
+a guest Cognito user and the credentials baked into the frontend build.
+
+Guest access is a **frontend-only feature** — the credentials are compiled into
+the static JavaScript bundle so visitors can log in without creating an account.
+Do not enable this on private family stacks.
+
+### Setup
+
+1. Create the guest user in the target Cognito pool:
+
+```bash
+cd backend && node scripts/create-guest-user.js guest@showcase.demo GuestDemo123!
+```
+
+2. Add the guest user to the ApprovedUsers group in the AWS Cognito console.
+
+3. Add the credentials to `frontend/.env`:
+
+```text
+PUBLIC_GUEST_EMAIL=guest@showcase.demo
+PUBLIC_GUEST_PASSWORD=GuestDemo123!
+```
+
+4. Build and deploy the frontend directly to Amplify:
+
+```bash
+# Build locally (reads .env)
+cd frontend && npm run build
+
+# Zip the build output
+cd build && zip -r /tmp/frontend-deploy.zip .
+
+# Deploy to Amplify
+APP_ID="<your-amplify-app-id>"
+DEPLOY=$(aws amplify create-deployment --app-id $APP_ID --branch-name main --region us-west-2 --output json)
+UPLOAD_URL=$(echo $DEPLOY | python3 -c "import sys,json; print(json.load(sys.stdin)['zipUploadUrl'])")
+JOB_ID=$(echo $DEPLOY | python3 -c "import sys,json; print(json.load(sys.stdin)['jobId'])")
+curl --upload-file /tmp/frontend-deploy.zip "$UPLOAD_URL"
+aws amplify start-deployment --app-id $APP_ID --branch-name main --job-id $JOB_ID --region us-west-2
+```
+
+This bypasses CodeBuild entirely. The local build bakes in the guest credentials
+from your `.env` file, and the Amplify deployment serves the pre-built static
+files.
+
+### Why not the SAM deploy pipeline
+
+The SAM deploy pipeline passes environment variables through CloudFormation
+parameters to CodeBuild. SvelteKit's `$env/dynamic/public` reads these at
+prerender time, but with `adapter-static` the login page is a client-side route
+that isn't prerendered — so the dynamic env vars are empty in the browser.
+Building locally with the `.env` file avoids this limitation.
+
