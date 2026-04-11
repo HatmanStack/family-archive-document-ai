@@ -240,9 +240,6 @@ export async function getUserComments(
     return errorResponse(400, 'Invalid userId format', requestOrigin)
   }
 
-  if (userId !== requesterId && !isAdmin) {
-    return errorResponse(403, 'You can only view your own comments', requestOrigin)
-  }
 
   try {
     const result = await docClient.send(new QueryCommand({
@@ -260,9 +257,12 @@ export async function getUserComments(
     const comments = (result.Items || []).map(item => ({
       commentId: item.commentId,
       itemId: item.itemId,
+      itemTitle: item.itemTitle || item.itemId,
+      itemType: item.itemType || 'letter',
       content: item.content,
       createdAt: item.createdAt,
       isEdited: item.isEdited,
+      reactionCount: item.reactionCount || 0,
     }))
 
     return successResponse({ comments }, 200, requestOrigin)
