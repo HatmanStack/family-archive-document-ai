@@ -193,7 +193,7 @@ Parameters:
   UISourceBucket:
     Type: String
     Description: S3 bucket containing frontend source zip
-    Default: 'hold-that-thought-quicklaunch-public'
+    Default: 'hold-that-thought-quicklaunch-public-631094035453'
 
   UISourceKey:
     Type: String
