@@ -643,9 +643,6 @@ fi
 if [ "$SKIP_UI" != "true" ]; then
     PARAM_OVERRIDES="$PARAM_OVERRIDES UISourceBucket=$DEPLOY_BUCKET"
     PARAM_OVERRIDES="$PARAM_OVERRIDES UISourceKey=$UI_SOURCE_KEY"
-    PARAM_OVERRIDES="$PARAM_OVERRIDES DeployUI=true"
-else
-    PARAM_OVERRIDES="$PARAM_OVERRIDES DeployUI=false"
 fi
 
 sam deploy \

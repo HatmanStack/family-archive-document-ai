@@ -39,7 +39,6 @@ Metadata:
           - AppDomain
           - ArchiveBucket
           - TableName
-          - DeployUI
       - Label:
           default: "Authentication & API Keys"
         Parameters:
@@ -201,20 +200,12 @@ Parameters:
     Description: S3 key for frontend source zip
     Default: 'frontend.zip'
 
-  DeployUI:
-    Type: String
-    Default: 'true'
-    AllowedValues: ['true', 'false']
-    Description: Deploy frontend via Amplify (includes full-stack deployment)
 
 Conditions:
   HasGoogleOAuth: !Not [!Equals [!Ref GoogleClientId, '']]
   IsLocalhost: !Equals [!Select [0, !Split [":", !Ref AppDomain]], "localhost"]
   HasTableName: !Not [!Equals [!Ref TableName, '']]
   HasArchiveBucket: !Not [!Equals [!Ref ArchiveBucket, '']]
-  ShouldDeployUI: !And
-    - !Equals [!Ref DeployUI, 'true']
-    - !Not [!Equals [!Ref UISourceBucket, '']]
   HasInitialAdmin: !And
     - !Not [!Equals [!Ref RagStackAdminEmail, '']]
     - !Not [!Equals [!Ref RagStackAdminEmail, 'placeholder@example.com']]
@@ -866,7 +857,6 @@ Resources:
 
   FrontendBuildProject:
     Type: AWS::CodeBuild::Project
-    Condition: ShouldDeployUI
     Properties:
       Name: !Sub '${AWS::StackName}-frontend-build'
       Description: Builds SvelteKit frontend with stack-specific environment variables
@@ -921,7 +911,6 @@ Resources:
 
   FrontendBuildRole:
     Type: AWS::IAM::Role
-    Condition: ShouldDeployUI
     Properties:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
@@ -951,7 +940,6 @@ Resources:
 
   FrontendBuilderFunction:
     Type: AWS::Serverless::Function
-    Condition: ShouldDeployUI
     Properties:
       FunctionName: !Sub '${AWS::StackName}-frontend-builder'
       CodeUri: lambdas/frontend-builder/
@@ -994,7 +982,6 @@ Resources:
 
   FrontendBuild:
     Type: Custom::FrontendBuild
-    Condition: ShouldDeployUI
     DependsOn:
       - ApiFunction
     Properties:
@@ -1028,7 +1015,6 @@ Resources:
 
   AmplifyApp:
     Type: AWS::Amplify::App
-    Condition: ShouldDeployUI
     Properties:
       Name: !Sub '${AWS::StackName}'
       Description: Family Archive - Document AI Platform
@@ -1087,7 +1073,6 @@ Resources:
 
   AmplifyBranch:
     Type: AWS::Amplify::Branch
-    Condition: ShouldDeployUI
     Properties:
       AppId: !GetAtt AmplifyApp.AppId
       BranchName: main
@@ -1120,7 +1105,6 @@ Resources:
   # Lambda to trigger Amplify deployment
   AmplifyDeployerFunction:
     Type: AWS::Serverless::Function
-    Condition: ShouldDeployUI
     Properties:
       FunctionName: !Sub '${AWS::StackName}-amplify-deployer'
       CodeUri: lambdas/amplify-deployer/
@@ -1170,7 +1154,6 @@ Resources:
   # Custom resource that triggers deployment during stack creation
   AmplifyDeployment:
     Type: Custom::AmplifyDeployment
-    Condition: ShouldDeployUI
     DependsOn:
       - AmplifyBranch
       - FrontendBuild
@@ -1288,12 +1271,10 @@ Outputs:
       Name: !Sub '${AWS::StackName}-RagStackAdminDashboard'
 
   AmplifyAppId:
-    Condition: ShouldDeployUI
     Description: Amplify App ID
     Value: !GetAtt AmplifyApp.AppId
 
   AmplifyUrl:
-    Condition: ShouldDeployUI
     Description: Amplify Hosting URL (Frontend Application CDN)
     Value: !Sub 'https://main.${AmplifyApp.DefaultDomain}'
     Export:
