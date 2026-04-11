@@ -182,6 +182,11 @@ async function processCommentNotification(newImage: StreamCommentImage): Promise
     return
   }
 
+  if (itemType !== 'media' && !itemId) {
+    console.error('Skipping comment notification: missing itemId')
+    return
+  }
+
   if (previousCommenters.length === 0) {
     return
   }
