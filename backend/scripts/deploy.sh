@@ -57,8 +57,9 @@ done
 package_frontend_source() {
     local bucket_name=$1
     local region=$2
-    local s3_key="frontend.zip"
-    local zip_file="/tmp/frontend-source.zip"
+    local timestamp=$(date +%s)
+    local s3_key="frontend-${timestamp}.zip"
+    local zip_file="/tmp/frontend-source-${timestamp}.zip"
 
     echo "Packaging frontend source..." >&2
 
@@ -188,8 +189,9 @@ publish_to_marketplace() {
 
     # Step 4: Package frontend source
     echo "Step 4: Packaging frontend source..."
-    package_frontend_source "$marketplace_bucket" "$region"
-    echo "  ✓ Frontend source uploaded: frontend.zip"
+    local ui_key
+    ui_key=$(package_frontend_source "$marketplace_bucket" "$region")
+    echo "  ✓ Frontend source uploaded: $ui_key"
     echo ""
 
     # Step 5: SAM package (bundles Lambda code with template)
@@ -645,6 +647,7 @@ if [ "$SKIP_UI" != "true" ]; then
     PARAM_OVERRIDES="$PARAM_OVERRIDES UISourceKey=$UI_SOURCE_KEY"
 fi
 
+echo "PARAM_OVERRIDES: $PARAM_OVERRIDES"
 sam deploy \
     --stack-name "$STACK_NAME" \
     --region "$AWS_REGION" \

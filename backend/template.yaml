@@ -864,7 +864,7 @@ Resources:
       Artifacts:
         Type: S3
         Location: !Ref UISourceBucket
-        Name: built-frontend.zip
+        Name: !Sub '${AWS::StackName}-built-frontend.zip'
         Packaging: ZIP
       Environment:
         Type: LINUX_CONTAINER
@@ -875,6 +875,26 @@ Resources:
             Value: !Ref UISourceBucket
           - Name: SOURCE_KEY
             Value: !Ref UISourceKey
+          - Name: PUBLIC_AWS_REGION
+            Value: !Ref AWS::Region
+          - Name: PUBLIC_API_GATEWAY_URL
+            Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod'
+          - Name: PUBLIC_COGNITO_USER_POOL_ID
+            Value: !Ref UserPool
+          - Name: PUBLIC_COGNITO_USER_POOL_CLIENT_ID
+            Value: !Ref UserPoolClient
+          - Name: PUBLIC_COGNITO_IDENTITY_POOL_ID
+            Value: !Ref IdentityPool
+          - Name: PUBLIC_COGNITO_HOSTED_UI_DOMAIN
+            Value: !Sub '${UserPoolDomain}'
+          - Name: PUBLIC_COGNITO_HOSTED_UI_URL
+            Value: !Sub 'https://${UserPoolDomain}.auth.${AWS::Region}.amazoncognito.com'
+          - Name: PUBLIC_RAGSTACK_GRAPHQL_URL
+            Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.GraphQLApiUrl, !Ref RagStackGraphQLApiUrl]
+          - Name: PUBLIC_RAGSTACK_API_KEY
+            Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.GraphQLApiKey, !Ref RagStackGraphQLApiKey]
+          - Name: PUBLIC_RAGSTACK_CHAT_URL
+            Value: !If [DeployNestedRagStack, !GetAtt ragstack.Outputs.WebComponentCDNUrl, !Ref RagStackChatWidgetUrl]
       Source:
         Type: NO_SOURCE
         BuildSpec: |
@@ -885,6 +905,8 @@ Resources:
                 nodejs: 24
             pre_build:
               commands:
+                - echo "Verifying environment variables..."
+                - echo "API URL is $PUBLIC_API_GATEWAY_URL"
                 - echo "Downloading frontend source from S3..."
                 - aws s3 cp s3://$SOURCE_BUCKET/$SOURCE_KEY /tmp/frontend.zip
                 - mkdir -p /tmp/source
@@ -987,6 +1009,7 @@ Resources:
     Properties:
       ServiceToken: !GetAtt FrontendBuilderFunction.Arn
       ProjectName: !Ref FrontendBuildProject
+      UISourceKey: !Ref UISourceKey
       EnvironmentVariables:
         - Name: PUBLIC_AWS_REGION
           Value: !Ref AWS::Region
@@ -1162,7 +1185,8 @@ Resources:
       AppId: !GetAtt AmplifyApp.AppId
       BranchName: main
       SourceBucket: !Ref UISourceBucket
-      SourceKey: built-frontend.zip
+      SourceKey: !Sub '${AWS::StackName}-built-frontend.zip'
+      UISourceKey: !Ref UISourceKey
 
   # =============================================================================
   # Admin User Provisioner

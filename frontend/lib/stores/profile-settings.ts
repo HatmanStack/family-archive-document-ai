@@ -62,13 +62,11 @@ export function resetState(): void {
 }
 
 export async function loadProfileForUser(userId: string): Promise<void> {
-  console.warn('[profile-settings] loadProfileForUser called for:', userId)
   loading.set(true)
   error.set('')
 
   try {
     const result = await getProfile(userId)
-    console.warn('[profile-settings] loadProfileForUser result:', { success: result.success, hasData: !!result.data, error: result.error })
     if (result.success && result.data) {
       const p = result.data as UserProfile
       profile.set(p)

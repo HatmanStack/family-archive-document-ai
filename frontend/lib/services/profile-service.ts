@@ -19,18 +19,8 @@ interface UsersApiResponse {
 }
 
 export async function getProfile(userId: string): Promise<ProfileApiResponse> {
-  console.warn('[profile-service] getProfile called with userId:', userId)
   try {
     const data = await apiClient.get<UserProfile>(`/profile/${encodeURIComponent(userId)}`)
-    console.warn('[profile-service] getProfile response:', {
-      userId: data?.userId,
-      displayName: data?.displayName,
-      email: data?.email,
-      hasRelationships: Array.isArray(data?.familyRelationships),
-      relationshipsLength: data?.familyRelationships?.length,
-      commentCount: data?.commentCount,
-      keys: data ? Object.keys(data) : 'null',
-    })
 
     return {
       success: true,
@@ -90,14 +80,6 @@ export async function getCommentHistory(
     const data = await apiClient.get<CommentHistoryApiResponse>(
       `/profile/${encodeURIComponent(userId)}/comments?${params}`,
     )
-    console.warn('[profile-service] getCommentHistory response:', {
-      hasComments: !!data?.comments,
-      hasItems: !!data?.items,
-      commentsLength: data?.comments?.length,
-      itemsLength: data?.items?.length,
-      lastEvaluatedKey: data?.lastEvaluatedKey,
-      rawKeys: data ? Object.keys(data) : 'null',
-    })
 
     return {
       success: true,

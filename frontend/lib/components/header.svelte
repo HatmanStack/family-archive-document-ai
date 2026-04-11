@@ -106,6 +106,7 @@
           <Nav nav={headerConfig.nav} {path} {pin} {scrollY} {title} />
         {/if}
         <a class='btn btn-ghost text-lg normal-case' href='/'>Home</a>
+
         <!-- Hide these links on small screens -->
         <div class='ml-4 hidden lg:flex space-x-2'>
           <a class='btn btn-ghost normal-case' href='/about' class:btn-active={path === '/about'}>About</a>

@@ -44,7 +44,6 @@ export class ApiClient {
     } = options
 
     const url = `${this.baseUrl}${endpoint}`
-    console.warn(`[api-client] ${method} ${endpoint}`, { requireAuth, baseUrl: this.baseUrl })
 
     // Prepare headers
     const requestHeaders: Record<string, string> = {
@@ -54,13 +53,11 @@ export class ApiClient {
 
     // Add authorization header if required
     if (requireAuth) {
-      console.warn('[api-client] Fetching access token...')
       const accessToken = await authService.getValidAccessToken()
       if (!accessToken) {
         console.error('[api-client] No valid access token — authService.getValidAccessToken() returned null')
         throw new Error('No valid access token available')
       }
-      console.warn('[api-client] Got access token:', `${accessToken.substring(0, 20)}...`)
       requestHeaders.Authorization = `Bearer ${accessToken}`
     }
 
@@ -82,13 +79,6 @@ export class ApiClient {
       const response = await fetch(url, {
         ...requestOptions,
         signal: controller.signal,
-      })
-
-      console.warn(`[api-client] ${method} ${endpoint} → ${response.status} ${response.statusText}`)
-      console.warn(`[api-client] Response headers:`, {
-        'content-type': response.headers.get('content-type'),
-        'access-control-allow-origin': response.headers.get('access-control-allow-origin'),
-        'x-amzn-requestid': response.headers.get('x-amzn-requestid'),
       })
 
       if (!response.ok) {
@@ -113,12 +103,10 @@ export class ApiClient {
       // Handle non-JSON responses (e.g., 204 No Content, text responses)
       const contentType = response.headers.get('content-type')
       if (!contentType || !contentType.includes('application/json')) {
-        console.warn(`[api-client] Non-JSON response for ${endpoint}:`, contentType)
         return null as unknown as T
       }
 
       const json = await response.json()
-      console.warn(`[api-client] ${method} ${endpoint} response data:`, json)
       return json
     }
     catch (error) {

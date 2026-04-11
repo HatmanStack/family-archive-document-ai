@@ -13,34 +13,30 @@
 
   $: userId = $page.params.userId ?? ''
   $: isOwner = $currentUser?.sub === userId
-  $: isAdmin = $currentUser?.['cognito:groups']?.includes('Admins') || false
+  $: isAdmin = (() => {
+    const groups = $currentUser?.['cognito:groups']
+    if (Array.isArray(groups))
+      return groups.includes('Admins')
+    if (typeof groups === 'string')
+      return groups === 'Admins'
+    return false
+  })()
 
   /**
    * Load profile data
    */
   async function loadProfile() {
-    console.warn('[profile-page] loadProfile called for userId:', userId)
     loading = true
     error = ''
     profile = null
 
     const result = await getProfile(userId)
-    console.warn('[profile-page] loadProfile result:', { success: result.success, hasData: !!result.data, error: result.error })
 
     if (result.success && result.data) {
       profile = result.data as UserProfile
-      console.warn('[profile-page] Profile loaded:', {
-        displayName: profile.displayName,
-        email: profile.email,
-        commentCount: profile.commentCount,
-        familyRelationships: profile.familyRelationships,
-        joinedDate: profile.joinedDate,
-        lastActive: profile.lastActive,
-      })
     }
     else {
       error = result.error || 'Failed to load profile'
-      console.error('[profile-page] Profile load failed:', error)
     }
 
     loading = false
