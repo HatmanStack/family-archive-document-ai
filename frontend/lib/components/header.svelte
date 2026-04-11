@@ -86,6 +86,12 @@
     currentTheme
       = localStorage.getItem('theme')
       ?? 'retro' // Default to retro theme
+
+    document.addEventListener('click', (event: MouseEvent) => {
+      if (showThemePicker && !(event.target as Element)?.closest('.theme-picker-container')) {
+        showThemePicker = false
+      }
+    })
   }
 </script>
 
@@ -123,7 +129,7 @@
             <Icon src={MagnifyingGlass} class='w-6 h-6' />
           </button>
         {/if}
-        <div class='relative' id='change-theme'>
+        <div class='relative theme-picker-container' id='change-theme'>
           <button class='btn btn-square btn-ghost' onclick={() => { showThemePicker = !showThemePicker }}>
             <Icon src={Swatch} class='w-6 h-6' />
           </button>

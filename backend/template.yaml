@@ -210,7 +210,6 @@ Conditions:
     - !Not [!Equals [!Ref RagStackAdminEmail, '']]
     - !Not [!Equals [!Ref RagStackAdminEmail, 'placeholder@example.com']]
   DeployNestedRagStack: !Equals [!Ref RagStackStackName, '']
-  UseExistingRagStack: !Not [!Equals [!Ref RagStackStackName, '']]
 
 Globals:
   Function:

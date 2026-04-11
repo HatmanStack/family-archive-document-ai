@@ -86,3 +86,5 @@ backend/.env.deploy
 pnpm-lock.yaml
 .pnpm-store/
 backend/.env.deploy.*
+backend/import-template.json
+backend/import-template.yaml

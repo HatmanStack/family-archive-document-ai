@@ -84,7 +84,7 @@
       aria-describedby='char-count'
     />
     <div class='flex flex-col items-center gap-1 py-2'>
-      <span class='font-semibold text-sm'>Add a comment</span>
+      <label for='comment-input' class='font-semibold text-sm cursor-pointer'>Add a comment</label>
       <span
         class='text-xs text-base-content/60'
         class:text-error={isOverLimit}

@@ -91,14 +91,18 @@ export async function createComment(
     return errorResponse(400, `Comment content must be between 1 and ${MAX_COMMENT_LENGTH} characters`, requestOrigin)
   }
 
+  const VALID_ITEM_TYPES = ['letter', 'media']
+  const itemType = typeof body.itemType === 'string' && VALID_ITEM_TYPES.includes(body.itemType) ? body.itemType : 'letter'
+  const itemTitle = typeof body.itemTitle === 'string' ? sanitizeText(body.itemTitle).slice(0, 200) : itemId
+
   try {
     const comment = await commentRepository.create({
       itemId,
       content,
       authorId: requesterId,
       authorEmail: requesterEmail,
-      itemType: body.itemType as string,
-      itemTitle: body.itemTitle as string,
+      itemType,
+      itemTitle,
     })
 
     log.info('create_comment', { itemId, commentId: comment.commentId })

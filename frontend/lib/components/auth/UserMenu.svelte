@@ -73,7 +73,15 @@
     }
   }
 
+  function handleClickOutside(event: MouseEvent) {
+    if (showDropdown && !(event.target as Element)?.closest('.user-menu-container')) {
+      closeDropdown()
+    }
+  }
+
   onMount(() => {
+    document.addEventListener('click', handleClickOutside)
+
     // Update unread count immediately
     if ($isAuthenticated) {
       updateUnreadCount()
@@ -88,6 +96,7 @@
   })
 
   onDestroy(() => {
+    document.removeEventListener('click', handleClickOutside)
     if (updateInterval) {
       clearInterval(updateInterval)
     }
@@ -95,7 +104,7 @@
 </script>
 
 {#if $isAuthenticated && $currentUser}
-  <div class='relative'>
+  <div class='relative user-menu-container'>
     <button class='btn btn-ghost avatar btn-circle' onclick={() => { showDropdown = !showDropdown }}>
       <div class='w-10 rounded-full overflow-hidden'>
         {#if userProfilePhotoUrl}
