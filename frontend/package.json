@@ -23,7 +23,7 @@
     "sharp": "^0.34.5"
   },
   "devDependencies": {
-    "@antfu/eslint-config": "^8.1.1",
+    "@antfu/eslint-config": "^8.2.0",
     "@sveltejs/adapter-auto": "^7.0.1",
     "@sveltejs/adapter-node": "^5.5.4",
     "@sveltejs/adapter-static": "^3.0.8",
@@ -43,7 +43,7 @@
     "jiti": "^2.6.1",
     "mdast-util-to-string": "^4.0.0",
     "mdsvex": "^0.12.7",
-    "postcss": "^8.5.9",
+    "postcss": "^8.5.10",
     "postcss-lightningcss": "^1.1.0",
     "rehype-autolink-headings": "^7.1.0",
     "rehype-external-links": "^3.0.0",
@@ -51,7 +51,7 @@
     "remark-fff": "1.2.1",
     "remark-footnotes": "~4.0.1",
     "shiki-twoslash": "^3.1.2",
-    "svelte": "^5.55.3",
+    "svelte": "^5.55.4",
     "svelte-check": "^4.4.6",
     "svelte-eslint-parser": "^1.6.0",
     "tailwindcss": "^4.2.2",
