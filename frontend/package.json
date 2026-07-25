@@ -13,10 +13,10 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
-    "@aws-sdk/client-cognito-identity-provider": "^3.1022.0",
-    "isomorphic-dompurify": "^3.7.1",
-    "jose": "^6.2.2",
-    "marked": "^17.0.5",
+    "@aws-sdk/client-cognito-identity-provider": "^3.1095.0",
+    "isomorphic-dompurify": "^3.19.0",
+    "jose": "^6.2.4",
+    "marked": "^18.0.7",
     "svelte-hero-icons": "^5.2.0"
   },
   "optionalDependencies": {
