@@ -11,16 +11,11 @@ updates:
       production-dependencies:
         dependency-type: production
 
-  - package-ecosystem: npm
-    directory: /frontend
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 3
-    groups:
-      dev-dependencies:
-        dependency-type: development
-      production-dependencies:
-        dependency-type: production
+  # frontend/ is an npm workspace of the root package.json and shares the root
+  # package-lock.json. A separate /frontend entry here raises PRs that edit
+  # frontend/package.json without ever touching the root lockfile, so `npm ci`
+  # rejects them as out of sync. The `/` entry above already covers workspace
+  # dependencies and updates the lockfile with them.
 
   - package-ecosystem: github-actions
     directory: /
