@@ -5,6 +5,14 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 3
+    ignore:
+      # remark-footnotes 5.0.0 is a deprecation tombstone, not a release: it is
+      # 583 bytes with no main, no exports and no code, published only to point
+      # at remark-gfm. Taking it silently removes footnote rendering and breaks
+      # frontend/mdsvex.config.js at import time. Stay on 4.x until that config
+      # is migrated to remark-gfm.
+      - dependency-name: remark-footnotes
+        update-types: [version-update:semver-major]
     groups:
       dev-dependencies:
         dependency-type: development
