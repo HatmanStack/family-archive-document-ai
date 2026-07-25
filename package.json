@@ -6,9 +6,12 @@
   "author": "Galliart Family",
   "license": "UNLICENSED",
   "_securityNotes": {
-    "auditStatus": "0 vulnerabilities",
-    "lastAudit": "2026-04-01",
+    "auditStatus": "0 high/critical vulnerabilities",
+    "lastAudit": "2026-07-24",
     "resolved": [
+      "sharp CVE-2026-33327/33328/35590/35591 (HIGH) - override to ^0.35.3",
+      "brace-expansion GHSA-v6h2-p8h4-qcjw (HIGH) - override to ^5.0.8; 5.x ships dual CJS/ESM so CJS consumers (minimatch, jake, oclif) resolve unchanged",
+      "js-yaml GHSA-pm4m-ph32-ghv5 (HIGH) - pin markdownlint-cli2 to ^0.22.1 and scope its js-yaml to ^4.3.0; both markdownlint-cli2 lines ship a vulnerable js-yaml (0.22.x -> 4.1.1, 0.23.x -> 5.2.1), so the override is scoped rather than global to avoid forcing js-yaml 4's removal of safeLoad/safeDump on other consumers",
       "sharp CVE-2023-4863 (HIGH) - override to ^0.33.5",
       "cookie GHSA-pxg6-pf52-xh8x (MODERATE) - override to ^0.7.2",
       "serialize-javascript GHSA-5c6j-r48x-rmvq (HIGH) - override to ^7.0.5",
@@ -61,7 +64,7 @@
     "husky": "^9.1.7",
     "knip": "^6.4.0",
     "lint-staged": "^16.4.0",
-    "markdownlint-cli2": "^0.22.0",
+    "markdownlint-cli2": "^0.22.1",
     "vite": "^8.0.8",
     "vitest": "^4.1.0",
     "workbox-build": "^7.0.0",
@@ -69,11 +72,15 @@
   },
   "overrides": {
     "@opentelemetry/api": "^1.9.0",
+    "brace-expansion": "^5.0.8",
     "@sveltejs/kit": {
       "cookie": "^0.7.2"
     },
+    "markdownlint-cli2": {
+      "js-yaml": "^4.3.0"
+    },
     "serialize-javascript": "^7.0.5",
-    "sharp": "^0.33.5"
+    "sharp": "^0.35.3"
   },
   "dependencies": {
     "remark-footnotes": "~4.0.1"
