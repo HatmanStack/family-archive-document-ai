@@ -19,10 +19,10 @@
     "uuid": "^14.0.1"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.161",
-    "@types/node": "^25.6.0",
+    "@types/aws-lambda": "^8.10.162",
+    "@types/node": "^26.1.2",
     "@types/sanitize-html": "^2.16.1",
     "@types/uuid": "^11.0.0",
-    "typescript": "^6.0.2"
+    "typescript": "^7.0.2"
   }
 }
