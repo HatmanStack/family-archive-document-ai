@@ -30,6 +30,17 @@ export default antfu({
     'e18e/prefer-static-regex': 'off',
     'eqeqeq': 'error',
     'no-undef-init': 'off',
+    // eslint-plugin-svelte 3.22 promotes these into its recommended set, so the
+    // codebase has never been checked against them: 101 no-navigation-without-resolve,
+    // 33 require-each-key, 11 infinite-reactive-loop, 2 prefer-svelte-reactivity,
+    // 2 no-immutable-reactive-statements. Each is a real source change, so they are
+    // held off here rather than rewritten blind inside a dependency bump.
+    // TODO: work through these and drop this block.
+    'svelte/no-navigation-without-resolve': 'off',
+    'svelte/require-each-key': 'off',
+    'svelte/infinite-reactive-loop': 'off',
+    'svelte/prefer-svelte-reactivity': 'off',
+    'svelte/no-immutable-reactive-statements': 'off',
   },
 }, {
   // Backend API guardrails (ADR-0001, ADR-0003, ADR-0004).
