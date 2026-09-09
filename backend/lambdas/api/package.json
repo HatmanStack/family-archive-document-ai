@@ -19,8 +19,8 @@
     "uuid": "^14.0.2"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.162",
-    "@types/node": "^26.4.0",
+    "@types/aws-lambda": "^8.10.163",
+    "@types/node": "^26.4.1",
     "@types/sanitize-html": "^2.16.1",
     "@types/uuid": "^11.0.0",
     "typescript": "^7.0.2"
